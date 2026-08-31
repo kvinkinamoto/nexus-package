@@ -1,0 +1,9 @@
+/src/resources/views/larkon/OldTemplate/
+
+*.log
+*.db
+
+/.phpunit.cache
+
+/.idea
+/.vscode

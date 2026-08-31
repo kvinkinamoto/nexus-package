@@ -1,0 +1,39 @@
+Copyright (c) 2025 nodex
+
+All rights reserved.
+
+This software package ("nexus") is proprietary software owned by nodex.
+The Package, including all source code, documentation, and related materials,
+is protected by copyright laws and international copyright treaties, as well as other intellectual property laws and treaties.
+
+1. **Grant of License**:
+   nodex grants you a limited, non-exclusive, non-transferable, non-sublicensable license to use
+   the Package solely for personal or internal business purposes within your organization.
+   This license does not permit any commercial use, distribution, or modification of the Package
+   without prior written consent from [Назва вашої компанії].
+
+2. **Restrictions**:
+   - You may not use the Package for commercial purposes, including but not limited to selling, licensing,
+   or distributing the Package or any derivative works, without explicit written permission from nodex.
+   - You may not copy, modify, distribute, sell, or lease any part of the Package.
+   - You may not reverse engineer, decompile, or disassemble the Package, except to the extent that such activity
+   is expressly permitted by applicable law.
+   - You may not remove or alter any copyright, trademark, or other proprietary notices contained in the Package.
+
+3. **Ownership**:
+   The Package is licensed, not sold. nodex retains all title, ownership, and intellectual property rights in
+   and to the Package.
+
+4. **Termination**:
+   This license is effective until terminated. nodex may terminate this license immediately if you fail
+   to comply with any of its terms. Upon termination, you must cease all use of the Package and destroy all copies
+   in your possession.
+
+5. **No Warranty**:
+   The Package is provided "as is" without warranty of any kind, either expressed or implied, including but not
+   limited to the implied warranties of merchantability and fitness for a particular purpose.
+
+6. **Contact**:
+   For inquiries regarding commercial use or licensing, please contact https://nodex.com/
+
+By using this Package, you agree to be bound by the terms of this license.

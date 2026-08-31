@@ -1,0 +1,61 @@
+<?php
+
+namespace App\Nexus\Widgets\{{name}};
+
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
+
+/**
+ * Self-contained widget — not wired into a shared widget contract yet.
+ * Once the Nexus widget system lands, re-implement this against
+ * Nodex\Nexus\Contracts\Widgets\WidgetInterface instead.
+ */
+class {{name}}
+{
+    public static function getName(): string
+    {
+        return '{{humanName}}';
+    }
+
+    public static function getConfigFields(): array
+    {
+        return [];
+    }
+
+    /**
+     * @return array<string, string> Blade view identifier => display name,
+     *   discovered from this widget's own resources/views/ directory.
+     */
+    public function getAvailableViews(): array
+    {
+        $viewsPath = __DIR__ . '/resources/views';
+        $namespace = 'widget-' . Str::kebab(str_replace('Widget', '', class_basename(static::class)));
+
+        $views = [];
+        if (File::isDirectory($viewsPath)) {
+            foreach (File::files($viewsPath) as $file) {
+                $viewName = str_replace('.blade.php', '', $file->getFilename());
+                $views["{$namespace}::{$viewName}"] = $viewName;
+            }
+        }
+
+        return $views;
+    }
+
+    public function getData(array $config = []): array
+    {
+        return ['config' => $config];
+    }
+
+    public function render(array $config = [], ?string $viewName = null): string
+    {
+        $views = $this->getAvailableViews();
+        $view = $viewName ?? array_key_first($views);
+
+        if (!$view || !view()->exists($view)) {
+            return '';
+        }
+
+        return view($view, $this->getData($config))->render();
+    }
+}

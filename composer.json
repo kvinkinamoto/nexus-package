@@ -1,0 +1,44 @@
+{
+  "name": "nodex/nexus",
+  "description": "Nexus package",
+  "type": "library",
+  "version": "1.0.0",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Kiriliuk Oleg",
+      "email": "kvin_kinamoto@ukr.net"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Nodex\\Nexus\\": "src"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Nodex\\Nexus\\NexusServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "require": {
+    "ext-dom": "*",
+    "barryvdh/laravel-elfinder": "^0.6.0",
+    "spatie/laravel-permission": "^8.3.0",
+    "spatie/laravel-translatable": "^6.14.1",
+    "kalnoy/nestedset": "^7.0.0",
+    "livewire/livewire": "^3.6",
+    "mcamara/laravel-localization": "^2.4.1",
+    "intervention/image": "3.11.6"
+  },
+  "require-dev": {
+    "pestphp/pest": "^3.0",
+    "pestphp/pest-plugin-laravel": "^3.0"
+  },
+  "scripts": {
+    "test": "pest"
+  }
+}

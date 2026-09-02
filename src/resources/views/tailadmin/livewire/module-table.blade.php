@@ -1,0 +1,259 @@
+{{--
+    Reactive replacement for pages/index.blade.php's table body, rendered by
+    Nodex\Nexus\Livewire\ModuleTable for any #[Module(livewire: true)] module.
+    Filters, sorting, pagination and bulk actions update in place via
+    wire:model/wire:click instead of window.location.href / form-submit
+    full-reloads. Per-row single-record actions (see the $tableData['actions']
+    loop below) mirror pages/tableRow.blade.php: edit either links straight to
+    editLivewire.blade.php, or — for a #[Module(slideOver: true)] module —
+    opens ModuleForm inline in a slide-over panel instead of
+    nexus-slideover.js's <iframe>; delete/restore/duplicate/deletePermanent
+    run through ModuleTable::runAction().
+--}}
+<div>
+    @if(!empty($tableData['lenses']))
+        <div class="mb-4 flex gap-1 border-b border-gray-200 dark:border-gray-800">
+            <a href="javascript:void(0);" wire:click="selectLens(null)"
+                class="border-b-2 px-3 py-2 text-sm font-medium {{ empty($tableData['activeLens']) ? 'border-brand-500 text-brand-500' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
+                @lang('nexus::translate.lens_all')
+                <span class="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-white/5 dark:text-gray-300">{{ $tableData['lensCounts']['__all__'] ?? 0 }}</span>
+            </a>
+            @foreach($tableData['lenses'] as $lensName => $lensDef)
+                <a href="javascript:void(0);" wire:click="selectLens('{{ $lensName }}')"
+                    class="border-b-2 px-3 py-2 text-sm font-medium {{ $tableData['activeLens'] === $lensName ? 'border-brand-500 text-brand-500' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
+                    @if($lensDef->icon)
+                        <i class="{{ nexus_icon($lensDef->icon, $module->name, 'default_icon') }} align-middle me-1"></i>
+                    @endif
+                    @lang(Str::lcfirst($module->name) . '::translate.' . $lensDef->label)
+                    <span class="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-white/5 dark:text-gray-300">{{ $tableData['lensCounts'][$lensName] ?? 0 }}</span>
+                </a>
+            @endforeach
+        </div>
+    @endif
+
+    <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.02]">
+        <div class="flex flex-col gap-3 border-b border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
+            <div>
+                @foreach($tableData['filters'] ?? [] as $filterCfg)
+                    @if(($filterCfg->type ?? null) === 'search')
+                        <div class="relative w-full max-w-70">
+                            <i class="{{ nexus_icon('search') }} pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <input type="text"
+                                wire:model.live.debounce.400ms="filter.{{ $filterCfg->name }}"
+                                wire:key="filter-{{ $filterCfg->name }}"
+                                placeholder="@lang(Str::lcfirst($module->name) . '::translate.' . Str::lower($filterCfg->label ?? $filterCfg->name))"
+                                class="h-10 w-full rounded-lg border border-gray-200 bg-transparent py-2 pl-9 pr-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90">
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                @foreach($module->config->table->mainActions ?? [] as $mainAction)
+                    @if($mainAction->isActive)
+                        <a href="{{ route('nexus.module.action', ['module' => $module->name, 'action' => $mainAction->name]) }}"
+                            title="@lang('nexus::translate.' . $mainAction->label)"
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600">
+                            <i class="{{ nexus_icon('plus') }}"></i>
+                            @lang('nexus::translate.' . $mainAction->label)
+                        </a>
+                    @endif
+                @endforeach
+                @if(!empty($selected) && !empty($module->config->table->actionGroup))
+                    @foreach($module->config->table->actionGroup as $groupAction)
+                        @if($groupAction->isActive)
+                            <button type="button"
+                                wire:click="runGroupAction('{{ $groupAction->name }}')"
+                                @if($groupAction->confirm) wire:confirm="@lang('nexus::translate.' . $groupAction->name)?" @endif
+                                class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/5">
+                                @lang('nexus::translate.' . $groupAction->name) ({{ count($selected) }})
+                            </button>
+                        @endif
+                    @endforeach
+                @endif
+            </div>
+        </div>
+
+        <div class="custom-scrollbar overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="border-b border-gray-100 dark:border-white/5">
+                    <tr>
+                        @if(!empty($module->config->table->actionGroup))
+                            <th class="w-10 px-4 py-3">
+                                <input type="checkbox" wire:click="toggleSelectAll($event.target.checked)"
+                                    class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500">
+                            </th>
+                        @endif
+                        @foreach ($tableData['columns'] ?? [] as $column)
+                            <th @if($column->sortable ?? false) wire:click="sortBy('{{ $column->name }}')" @endif
+                                class="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500 {{ ($column->sortable ?? false) ? 'cursor-pointer select-none' : '' }} dark:text-gray-400">
+                                @lang(Str::lcfirst($module->name) . '::translate.' . Str::lower($column->label ?? $column->name))
+                                @if($column->sortable ?? false)
+                                    @php
+                                        $isActiveSort = $sort === $column->name || $sort === '-' . $column->name;
+                                        $isDesc = $sort === '-' . $column->name;
+                                    @endphp
+                                    <i class="bx bx-chevron-down text-xs {{ $isActiveSort ? 'text-gray-700 dark:text-gray-300' : 'text-gray-300' }}"
+                                        style="{{ $isActiveSort && $isDesc ? '' : 'transform: rotate(180deg); display:inline-block;' }}"></i>
+                                @endif
+                            </th>
+                        @endforeach
+                        @if(!empty($tableData['actions']))
+                            <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                Actions
+                            </th>
+                        @endif
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+                    @forelse ($tableData['data'] as $item)
+                        <tr wire:key="row-{{ $item->id }}" class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                            @if(!empty($module->config->table->actionGroup))
+                                <td class="px-4 py-3">
+                                    <input type="checkbox" value="{{ $item->id }}" wire:model.live="selected"
+                                        class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500">
+                                </td>
+                            @endif
+                            @foreach ($tableData['columns'] as $column)
+                                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                                    @if(($column->action ?? null) === 'boolToggle')
+                                        <label class="relative inline-flex cursor-pointer items-center">
+                                            <input type="checkbox" class="peer sr-only"
+                                                @checked($item->{$column->fieldName ?? $column->name})
+                                                wire:click="toggleBool('{{ $item->id }}', '{{ $column->fieldName ?? $column->name }}')"
+                                                @if($column->actionConfirm ?? false) wire:confirm="@lang('nexus::translate.are_u_sure')" @endif>
+                                            <div class="h-6 w-11 rounded-full bg-gray-200 transition peer-checked:bg-brand-500 dark:bg-gray-700"></div>
+                                            <div class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition peer-checked:translate-x-5"></div>
+                                        </label>
+                                    @elseif(isset($column->action))
+                                        <form method="POST"
+                                            onsubmit="return sendFormConfirm({{ $column->actionConfirm ?? false }}, '{{ $column->action }}')"
+                                            action="{{ route('nexus.module.action', [$module->name, $column->action, 'id' => $item->id]) }}">
+                                            @csrf
+                                            @if (View::exists(Str::lcfirst($module->name) . '::admin.actions.' . $column->action))
+                                                @include(Str::lcfirst($module->name) . '::admin.actions.' . $column->action, ['action' => $column->action, 'fieldName' => $column->name])
+                                            @else
+                                                @include('nexus::' . config('nexus.template') . '.templates.actions.' . $column->action, ['action' => $column->action, 'fieldName' => $column->name])
+                                            @endif
+                                            <input type="hidden" name="model_id" value="{{ $item->id }}">
+                                        </form>
+                                    @elseif(isset($column->customField))
+                                        @if (View::exists(Str::lcfirst($module->name) . '::admin.custom_index_fields.' . $column->customField))
+                                            @include(Str::lcfirst($module->name) . '::admin.custom_index_fields.' . $column->customField, ['fieldName' => $column->fieldName ?? $column->name])
+                                        @else
+                                            @include('nexus::' . config('nexus.template') . '.templates.custom_index_fields.' . $column->customField, ['fieldName' => $column->fieldName ?? $column->name])
+                                        @endif
+                                    @else
+                                        {{ $item->{$column->name} ?? '' }}
+                                        @if(isset($item->depth) && $item->depth > 0 && $column->name == 'id')
+                                            <span class="text-orange-500">|{{ str_repeat('_', (int) $item->depth) }} </span>
+                                        @endif
+                                    @endif
+                                </td>
+                            @endforeach
+                            @if(!empty($tableData['actions']))
+                                @php
+                                    $isSoftDeletable = in_array(\Illuminate\Database\Eloquent\SoftDeletes::class, class_uses_recursive($item));
+                                    $isDeleted = $isSoftDeletable ? $item->trashed() : false;
+                                @endphp
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        @foreach ($tableData['actions'] as $rowAction)
+                                            @if(!$rowAction->isActive)
+                                                @continue
+                                            @endif
+                                            @if(
+                                                ($rowAction->name === 'delete' && $isDeleted) ||
+                                                ($rowAction->name === 'edit' && $isDeleted) ||
+                                                ($rowAction->name === 'restore' && !$isDeleted) ||
+                                                ($rowAction->name === 'deletePermanent' && !$isDeleted)
+                                            )
+                                                @continue
+                                            @endif
+                                            @php
+                                                $isMutatingAction = in_array($rowAction->name, ['delete', 'restore', 'deletePermanent', 'duplicate'], true);
+                                                $rowBtnClass = 'flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5';
+                                            @endphp
+                                            @if($rowAction->name === 'edit' && ($module->config->slideOver ?? false))
+                                                <button type="button" title="{{ $rowAction->label }}"
+                                                    wire:click="openSlideOver('{{ $item->id }}')" class="{{ $rowBtnClass }}">
+                                                    <i class="{{ nexus_icon($rowAction->icon, $module->name, 'default_icon') }}"></i>
+                                                </button>
+                                            @elseif($isMutatingAction)
+                                                <button type="button" title="{{ $rowAction->label }}"
+                                                    wire:click="runAction('{{ $rowAction->name }}', '{{ $item->id }}')"
+                                                    @if($rowAction->confirm ?? false) wire:confirm="@lang('nexus::translate.are_u_sure')" @endif
+                                                    class="{{ $rowBtnClass }}">
+                                                    <i class="{{ nexus_icon($rowAction->icon, $module->name, 'default_icon') }}"></i>
+                                                </button>
+                                            @else
+                                                <a href="{{ route('nexus.module.action', [$module->name, $rowAction->name, 'id' => $item->id]) }}"
+                                                    title="{{ $rowAction->label }}" class="{{ $rowBtnClass }}">
+                                                    <i class="{{ nexus_icon($rowAction->icon, $module->name, 'default_icon') }}"></i>
+                                                </a>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                </td>
+                            @endif
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="99" class="px-4 py-10 text-center text-sm text-gray-400">@lang('nexus::translate.no_results_found')</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        @if($tableData['data']->total() > 0)
+            <div class="flex flex-col items-center justify-between gap-3 border-t border-gray-200 p-4 sm:flex-row dark:border-gray-800">
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ $tableData['data']->firstItem() }}&ndash;{{ $tableData['data']->lastItem() }} / {{ $tableData['data']->total() }}
+                </div>
+                <div class="flex items-center gap-1">
+                    <button type="button" wire:key="page-prev"
+                        @disabled($tableData['data']->currentPage() <= 1)
+                        wire:click="gotoPage({{ $tableData['data']->currentPage() - 1 }})"
+                        class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 dark:text-gray-400 dark:hover:bg-white/5">&laquo;</button>
+                    @for ($p = 1; $p <= $tableData['data']->lastPage(); $p++)
+                        <button type="button" wire:key="page-{{ $p }}"
+                            wire:click="gotoPage({{ $p }})"
+                            class="flex h-8 w-8 items-center justify-center rounded-lg text-sm {{ $p === $tableData['data']->currentPage() ? 'bg-brand-500 text-white' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5' }}">{{ $p }}</button>
+                    @endfor
+                    <button type="button" wire:key="page-next"
+                        @disabled($tableData['data']->currentPage() >= $tableData['data']->lastPage())
+                        wire:click="gotoPage({{ $tableData['data']->currentPage() + 1 }})"
+                        class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 dark:text-gray-400 dark:hover:bg-white/5">&raquo;</button>
+                </div>
+            </div>
+        @endif
+    </div>
+
+    @if($module->config->slideOver ?? false)
+        {{--
+            Panel visibility is driven purely by $slideOverOpen (server-side
+            Livewire state), same as the old Bootstrap-Offcanvas-free version
+            — just Tailwind transition classes instead of Bootstrap's
+            .offcanvas/.show CSS for the slide.
+        --}}
+        <div wire:key="slideover-panel" class="fixed inset-0 z-99999 {{ $slideOverOpen ? '' : 'pointer-events-none' }}">
+            <div wire:click="closeSlideOver" wire:key="slideover-backdrop"
+                class="absolute inset-0 bg-gray-900/50 transition-opacity duration-300 {{ $slideOverOpen ? 'opacity-100' : 'opacity-0' }}"></div>
+            <div x-on:keydown.escape.window="$wire.closeSlideOver()"
+                class="absolute right-0 top-0 h-full w-full max-w-180 transform bg-white shadow-theme-xl transition-transform duration-300 dark:bg-gray-900 {{ $slideOverOpen ? 'translate-x-0' : 'translate-x-full' }}">
+                <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+                    <h5 class="text-base font-semibold text-gray-800 dark:text-white/90">@lang('nexus::translate.edit')</h5>
+                    <button type="button" wire:click="closeSlideOver"
+                        class="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5">
+                        <i class="bx bx-x"></i>
+                    </button>
+                </div>
+                <div class="custom-scrollbar h-[calc(100%-64px)] overflow-y-auto p-5">
+                    @if($slideOverOpen && $slideOverId)
+                        @livewire('nexus-module-form', ['moduleName' => $module->name, 'id' => $slideOverId, 'embedded' => true], key('slideover-form-' . $slideOverId))
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+</div>

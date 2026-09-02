@@ -42,9 +42,13 @@ class ModuleTable extends Component
     public string $moduleName;
 
     public ?string $sort = null;
+
     public array $filter = [];
+
     public int $page = 1;
+
     public ?int $perPage = null;
+
     public array $selected = [];
 
     /** Active #[TableLens] name, or null for "all records" — see selectLens(). */
@@ -99,10 +103,13 @@ class ModuleTable extends Component
 
     public function sortBy(string $column): void
     {
+        // Descending first: for id-like columns the natural (unsorted) row
+        // order already matches ascending, so an asc-first cycle made the
+        // first click look like a no-op.
         $this->sort = match ($this->sort) {
-            $column => '-' . $column,
-            '-' . $column => null,
-            default => $column,
+            '-'.$column => $column,
+            $column => null,
+            default => '-'.$column,
         };
         $this->page = 1;
     }
@@ -225,7 +232,7 @@ class ModuleTable extends Component
 
     public function render()
     {
-        return view('nexus::' . config('nexus.template') . '.livewire.module-table', [
+        return view('nexus::'.config('nexus.template').'.livewire.module-table', [
             'module' => $this->resolveModule(),
             'tableData' => $this->tableData(),
         ]);

@@ -266,11 +266,25 @@
                 <button type="button" class="btn header-item noti-icon waves-effect"
                         id="page-header-notifications-dropdown" data-bs-toggle="dropdown" aria-haspopup="true"
                         aria-expanded="false">
+                    {{--
+                        Guarded on Schema::hasTable() rather than assuming it's
+                        there: this is Laravel's own notifications table, not
+                        one of nexus-migrations' own tables, so a fresh install
+                        that skipped `nexus:install` (which now runs
+                        notifications:table + migrate for exactly this reason)
+                        must not 500 the whole admin layout over an unread-count
+                        badge — it degrades to "no badge" instead.
+                    --}}
+                    @php
+                        $unreadNotificationsCount = \Illuminate\Support\Facades\Schema::hasTable('notifications')
+                            ? auth()?->user()?->unreadNotifications()?->count()
+                            : 0;
+                    @endphp
                     <i class="{{ nexus_icon('notifications') }}"></i>
-                    @if (auth()?->user()?->unreadNotifications()?->count())
+                    @if ($unreadNotificationsCount)
                         <span
                             class="badge bg-danger rounded-pill">
-                                {{ auth()?->user()?->unreadNotifications()?->count() }}
+                                {{ $unreadNotificationsCount }}
                         </span>
                     @endif
                 </button>

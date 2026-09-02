@@ -185,6 +185,18 @@ class ModuleManager
 
         Module::query()->updateOrCreate(['name' => $name], ['name' => $name]);
 
+        // A module's own migration may alter a table a base/vendor migration
+        // creates (e.g. Permission's add_display_field ALTERs spatie/laravel-permission's
+        // `permissions` table) — that vendor migration only exists in
+        // database/migrations once published, with whatever timestamp the
+        // publish happened to run at, so it can't be relied on to always sort
+        // before a module's own migration. Applying whatever's outstanding in
+        // the base path first (idempotent — already-run migrations are
+        // skipped) guarantees those tables exist before the module-scoped
+        // migrate below runs, without hardcoding which module depends on which
+        // vendor package.
+        Artisan::call('migrate', ['--path' => 'database/migrations'], $output);
+
         $migrationPath = $this->pathManager->getMigrationPath($name, $regModule['is_user_module']);
 
         // Relative path for Artisan migrate

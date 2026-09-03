@@ -8,7 +8,12 @@ use Attribute;
  * Configures how an Eloquent relation method is exposed in the admin panel.
  * Place this above the relation method alongside #[Field].
  *
- * Example (BelongsTo with ajax search):
+ * Example (BelongsToMany, small table — preloaded like a select):
+ * #[Field(type: 'relation', section: 'roles_and_permissions')]
+ * #[Relation(type: 'belongsToMany', show: 'name')]
+ * public function roles(): BelongsToMany { ... }
+ *
+ * Example (BelongsTo with ajax search, large table):
  * #[Field(type: 'relation', section: 'settings')]
  * #[Relation(type: 'belongsTo', show: 'name', ajax: true, ajaxMode: 'search')]
  * public function category(): BelongsTo { ... }
@@ -52,13 +57,20 @@ class Relation
         /** Whether selecting a value is required */
         public readonly bool $required = false,
 
-        /** Enable AJAX loading for this relation (recommended for large datasets) */
+        /**
+         * Opt into search-only ajax loading (recommended for large datasets).
+         * false (default): the option list is preloaded (up to 50) on page
+         * load, so the field behaves like a plain select — fine for small
+         * tables (roles, categories, attributes...).
+         * true: nothing is preloaded; results only load once the user
+         * types, unless ajaxMode is 'load' (see below).
+         */
         public readonly bool $ajax = false,
 
         /**
-         * AJAX loading mode.
-         * 'search' — loads results filtered by a search query (for large tables).
-         * 'load'   — loads all items upfront (for small tables like attributes).
+         * Only relevant when ajax: true.
+         * 'search' — loads results filtered by a search query only (for large tables).
+         * 'load'   — preloads all items upfront AND still supports search (for medium tables).
          */
         public readonly string $ajaxMode = 'search',
 

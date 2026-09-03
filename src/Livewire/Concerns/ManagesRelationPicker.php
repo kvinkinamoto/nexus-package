@@ -26,15 +26,23 @@ trait ManagesRelationPicker
     }
 
     /**
-     * #[Relation(ajax: true, ajaxMode: 'load')] fields should show their
-     * (up-to-50) option list immediately rather than staying empty until the
-     * user types — the whole point of 'load' mode vs the default 'search'.
+     * Preload the (up-to-50) option list immediately rather than leaving it
+     * empty until the user types, for every field EXCEPT ones explicitly
+     * opted into ajax search-only mode — #[Relation(ajax: true)] with the
+     * default 'search' ajaxMode, meant for large tables where preloading
+     * everything would be wasteful. That means:
+     *  - ajax: false (default)         -> preload (small table, acts like a select)
+     *  - ajax: true, ajaxMode: 'search' -> no preload, type to search (large table)
+     *  - ajax: true, ajaxMode: 'load'   -> preload AND still searchable
      * Called from ModuleForm::mount() right after a relation field's
      * data/relationLabels are hydrated.
      */
     private function seedRelationOptionsForLoadMode(string $fieldName, object $relationConfig): void
     {
-        if (($relationConfig->ajaxConfig->mode ?? null) !== AjaxModeEnum::LOAD->value) {
+        $isAjax = $relationConfig->ajaxConfig->isAjax ?? false;
+        $mode = $relationConfig->ajaxConfig->mode ?? null;
+
+        if ($isAjax && $mode !== AjaxModeEnum::LOAD->value) {
             return;
         }
 

@@ -18,7 +18,14 @@
         data-choices data-choices-sorting-false
         class="{{ $selectClass }}">
         @foreach($cases as $case)
-            <option value="{{ $case->value }}">
+            {{--
+                @selected() so Choices.js's re-init on every Livewire morph
+                (app.js's 'morphed' hook clones the <select>, which only
+                reflects the `selected` HTML attribute, not a live DOM
+                .value set post-clone) shows the current pick instead of
+                reverting to the placeholder after every selection.
+            --}}
+            <option value="{{ $case->value }}" @selected(($this->data[$field->name] ?? null) === $case->value)>
                 {{-- Prefer the enum's own label() when it declares one (its
                      translation key shape is then the enum's business, not
                      this generic partial's) — falls back to the flat

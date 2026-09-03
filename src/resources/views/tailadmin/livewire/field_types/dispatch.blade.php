@@ -3,7 +3,19 @@
     both the flat (non-wizard) loop and the per-step wizard loop share one
     copy. Expects $field (FieldConfigDto) in scope.
 --}}
-@if($field->type === 'string')
+@php($moduleNamespace = \Illuminate\Support\Str::lcfirst($module->name))
+@if(View::exists($moduleNamespace . '::admin.livewire_field_types.' . $field->type))
+    {{--
+        Module-scoped override/custom-type hook, same "module override wins"
+        convention already used for repeater cells (field_types/repeater.blade.php).
+        A module can drop {module}::admin.livewire_field_types.{type}.blade.php
+        to either add a brand new type (nothing below matches it) or override
+        a built-in one (e.g. 'phone') for that module only — every other
+        module has no such view, so View::exists() is false for them and
+        behavior is unchanged.
+    --}}
+    @include($moduleNamespace . '::admin.livewire_field_types.' . $field->type, ['field' => $field])
+@elseif($field->type === 'string')
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.string', ['field' => $field])
 @elseif($field->type === 'text')
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.text', ['field' => $field])
@@ -44,7 +56,8 @@
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.phone', ['field' => $field])
 @elseif($field->type === 'gender')
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.gender', ['field' => $field])
-@elseif($field->type === 'birthday')
+@elseif($field->type === 'birthday' || $field->type === 'date')
+    {{-- 'date' is a plain alias of 'birthday' — same <input type=date>, nothing User-specific about the partial itself. --}}
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.birthday', ['field' => $field])
 @elseif($field->type === 'password')
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.password', ['field' => $field])
@@ -70,6 +83,25 @@
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.custom_history', ['field' => $field])
 @elseif(!empty($field->repeaterColumns))
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.repeater', ['field' => $field])
+@elseif($field->type === 'view' && $field->userType)
+    {{--
+        #[Field(type: 'view', view: '...')] — inject an arbitrary Blade
+        template, documented in Attributes/Field.php but previously
+        unreachable here. AttributeSchemaReader::processFieldAttr() stores
+        the configured view path in $field->userType (there's no separate
+        $field->view — 'view' reuses the same slot the legacy
+        FieldTypeRegistry pipeline uses for a custom type's Blade path).
+        render() only passes module/moduleConfig/action (no live model), so
+        resolve the record the same lazy way relation fields already do
+        elsewhere in this component — $this is the ModuleForm instance in
+        this scope, same as $this->isFieldVisible() a few lines up in
+        module-form.blade.php.
+    --}}
+    @include($field->userType, [
+        'model' => $this->id ? $moduleConfig->model::find($this->id) : new ($moduleConfig->model)(),
+        'field' => $field,
+        'module' => $module,
+    ])
 @else
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.unsupported', ['field' => $field])
 @endif

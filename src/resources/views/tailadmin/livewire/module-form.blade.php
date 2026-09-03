@@ -38,13 +38,7 @@
                     </div>
                 @endforeach
             @else
-                @foreach($moduleConfig->form->fields as $field)
-                    @if($this->isFieldVisible($field))
-                        <div wire:key="field-{{ $field->name }}">
-                            @include('nexus::' . config('nexus.template') . '.livewire.field_types.dispatch', ['field' => $field])
-                        </div>
-                    @endif
-                @endforeach
+                @include('nexus::' . config('nexus.template') . '.livewire.section_cards')
             @endif
 
             <div class="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4 dark:border-white/5 {{ ($moduleConfig->wizard && !empty($moduleConfig->tabs) && $currentStep !== count($moduleConfig->tabs) - 1) ? 'hidden' : '' }}">

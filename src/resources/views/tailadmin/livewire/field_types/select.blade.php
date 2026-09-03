@@ -28,7 +28,14 @@
         class="{{ $selectClass }}">
         <option value="">@lang('nexus::translate.chooseOption')</option>
         @foreach($field->customData ?? [] as $option)
-            <option value="{{ $option['value'] }}">{{ $option['name'] }}</option>
+            {{--
+                Choices.js reads the `selected` HTML attribute (not the live
+                DOM .value property) when (re)initializing on the clone
+                app.js's 'morphed' hook makes every round-trip — without it,
+                the widget shows the placeholder after every pick even
+                though the underlying <select>/Livewire data is correct.
+            --}}
+            <option value="{{ $option['value'] }}" @selected(($this->data[$field->name] ?? null) == $option['value'])>{{ $option['name'] }}</option>
         @endforeach
     </select>
 

@@ -14,6 +14,7 @@
 
     <select id="field-{{ $field->name }}" wire:model="data.{{ $field->name }}"
         @disabled($field->isDisabledForAction($action ?? null))
+        data-choices data-choices-sorting-false
         class="{{ $selectClass }}">
         <option value="">&mdash;</option>
         @foreach($options as $option)

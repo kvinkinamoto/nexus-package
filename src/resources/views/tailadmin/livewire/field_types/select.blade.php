@@ -24,6 +24,7 @@
     --}}
     <select id="field-{{ $field->name }}" wire:model.live="data.{{ $field->name }}"
         @disabled($field->isDisabledForAction($action ?? null))
+        data-choices data-choices-sorting-false
         class="{{ $selectClass }}">
         <option value="">@lang('nexus::translate.chooseOption')</option>
         @foreach($field->customData ?? [] as $option)

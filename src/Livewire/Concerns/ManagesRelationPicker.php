@@ -2,6 +2,7 @@
 
 namespace Nodex\Nexus\Livewire\Concerns;
 
+use Nodex\Nexus\Enums\AjaxModeEnum;
 use Nodex\Nexus\Enums\RelationConfigParamsEnum;
 use Nodex\Nexus\Services\RelationService;
 
@@ -18,24 +19,48 @@ trait ManagesRelationPicker
      * Runs the search server-side via RelationService — the same service the
      * legacy ajax_relation endpoint (AjaxController::relationSearch) calls —
      * so no separate HTTP round trip and no Choices.js are needed here.
-     * For a belongsToMany/hasMany field, results already on the tag list are
-     * filtered out — the legacy Choices.js UI does the same (relation.blade.php's
-     * `existingValues` filter) so a re-search can't offer a duplicate pick.
      */
     public function updatedRelationSearchQuery(string $value, string $fieldName): void
+    {
+        $this->relationSearchResults[$fieldName] = $this->searchRelationOptions($fieldName, $value !== '' ? $value : null);
+    }
+
+    /**
+     * #[Relation(ajax: true, ajaxMode: 'load')] fields should show their
+     * (up-to-50) option list immediately rather than staying empty until the
+     * user types — the whole point of 'load' mode vs the default 'search'.
+     * Called from ModuleForm::mount() right after a relation field's
+     * data/relationLabels are hydrated.
+     */
+    private function seedRelationOptionsForLoadMode(string $fieldName, object $relationConfig): void
+    {
+        if (($relationConfig->ajaxConfig->mode ?? null) !== AjaxModeEnum::LOAD->value) {
+            return;
+        }
+
+        $this->relationSearchResults[$fieldName] = $this->searchRelationOptions($fieldName, null);
+    }
+
+    /**
+     * Shared by the search-as-you-type hook above and the 'load' mode seeding:
+     * results already on the tag list are filtered out — the legacy
+     * Choices.js UI does the same (relation.blade.php's `existingValues`
+     * filter) so a re-search/re-seed can't offer a duplicate pick.
+     */
+    private function searchRelationOptions(string $fieldName, ?string $queryText): array
     {
         $moduleConfig = $this->resolveModuleConfig();
         $relationConfig = $moduleConfig->relations->is_available[$fieldName] ?? null;
         if (! $relationConfig) {
-            return;
+            return [];
         }
 
         $relatedModel = (new $moduleConfig->model)->{$fieldName}()->getRelated();
 
         $selected = array_map('strval', (array) ($this->data[$fieldName] ?? []));
 
-        $this->relationSearchResults[$fieldName] = app(RelationService::class)
-            ->search($relatedModel, $relationConfig, $value !== '' ? $value : null)
+        return app(RelationService::class)
+            ->search($relatedModel, $relationConfig, $queryText)
             ->reject(fn ($item) => in_array((string) $item->id, $selected, true))
             ->map(fn ($item) => ['id' => $item->id, 'label' => $item->label])
             ->values()
@@ -59,8 +84,11 @@ trait ManagesRelationPicker
             $this->relationLabels[$fieldName] = $label;
         }
 
-        $this->relationSearchResults[$fieldName] = [];
         $this->relationSearchQuery[$fieldName] = '';
+        $this->relationSearchResults[$fieldName] = [];
+        if ($relationConfig) {
+            $this->seedRelationOptionsForLoadMode($fieldName, $relationConfig);
+        }
     }
 
     public function removeRelationItem(string $fieldName, int|string $id): void
@@ -70,12 +98,24 @@ trait ManagesRelationPicker
             fn ($value) => (string) $value !== (string) $id
         ));
         unset($this->relationLabels[$fieldName][$id]);
+
+        $moduleConfig = $this->resolveModuleConfig();
+        $relationConfig = $moduleConfig->relations->is_available[$fieldName] ?? null;
+        if ($relationConfig) {
+            $this->seedRelationOptionsForLoadMode($fieldName, $relationConfig);
+        }
     }
 
     public function clearRelation(string $fieldName): void
     {
         $this->data[$fieldName] = null;
         $this->relationLabels[$fieldName] = null;
+
+        $moduleConfig = $this->resolveModuleConfig();
+        $relationConfig = $moduleConfig->relations->is_available[$fieldName] ?? null;
+        if ($relationConfig) {
+            $this->seedRelationOptionsForLoadMode($fieldName, $relationConfig);
+        }
     }
 
     private function isMultipleRelation(object $relationConfig): bool

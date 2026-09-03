@@ -136,6 +136,7 @@ class ModuleForm extends Component
                 $this->relationLabels[$field->name] = $related
                     ? app(RelationService::class)->formatLabel($related, $relationConfig->showField, $relationConfig->showFieldFallback)
                     : null;
+                $this->seedRelationOptionsForLoadMode($field->name, $relationConfig);
 
                 continue;
             }
@@ -148,6 +149,7 @@ class ModuleForm extends Component
                         $item->getKey() => app(RelationService::class)->formatLabel($item, $relationConfig->showField, $relationConfig->showFieldFallback),
                     ])
                     ->all();
+                $this->seedRelationOptionsForLoadMode($field->name, $relationConfig);
 
                 continue;
             }

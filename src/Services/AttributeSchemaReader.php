@@ -589,14 +589,19 @@ class AttributeSchemaReader
             ? $this->normalizeRelationType($relMeta->type)
             : ($method ? $this->detectRelationType($method) : RelationConfigParamsEnum::BELONGS_TO->value);
 
+        // mode is read regardless of $relMeta->ajax: the Livewire relation
+        // field (livewire/field_types/relation.blade.php) is always
+        // ajax-driven — $ajax only gates the *legacy* non-Livewire field's
+        // plain-select vs Choices.js choice — so a 'load' vs 'search'
+        // ajaxMode without ajax: true still needs to reach ModuleForm.
         $ajaxConfig = new AjaxRelationConfigDto;
+        $ajaxConfig->mode(
+            $relMeta->ajaxMode === 'load'
+                ? AjaxModeEnum::LOAD
+                : AjaxModeEnum::SEARCH
+        );
         if ($relMeta->ajax) {
             $ajaxConfig->enable(true);
-            $ajaxConfig->mode(
-                $relMeta->ajaxMode === 'load'
-                    ? AjaxModeEnum::LOAD
-                    : AjaxModeEnum::SEARCH
-            );
             if ($relMeta->ajaxResource) {
                 $ajaxConfig->resource($relMeta->ajaxResource);
             }

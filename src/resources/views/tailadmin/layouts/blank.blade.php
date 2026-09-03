@@ -28,9 +28,10 @@
         }
     </script>
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="{{ asset('nexus/css/icons.min.css') }}" type="text/css">
+    {{-- app.css must load AFTER choices.min.css — see layouts/adminpanel.blade.php's comment. --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@11.2.4/public/assets/styles/choices.min.css" />
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @yield('head')
     @yield('css')

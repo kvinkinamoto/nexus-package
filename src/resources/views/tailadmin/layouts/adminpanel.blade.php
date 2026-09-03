@@ -16,9 +16,16 @@
         }
     </script>
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="{{ asset('nexus/css/icons.min.css') }}" type="text/css">
+    {{--
+        Choices.js's own CSS is a light-only theme with no dark-mode
+        awareness; app.css carries dark-theme overrides for its classes
+        (see the "Choices.js dark-theme overrides" section), so it must load
+        AFTER this link — same specificity, last one in the cascade wins —
+        rather than needing !important everywhere.
+    --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@11.2.4/public/assets/styles/choices.min.css" />
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @yield('head')
     @yield('css')

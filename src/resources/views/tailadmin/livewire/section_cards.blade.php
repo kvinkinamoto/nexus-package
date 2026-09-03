@@ -1,13 +1,17 @@
 {{--
-    Card/column layout for the non-wizard create/edit form (module-form.blade.php's
-    @else branch), grouping fields by their #[Section]/#[SectionColumn]
-    the same way the read-only Infolist (templates/infolistSection.blade.php)
-    already groups them for the view screen — same card markup, adapted for
-    a single Livewire pass instead of a read-only value dump. A module with
-    no #[Section] attributes at all still gets the DTO's built-in
-    'information'/'relations' cards (DefaultModuleConfigurationDto's
-    constructor), so every existing module gains cards instead of a flat
-    list. Any field whose section isn't declared falls into one trailing
+    Card/column layout for a set of fields, grouping them by their
+    #[Section]/#[SectionColumn] the same way the read-only Infolist
+    (templates/infolistSection.blade.php) already groups them for the view
+    screen — same card markup, adapted for a single Livewire pass instead of
+    a read-only value dump. Used two ways from module-form.blade.php:
+    - the non-wizard @else branch, with the module's full field list (a
+      module with no #[Section] attributes at all still gets the DTO's
+      built-in 'information'/'relations' cards — DefaultModuleConfigurationDto's
+      constructor — so every existing module gains cards instead of a flat list).
+    - each wizard step, with $fields pre-filtered to that tab
+      (fieldsForTab()) — so a step with >1 section still shows them as
+      separate cards instead of one flat run-on list.
+    Any field whose section isn't declared falls into one trailing
     "General" card so nothing is silently dropped.
 
     Column widths: #[SectionColumn(class:)] (or the 'col-lg-N'/'col-lg-6'
@@ -19,10 +23,11 @@
 @php
     $sections = $moduleConfig->sections;
     $columns = $moduleConfig->sectionColumns;
+    $fieldsToRender = $fields ?? $moduleConfig->form->fields;
 
     $fieldsBySection = [];
     $unsectioned = [];
-    foreach ($moduleConfig->form->fields as $f) {
+    foreach ($fieldsToRender as $f) {
         if (! $this->isFieldVisible($f)) {
             continue;
         }

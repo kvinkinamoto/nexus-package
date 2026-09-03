@@ -1,4 +1,16 @@
-{{-- Livewire Етап 6 — textarea counterpart of string.blade.php; same translatable-locale-rows approach. --}}
+{{--
+    Livewire Етап 6 — textarea counterpart of string.blade.php; same
+    translatable-locale-rows approach. $field->isEditor (set for both
+    #[Field(type:'text', editor:true)] and #[Field(type:'editor')] — see
+    AttributeSchemaReader::processFieldAttr()) swaps the plain textarea for
+    CKEditor via data-ckeditor, wired up in app.js's 'morphed' hook the same
+    way Choices.js is: (re)init on every morph since Livewire's diff strips
+    CKEditor's injected chrome back to the bare <textarea>, and push content
+    changes to Livewire directly via CKEDITOR's own 'change' event rather
+    than a native DOM event wire:model could listen for. Translated
+    (isTranslate) + isEditor together isn't wired — CKEditor here only
+    covers the single, non-translated textarea below.
+--}}
 @php
     $errorKey = "data.{$field->name}";
     $areaClass = 'w-full rounded-lg border bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-900 dark:text-white/90 ' . ($errors->has($errorKey) ? 'border-error-500 focus:ring-3 focus:ring-error-500/10' : 'border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700');
@@ -22,6 +34,7 @@
     @else
         <textarea rows="4" id="field-{{ $field->name }}" wire:model="data.{{ $field->name }}"
             @disabled($field->isDisabledForAction($action ?? null))
+            @if($field->isEditor) data-ckeditor @endif
             class="{{ $areaClass }}"></textarea>
 
         @error($errorKey)

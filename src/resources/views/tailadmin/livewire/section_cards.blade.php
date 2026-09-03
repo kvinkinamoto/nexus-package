@@ -17,8 +17,17 @@
     Column widths: #[SectionColumn(class:)] (or the 'col-lg-N'/'col-lg-6'
     default AttributeSchemaReader derives) are Bootstrap-era class strings —
     this Tailwind theme has no Bootstrap grid, so only the trailing width
-    number is read and mapped onto a 12-col Tailwind grid; unmatched widths
-    just fall back to an even split.
+    number is read and mapped onto a 12-col grid; unmatched widths just fall
+    back to an even split. Applied as an inline `grid-column: span N` style,
+    NOT a `lg:col-span-{{ $span }}` utility class — Tailwind's JIT scanner
+    only generates CSS for class names it finds literally in source files,
+    so a runtime-interpolated class name like that is silently never
+    generated (no build error, the class just does nothing), collapsing
+    every column to its 1-track auto-placement default the moment the outer
+    grid's `lg:grid-cols-12` activates. The inline style has no such
+    restriction, and needs no breakpoint guard of its own — below `lg` the
+    parent is `grid-cols-1` (a single track), so `grid-column: span N` on a
+    child still just fills that one column exactly like `col-span-1` would.
 --}}
 @php
     $sections = $moduleConfig->sections;
@@ -43,10 +52,10 @@
         @php
             $sectionsInColumn = array_filter($sections, fn ($s) => $s->column === $column->name);
             preg_match('/(\d+)$/', $column->class ?? '', $m);
-            $span = $m[1] ?? (int) round(12 / max(count($columns), 1));
+            $span = (int) ($m[1] ?? round(12 / max(count($columns), 1)));
         @endphp
         @if(! empty($sectionsInColumn))
-            <div class="flex flex-col gap-4 lg:col-span-{{ $span }}">
+            <div class="flex flex-col gap-4" style="grid-column: span {{ $span }} / span {{ $span }};">
                 @foreach($sectionsInColumn as $section)
                     @continue(empty($fieldsBySection[$section->name]))
                     <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.02]">
@@ -64,7 +73,16 @@
                         </div>
                         <div class="grid grid-cols-1 gap-4 p-5 {{ $section->type === 'columns_2' ? 'sm:grid-cols-2' : '' }}">
                             @foreach($fieldsBySection[$section->name] as $field)
-                                <div wire:key="field-{{ $field->name }}">
+                                @php
+                                    // Fields too wide for a half-column cell (CKEditor, galleries,
+                                    // repeater tables...) span both columns of a 'columns_2' section
+                                    // instead of being squeezed — 'sm:col-span-2' is a literal string
+                                    // here (Tailwind's JIT scanner needs it verbatim, see this file's
+                                    // top docblock), not built from $field->type at runtime.
+                                    $isWideField = in_array($field->type, ['text', 'images', 'videos', 'json', 'relationManager', 'view'], true)
+                                        || ! empty($field->repeaterColumns);
+                                @endphp
+                                <div wire:key="field-{{ $field->name }}" class="{{ $isWideField ? 'sm:col-span-2' : '' }}">
                                     @include('nexus::' . config('nexus.template') . '.livewire.field_types.dispatch', ['field' => $field])
                                 </div>
                             @endforeach

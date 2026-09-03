@@ -13,6 +13,7 @@ use Nodex\Nexus\Events\AdminFormBuilding;
 use Nodex\Nexus\Events\ModuleActionExecuted;
 use Nodex\Nexus\Http\Actions\GetModuleRequestAction;
 use Nodex\Nexus\Livewire\Concerns\CallsLegacyActionMethods;
+use Nodex\Nexus\Livewire\Concerns\ManagesMultiFileFields;
 use Nodex\Nexus\Livewire\Concerns\ManagesRelationPicker;
 use Nodex\Nexus\Livewire\Concerns\ManagesRepeaterFields;
 use Nodex\Nexus\Livewire\Concerns\ManagesWizardSteps;
@@ -48,6 +49,7 @@ use Nodex\Nexus\Services\Validation\NexusRuleCollector;
 class ModuleForm extends Component
 {
     use CallsLegacyActionMethods;
+    use ManagesMultiFileFields;
     use ManagesRelationPicker;
     use ManagesRepeaterFields;
     use ManagesWizardSteps;

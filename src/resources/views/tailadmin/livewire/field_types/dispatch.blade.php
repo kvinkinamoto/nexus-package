@@ -17,7 +17,8 @@
     @include($moduleNamespace . '::admin.livewire_field_types.' . $field->type, ['field' => $field])
 @elseif($field->type === 'string')
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.string', ['field' => $field])
-@elseif($field->type === 'text')
+@elseif($field->type === 'text' || $field->type === 'editor')
+    {{-- 'editor' is documented as "alias for text+isEditor=true" (AttributeSchemaReader already sets isEditor for both spellings) — text.blade.php itself switches on isEditor to swap in CKEditor. --}}
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.text', ['field' => $field])
 @elseif($field->type === 'number')
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.number', ['field' => $field])
@@ -38,6 +39,11 @@
         non-string $value.
     --}}
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.image', ['field' => $field])
+@elseif($field->type === 'images' && empty($moduleConfig->relations->is_available[$field->name] ?? null))
+    {{-- Plain JSON-array-of-paths gallery (no #[Relation]) — see field_types/images.blade.php's docblock. --}}
+    @include('nexus::' . config('nexus.template') . '.livewire.field_types.images', ['field' => $field])
+@elseif($field->type === 'videos' && empty($moduleConfig->relations->is_available[$field->name] ?? null))
+    @include('nexus::' . config('nexus.template') . '.livewire.field_types.videos', ['field' => $field])
 @elseif($field->type === 'relation')
     @include('nexus::' . config('nexus.template') . '.livewire.field_types.relation', ['field' => $field])
 @elseif($field->type === 'wishlistable_type_field')

@@ -42,6 +42,13 @@ class Relation
         /** Field on the related model to show in selects and labels (e.g. 'name', 'title') */
         public readonly string $show = 'name',
 
+        /**
+         * Field to fall back to (in both label display and search) when
+         * `show`'s value is empty for a given record — e.g. an optional
+         * translatable 'display_name' with a mandatory 'name' as fallback.
+         */
+        public readonly ?string $showFallback = null,
+
         /** Whether selecting a value is required */
         public readonly bool $required = false,
 

@@ -2,39 +2,39 @@
 
 namespace Nodex\Nexus\Services;
 
-use ReflectionClass;
-use ReflectionMethod;
-use ReflectionProperty;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use Nodex\Nexus\Concerns\HasAttributeSchemaProperties;
 use Nodex\Nexus\Attributes\Column as ColumnAttr;
+use Nodex\Nexus\Attributes\Composer as ComposerAttr;
 use Nodex\Nexus\Attributes\Field as FieldAttr;
+use Nodex\Nexus\Attributes\MethodResource as MethodResourceAttr;
 use Nodex\Nexus\Attributes\Module as ModuleAttr;
 use Nodex\Nexus\Attributes\Permission as PermissionAttr;
 use Nodex\Nexus\Attributes\Relation as RelationAttr;
 use Nodex\Nexus\Attributes\RepeaterField as RepeaterFieldAttr;
 use Nodex\Nexus\Attributes\Requests as RequestsAttr;
 use Nodex\Nexus\Attributes\Section as SectionAttr;
-use Nodex\Nexus\Attributes\TableFilter as TableFilterAttr;
-use Nodex\Nexus\Attributes\TableLens as TableLensAttr;
-use Nodex\Nexus\Dto\ModuleDtos\LensConfigDto;
+use Nodex\Nexus\Attributes\SectionColumn as SectionColumnAttr;
+use Nodex\Nexus\Attributes\Setting as SettingAttr;
 use Nodex\Nexus\Attributes\TableAction as TableActionAttr;
+use Nodex\Nexus\Attributes\TableFilter as TableFilterAttr;
 use Nodex\Nexus\Attributes\TableGroupAction as TableGroupActionAttr;
 use Nodex\Nexus\Attributes\TableImport as TableImportAttr;
-use Nodex\Nexus\Attributes\Composer as ComposerAttr;
-use Nodex\Nexus\Attributes\MethodResource as MethodResourceAttr;
-use Nodex\Nexus\Attributes\Setting as SettingAttr;
-use Nodex\Nexus\Attributes\SectionColumn as SectionColumnAttr;
+use Nodex\Nexus\Attributes\TableLens as TableLensAttr;
+use Nodex\Nexus\Concerns\HasAttributeSchemaProperties;
 use Nodex\Nexus\Dto\ModuleDtos\AjaxRelationConfigDto;
 use Nodex\Nexus\Dto\ModuleDtos\ColumnConfigDto;
 use Nodex\Nexus\Dto\ModuleDtos\DefaultModuleConfigurationDto;
 use Nodex\Nexus\Dto\ModuleDtos\FieldConfigDto;
+use Nodex\Nexus\Dto\ModuleDtos\LensConfigDto;
 use Nodex\Nexus\Dto\ModuleDtos\RelationConfigDto;
 use Nodex\Nexus\Dto\ModuleDtos\RepeaterFieldConfigDto;
 use Nodex\Nexus\Dto\ModuleDtos\SectionColumnConfigDto;
 use Nodex\Nexus\Dto\ModuleDtos\SectionConfigDto;
 use Nodex\Nexus\Enums\AjaxModeEnum;
 use Nodex\Nexus\Enums\RelationConfigParamsEnum;
+use ReflectionClass;
+use ReflectionMethod;
 
 /**
  * Reads PHP 8 Attributes (#[Module], #[Field], #[Column], #[Relation], #[Section])
@@ -57,11 +57,11 @@ class AttributeSchemaReader
      * Read a Model class and build a DefaultModuleConfigurationDto from its PHP 8 Attributes.
      *
      * @param  string  $modelClass  Fully-qualified Eloquent Model class name.
-     * @return DefaultModuleConfigurationDto|null  Returns null if the class has no #[Module] attribute.
+     * @return DefaultModuleConfigurationDto|null Returns null if the class has no #[Module] attribute.
      */
     public function read(string $modelClass): ?DefaultModuleConfigurationDto
     {
-        if (!class_exists($modelClass)) {
+        if (! class_exists($modelClass)) {
             return null;
         }
 
@@ -75,7 +75,7 @@ class AttributeSchemaReader
         /** @var ModuleAttr $moduleMeta */
         $moduleMeta = $moduleAttrInstances[0]->newInstance();
 
-        $config = new DefaultModuleConfigurationDto();
+        $config = new DefaultModuleConfigurationDto;
         $this->applyModuleMeta($config, $moduleMeta, $modelClass);
 
         $this->processRequestsAttr($reflection, $config);
@@ -108,7 +108,7 @@ class AttributeSchemaReader
         // model at its default sentinel — this module has no bound model.
         if ($moduleMeta->model !== null) {
             $config->model($moduleMeta->model);
-        } elseif (is_subclass_of($modelClass, \Illuminate\Database\Eloquent\Model::class)) {
+        } elseif (is_subclass_of($modelClass, Model::class)) {
             $config->model($modelClass);
         }
 
@@ -161,7 +161,7 @@ class AttributeSchemaReader
         foreach ($permissionAttrs as $permAttrRef) {
             /** @var PermissionAttr $permMeta */
             $permMeta = $permAttrRef->newInstance();
-            $permName = $moduleName . '_' . $permMeta->action;
+            $permName = $moduleName.'_'.$permMeta->action;
             $label = $permMeta->label ?? Str::headline($permMeta->action);
             // Store in adminPanel permissions so the permission manager can register it
             $config->permissions->adminPanel[$permMeta->action] = $permName;
@@ -283,14 +283,14 @@ class AttributeSchemaReader
 
         // No #[Section] attributes at all — use the default two-column layout
         // inherited from DefaultModuleConfigurationDto::__construct().
-        if (!empty($sectionAttrs)) {
+        if (! empty($sectionAttrs)) {
             // Collect unique columns and their tabs
             $columnMap = []; // column_name => tab|null
             foreach ($sectionAttrs as $sAttr) {
                 /** @var SectionAttr $s */
                 $s = $sAttr->newInstance();
                 $config->sections[$s->name] = new SectionConfigDto($s->name, $s->column, $s->type, $s->icon);
-                if (!isset($columnMap[$s->column])) {
+                if (! isset($columnMap[$s->column])) {
                     $columnMap[$s->column] = $s->tab;
                 }
             }
@@ -302,7 +302,7 @@ class AttributeSchemaReader
                 if ($tab) {
                     $colDto->tab($tab);
                     // Auto-register the tab if not already there
-                    if (!isset($config->tabs[$tab])) {
+                    if (! isset($config->tabs[$tab])) {
                         $config->tab($tab)->label($tab);
                     }
                 }
@@ -345,7 +345,7 @@ class AttributeSchemaReader
             // attribute to). Only resolvable when the type is explicit: without a
             // method to reflect, there's no return-type hint to auto-detect from.
             $relationAttrs = $property->getAttributes(RelationAttr::class);
-            if (!empty($relationAttrs)) {
+            if (! empty($relationAttrs)) {
                 $method = $reflection->hasMethod($property->getName())
                     ? $reflection->getMethod($property->getName())
                     : null;
@@ -354,9 +354,9 @@ class AttributeSchemaReader
         }
 
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            $fieldAttrs   = $method->getAttributes(FieldAttr::class);
+            $fieldAttrs = $method->getAttributes(FieldAttr::class);
             $relationAttrs = $method->getAttributes(RelationAttr::class);
-            $columnAttrs  = $method->getAttributes(ColumnAttr::class);
+            $columnAttrs = $method->getAttributes(ColumnAttr::class);
 
             if (empty($fieldAttrs)) {
                 continue; // Only process methods that are explicitly annotated
@@ -369,7 +369,7 @@ class AttributeSchemaReader
 
             // Stack of #[RepeaterField] — one column per instance, declaration order.
             $repeaterFieldAttrs = $method->getAttributes(RepeaterFieldAttr::class);
-            if (!empty($repeaterFieldAttrs) && isset($config->form->fields[$methodName])) {
+            if (! empty($repeaterFieldAttrs) && isset($config->form->fields[$methodName])) {
                 $columns = [];
                 foreach ($repeaterFieldAttrs as $repeaterAttrRef) {
                     /** @var RepeaterFieldAttr $repeaterMeta */
@@ -409,11 +409,12 @@ class AttributeSchemaReader
      */
     public function hasModuleAttribute(string $modelClass): bool
     {
-        if (!class_exists($modelClass)) {
+        if (! class_exists($modelClass)) {
             return false;
         }
         $reflection = new ReflectionClass($modelClass);
-        return !empty($reflection->getAttributes(ModuleAttr::class));
+
+        return ! empty($reflection->getAttributes(ModuleAttr::class));
     }
 
     /**
@@ -425,9 +426,9 @@ class AttributeSchemaReader
      * that property silently read/write nothing. See the trait's own
      * docblock for the full explanation.
      *
-     * @throws \RuntimeException  If a property-level #[Field]/#[Column] is found
-     *                             without the trait — fails fast in development
-     *                             rather than silently breaking the admin UI.
+     * @throws \RuntimeException If a property-level #[Field]/#[Column] is found
+     *                           without the trait — fails fast in development
+     *                           rather than silently breaking the admin UI.
      */
     private function guardAgainstUnshadowedProperties(ReflectionClass $reflection, string $modelClass): void
     {
@@ -435,7 +436,7 @@ class AttributeSchemaReader
         // place — #[Field]/#[Column] are also used on plain ModuleConfiguration
         // DTO classes (e.g. ActivityLog's, bound to a separate vendor model via
         // #[Module(model: ...)]) where this bug class cannot occur.
-        if (!$reflection->isSubclassOf(\Illuminate\Database\Eloquent\Model::class)) {
+        if (! $reflection->isSubclassOf(Model::class)) {
             return;
         }
 
@@ -444,12 +445,12 @@ class AttributeSchemaReader
         }
 
         foreach ($reflection->getProperties() as $property) {
-            if (!empty($property->getAttributes(FieldAttr::class)) || !empty($property->getAttributes(ColumnAttr::class))) {
+            if (! empty($property->getAttributes(FieldAttr::class)) || ! empty($property->getAttributes(ColumnAttr::class))) {
                 throw new \RuntimeException(sprintf(
                     '%s::$%s carries #[Field]/#[Column] but %s does not use %s — the declared property will '
-                    . 'permanently shadow Eloquent\'s magic accessor for "%s", silently breaking admin forms/tables '
-                    . '(see the trait\'s docblock, or memory "D22" for the full bug history). '
-                    . 'Add `use %s;` to the model.',
+                    .'permanently shadow Eloquent\'s magic accessor for "%s", silently breaking admin forms/tables '
+                    .'(see the trait\'s docblock, or memory "D22" for the full bug history). '
+                    .'Add `use %s;` to the model.',
                     $modelClass,
                     $property->getName(),
                     $modelClass,
@@ -469,7 +470,7 @@ class AttributeSchemaReader
      * Process #[Field] attributes from a reflected property/method.
      *
      * @param  \ReflectionAttribute[]  $attrs
-     * @return int  Updated order counter
+     * @return int Updated order counter
      */
     private function processFieldAttr(array $attrs, string $name, DefaultModuleConfigurationDto $config, int $order): int
     {
@@ -481,7 +482,7 @@ class AttributeSchemaReader
         $fieldMeta = $attrs[0]->newInstance();
 
         $label = $fieldMeta->label ?? Str::headline($name);
-        $type  = $fieldMeta->type === 'editor' ? 'text' : $fieldMeta->type;
+        $type = $fieldMeta->type === 'editor' ? 'text' : $fieldMeta->type;
 
         $defaultValue = $fieldMeta->default;
         if (is_array($defaultValue) && isset($defaultValue['class']) && class_exists($defaultValue['class'])) {
@@ -508,7 +509,7 @@ class AttributeSchemaReader
             actionField: $fieldMeta->actionField,
             isDisabled: is_bool($fieldMeta->disabled) ? $fieldMeta->disabled : true,
             disabledContext: is_string($fieldMeta->disabled) ? $fieldMeta->disabled : null,
-            relationConfig: !empty($fieldMeta->relationConfig) ? $fieldMeta->relationConfig : null,
+            relationConfig: ! empty($fieldMeta->relationConfig) ? $fieldMeta->relationConfig : null,
             rules: is_string($fieldMeta->rules) ? explode('|', $fieldMeta->rules) : (array) $fieldMeta->rules,
             storeRules: is_string($fieldMeta->storeRules) ? explode('|', $fieldMeta->storeRules) : (array) $fieldMeta->storeRules,
             updateRules: is_string($fieldMeta->updateRules) ? explode('|', $fieldMeta->updateRules) : (array) $fieldMeta->updateRules,
@@ -533,7 +534,7 @@ class AttributeSchemaReader
      * Process #[Column] attributes from a reflected property/method.
      *
      * @param  \ReflectionAttribute[]  $attrs
-     * @return int  Updated order counter
+     * @return int Updated order counter
      */
     private function processColumnAttr(array $attrs, string $name, DefaultModuleConfigurationDto $config, int $order): int
     {
@@ -588,7 +589,7 @@ class AttributeSchemaReader
             ? $this->normalizeRelationType($relMeta->type)
             : ($method ? $this->detectRelationType($method) : RelationConfigParamsEnum::BELONGS_TO->value);
 
-        $ajaxConfig = new AjaxRelationConfigDto();
+        $ajaxConfig = new AjaxRelationConfigDto;
         if ($relMeta->ajax) {
             $ajaxConfig->enable(true);
             $ajaxConfig->mode(
@@ -608,6 +609,7 @@ class AttributeSchemaReader
             showField: $relMeta->show,
             ajaxConfig: $ajaxConfig,
             relatedModule: $relMeta->relatedModule,
+            showFieldFallback: $relMeta->showFallback,
         );
     }
 
@@ -617,11 +619,11 @@ class AttributeSchemaReader
     private function normalizeRelationType(string $type): string
     {
         return match (strtolower($type)) {
-            'belongsto'   => RelationConfigParamsEnum::BELONGS_TO->value,
-            'hasmany'     => RelationConfigParamsEnum::HAS_MANY->value,
-            'hasone'      => RelationConfigParamsEnum::HAS_ONE->value,
+            'belongsto' => RelationConfigParamsEnum::BELONGS_TO->value,
+            'hasmany' => RelationConfigParamsEnum::HAS_MANY->value,
+            'hasone' => RelationConfigParamsEnum::HAS_ONE->value,
             'belongstomany' => RelationConfigParamsEnum::BELONGS_TO_MANY->value,
-            default       => $type,
+            default => $type,
         };
     }
 
@@ -632,17 +634,17 @@ class AttributeSchemaReader
     private function detectRelationType(ReflectionMethod $method): string
     {
         $returnType = $method->getReturnType();
-        if (!$returnType) {
+        if (! $returnType) {
             return RelationConfigParamsEnum::BELONGS_TO->value;
         }
 
         $typeName = $returnType->getName();
 
         return match (true) {
-            str_ends_with($typeName, 'HasMany')      => RelationConfigParamsEnum::HAS_MANY->value,
-            str_ends_with($typeName, 'HasOne')        => RelationConfigParamsEnum::HAS_ONE->value,
+            str_ends_with($typeName, 'HasMany') => RelationConfigParamsEnum::HAS_MANY->value,
+            str_ends_with($typeName, 'HasOne') => RelationConfigParamsEnum::HAS_ONE->value,
             str_ends_with($typeName, 'BelongsToMany') => RelationConfigParamsEnum::BELONGS_TO_MANY->value,
-            default                                    => RelationConfigParamsEnum::BELONGS_TO->value,
+            default => RelationConfigParamsEnum::BELONGS_TO->value,
         };
     }
 }

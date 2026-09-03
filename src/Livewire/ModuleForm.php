@@ -22,6 +22,7 @@ use Nodex\Nexus\Services\Actions\Admin\UpdateActionMethod;
 use Nodex\Nexus\Services\FieldVisibilityEvaluator;
 use Nodex\Nexus\Services\FormBuilder;
 use Nodex\Nexus\Services\ModuleManager;
+use Nodex\Nexus\Services\RelationService;
 use Nodex\Nexus\Services\Validation\NexusRuleCollector;
 
 /**
@@ -132,7 +133,9 @@ class ModuleForm extends Component
             if ($relationConfig && $relationConfig->type === RelationConfigParamsEnum::BELONGS_TO->value) {
                 $related = $model?->{$field->name};
                 $this->data[$field->name] = $related?->getKey() ?? ($model ? null : $field->default);
-                $this->relationLabels[$field->name] = $related?->{$relationConfig->showField};
+                $this->relationLabels[$field->name] = $related
+                    ? app(RelationService::class)->formatLabel($related, $relationConfig->showField, $relationConfig->showFieldFallback)
+                    : null;
 
                 continue;
             }
@@ -141,7 +144,9 @@ class ModuleForm extends Component
                 $related = $model ? $model->{$field->name} : collect();
                 $this->data[$field->name] = $related->map(fn ($item) => $item->getKey())->all();
                 $this->relationLabels[$field->name] = $related
-                    ->mapWithKeys(fn ($item) => [$item->getKey() => $item->{$relationConfig->showField}])
+                    ->mapWithKeys(fn ($item) => [
+                        $item->getKey() => app(RelationService::class)->formatLabel($item, $relationConfig->showField, $relationConfig->showFieldFallback),
+                    ])
                     ->all();
 
                 continue;

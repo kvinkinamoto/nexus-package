@@ -1,19 +1,32 @@
 {{--
     Read-only value renderer for a single field on the Infolist (view) screen.
-    Mirrors templates/sections/_field.blade.php's override-first resolution
-    (module can supply {module}::admin.infolist_types.{type} to fully replace
-    a type's display), but the built-in fallback is one @switch here instead
-    of 28 separate field_types/*.blade.php partials — those are edit-form
-    inputs (validation, Choices.js, Dropzone, ...) with no read-only version;
-    an Infolist value just needs to be formatted, not collected.
+    Mirrors templates/sections/_field.blade.php's / livewire/field_types/
+    dispatch.blade.php's resolution order one tier further:
+      1. {module}::admin.infolist_types.{type} — module override, full replace
+      2. FieldTypeRegistry::resolveViewName()/hasRenderer() — so a type
+         registered via a module's FieldTypes/ folder or the plugin hook
+         gets a read-only rendering too, not just an edit-form one
+      3. the @switch below — one built-in fallback here instead of 28
+         separate field_types/*.blade.php partials, since those are
+         edit-form inputs (validation, Choices.js, Dropzone, ...) with no
+         read-only version; an Infolist value just needs to be formatted,
+         not collected
+      4. the @switch's @default — raw value / "no value"
 
     Expects: $field, $module, $model, $formData. Optional: $tab_lang.
 --}}
 @php
     $__nexusInfolistOverride = Str::lcfirst($module->name) . '::admin.infolist_types.' . $field->type;
+    $__nexusInfolistRegistry = app(\Nodex\Nexus\Services\FieldTypeRegistry::class);
+    $__nexusInfolistType = $__nexusInfolistRegistry->resolveType($field->type);
+    $__nexusInfolistRegisteredView = $__nexusInfolistRegistry->resolveViewName($__nexusInfolistType);
 @endphp
 @if (View::exists($__nexusInfolistOverride))
     @include($__nexusInfolistOverride, ['tab_lang' => $tab_lang ?? null])
+@elseif ($__nexusInfolistRegisteredView)
+    @include($__nexusInfolistRegisteredView, ['tab_lang' => $tab_lang ?? null])
+@elseif ($__nexusInfolistRegistry->hasRenderer($__nexusInfolistType))
+    {!! $__nexusInfolistRegistry->render($__nexusInfolistType, new \Nodex\Nexus\Dto\FieldRenderContext($field, $model ?? null, $module, $action ?? null, $tab_lang ?? null, $formData ?? [], $modelSchema ?? [])) !!}
 @else
     @php
         // A field's relation method can be broken (e.g. missing a return

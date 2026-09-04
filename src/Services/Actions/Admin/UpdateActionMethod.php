@@ -26,6 +26,7 @@ class UpdateActionMethod
                 // A dedicated Request already validated (and, if it defines
                 // withValidator(), cross-field-checked) this during its own
                 // resolution above — untouched from before this collector existed.
+                app(NexusRuleCollector::class)->assertRelationCoverage($moduleConfig, $moduleRequest->rules());
                 $validated = $moduleRequest->validated();
             } else {
                 // D5: no dedicated Request (or an empty rules()) used to mean

@@ -450,9 +450,12 @@ class ModuleForm extends Component
             $moduleRequest->merge(['id' => $this->id]);
         }
 
-        $rules = ($moduleRequest && method_exists($moduleRequest, 'rules') && count($moduleRequest->rules()) > 0)
-            ? $moduleRequest->rules()
-            : app(NexusRuleCollector::class)->collect($moduleConfig, $methodName, $this->data);
+        if ($moduleRequest && method_exists($moduleRequest, 'rules') && count($moduleRequest->rules()) > 0) {
+            $rules = $moduleRequest->rules();
+            app(NexusRuleCollector::class)->assertRelationCoverage($moduleConfig, $rules);
+        } else {
+            $rules = app(NexusRuleCollector::class)->collect($moduleConfig, $methodName, $this->data);
+        }
 
         $mapped = [];
         foreach ($rules as $key => $rule) {

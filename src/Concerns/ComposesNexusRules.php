@@ -15,13 +15,20 @@ use Nodex\Nexus\Services\Validation\NexusRuleCollector;
  * Rule::in()/exists() against other tables, etc. extraRules() wins over the
  * collected rules for any key it also sets.
  *
- * Note: StoreActionMethod/UpdateActionMethod already run NexusRuleCollector
- * as a baseline for every module and merge any dedicated Request's rules()
- * on top of it (see NexusRuleCollector::resolveRules()) — this trait doesn't
- * change what happens for other modules, only what THIS Request's own
- * rules() call returns, for a Request class used somewhere outside that
- * orchestration (a custom controller, a Livewire form, etc.) or for
- * explicitness about intent.
+ * This is the recommended way to write a dedicated Request for a module
+ * with relation fields, not just a convenience: StoreActionMethod,
+ * UpdateActionMethod and Livewire\ModuleForm::rules() all use a dedicated
+ * Request's rules() EXCLUSIVELY the moment it's non-empty — NexusRuleCollector
+ * (and its relation-field defaults) never runs at all on that branch, so a
+ * plain `extends FormRequest` with a hand-written rules() array must
+ * re-declare every field itself, relation fields included, or the omitted
+ * key is silently dropped by Laravel's validated() before it ever reaches
+ * StoreRelationActionMethod. Using this trait avoids that by construction —
+ * the collected baseline is what rules() itself returns, merged with
+ * extraRules(), so nothing is missing by omission. (A dev-time guard,
+ * NexusRuleCollector::assertRelationCoverage(), still catches a Request
+ * that skips this trait AND forgets a relation field — but this trait is
+ * how you avoid needing that guard to catch anything.)
  */
 trait ComposesNexusRules
 {

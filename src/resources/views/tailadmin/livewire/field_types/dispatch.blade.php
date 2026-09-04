@@ -2,8 +2,27 @@
     Single field's type dispatch, factored out of module-form.blade.php so
     both the flat (non-wizard) loop and the per-step wizard loop share one
     copy. Expects $field (FieldConfigDto) in scope.
+
+    Resolution order mirrors the legacy (non-Livewire) pipeline's
+    templates/sections/_field.blade.php exactly, so FieldTypeRegistry is one
+    shared source of truth across both themes instead of two — a type a
+    module registers via its FieldTypes/ folder, or a plugin registers via
+    the 'nexus.field_types.register' hook (see Services/FieldTypeRegistry.php),
+    is now reachable here too, not just from the legacy pipeline:
+      1. {module}::admin.livewire_field_types.{type} — module override/custom-type hook
+      2. FieldTypeRegistry::resolveViewName()          — registerView() entries
+      3. FieldTypeRegistry::hasRenderer()/render()      — registerClass()/registerCallback() entries
+      4. livewire/field_types/{type}.blade.php by convention — every built-in
+         type (string, text, number, ...) lives at exactly this path, so
+         nothing needs registering here just for the type to exist; only the
+         two spellings whose file doesn't match their type string ('editor'
+         -> text.blade.php, 'date' -> birthday.blade.php) are registered as
+         aliases, in NexusServiceProvider::registerBuiltInFieldTypeAliases().
+      5. unsupported.blade.php — nothing above matched
 --}}
-@php($moduleNamespace = \Illuminate\Support\Str::lcfirst($module->name))
+@php
+    $moduleNamespace = \Illuminate\Support\Str::lcfirst($module->name);
+@endphp
 @if(View::exists($moduleNamespace . '::admin.livewire_field_types.' . $field->type))
     {{--
         Module-scoped override/custom-type hook, same "module override wins"
@@ -12,102 +31,62 @@
         to either add a brand new type (nothing below matches it) or override
         a built-in one (e.g. 'phone') for that module only — every other
         module has no such view, so View::exists() is false for them and
-        behavior is unchanged.
+        behavior is unchanged. Checked before the type is resolved through
+        FieldTypeRegistry/aliases at all, so a module override always wins
+        even over a globally-registered custom type.
     --}}
     @include($moduleNamespace . '::admin.livewire_field_types.' . $field->type, ['field' => $field])
-@elseif($field->type === 'string')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.string', ['field' => $field])
-@elseif($field->type === 'text' || $field->type === 'editor')
-    {{-- 'editor' is documented as "alias for text+isEditor=true" (AttributeSchemaReader already sets isEditor for both spellings) — text.blade.php itself switches on isEditor to swap in CKEditor. --}}
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.text', ['field' => $field])
-@elseif($field->type === 'number')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.number', ['field' => $field])
-@elseif($field->type === 'boolean')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.boolean', ['field' => $field])
-@elseif($field->type === 'enum')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.enum', ['field' => $field])
-@elseif($field->type === 'datetime')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.datetime', ['field' => $field])
-@elseif($field->type === 'image' && empty($moduleConfig->relations->is_available[$field->name] ?? null))
-    {{--
-        Single elFinder-picked path (ShopCategory's `image`/`horizontalImage`
-        — no #[Relation] attribute). A field also carrying #[Relation] (e.g.
-        `images`, a morphMany gallery) is a different, not-yet-supported
-        multi-image case — ModuleForm::mount() already routes its value
-        through the relation branches instead, so it falls through to
-        unsupported.blade.php here rather than crashing this partial on a
-        non-string $value.
-    --}}
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.image', ['field' => $field])
-@elseif($field->type === 'images' && empty($moduleConfig->relations->is_available[$field->name] ?? null))
-    {{-- Plain JSON-array-of-paths gallery (no #[Relation]) — see field_types/images.blade.php's docblock. --}}
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.images', ['field' => $field])
-@elseif($field->type === 'videos' && empty($moduleConfig->relations->is_available[$field->name] ?? null))
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.videos', ['field' => $field])
-@elseif($field->type === 'relation')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.relation', ['field' => $field])
-@elseif($field->type === 'wishlistable_type_field')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.wishlistable_type_field', ['field' => $field])
-@elseif($field->type === 'causer')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.causer', ['field' => $field])
-@elseif($field->type === 'json')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.json', ['field' => $field])
-@elseif($field->type === 'select')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.select', ['field' => $field])
-@elseif($field->type === 'widgetConfigFields')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.widgetConfigFields', ['field' => $field])
-@elseif($field->type === 'email')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.email', ['field' => $field])
-@elseif($field->type === 'phone')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.phone', ['field' => $field])
-@elseif($field->type === 'gender')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.gender', ['field' => $field])
-@elseif($field->type === 'birthday' || $field->type === 'date')
-    {{-- 'date' is a plain alias of 'birthday' — same <input type=date>, nothing User-specific about the partial itself. --}}
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.birthday', ['field' => $field])
-@elseif($field->type === 'password')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.password', ['field' => $field])
-@elseif($field->type === 'wishlist_table')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.wishlist_table', ['field' => $field])
-@elseif($field->type === 'addresses_table')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.addresses_table', ['field' => $field])
-@elseif($field->type === 'cart_table')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.cart_table', ['field' => $field])
-@elseif($field->type === 'video')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.video', ['field' => $field])
-@elseif($field->type === 'attribute_options_field')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.attribute_options_field', ['field' => $field])
-@elseif($field->type === 'relationManager')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.relationManager', ['field' => $field])
-@elseif($field->type === 'custom_delivery_method')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.custom_delivery_method', ['field' => $field])
-@elseif($field->type === 'custom_delivery_type')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.custom_delivery_type', ['field' => $field])
-@elseif($field->type === 'custom_payment_method')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.custom_payment_method', ['field' => $field])
-@elseif($field->type === 'custom_history')
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.custom_history', ['field' => $field])
-@elseif(!empty($field->repeaterColumns))
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.repeater', ['field' => $field])
-@elseif($field->type === 'view' && $field->userType)
-    {{--
-        #[Field(type: 'view', view: '...')] — inject an arbitrary Blade
-        template, documented in Attributes/Field.php but previously
-        unreachable here. AttributeSchemaReader::processFieldAttr() stores
-        the configured view path in $field->userType (there's no separate
-        $field->view — 'view' reuses the same slot the legacy
-        FieldTypeRegistry pipeline uses for a custom type's Blade path).
-        render() only passes module/moduleConfig/action (no live model), so
-        resolve the record the same lazy way relation fields already do
-        elsewhere in this component — $this is the ModuleForm instance in
-        this scope, same as $this->isFieldVisible() a few lines up in
-        module-form.blade.php.
-    --}}
-    @include($field->userType, [
-        'model' => $this->id ? $moduleConfig->model::find($this->id) : new ($moduleConfig->model)(),
-        'field' => $field,
-        'module' => $module,
-    ])
 @else
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types.unsupported', ['field' => $field])
+    @php
+        $__nexusRegistry = app(\Nodex\Nexus\Services\FieldTypeRegistry::class);
+        $__nexusType = $__nexusRegistry->resolveType($field->type);
+
+        /*
+         * A field of type image/images/videos that also carries #[Relation]
+         * is a not-yet-supported relation-backed case — ModuleForm::mount()
+         * already routes its value through the relation branches instead of
+         * a plain string/array, so none of the plain-value renderers below
+         * (registered or built-in) may be used for it; it must fall through
+         * toward the structural checks below and, ultimately, the
+         * unsupported banner, rather than crashing on a non-string $value.
+         */
+        $__nexusRelationBlocked = in_array($__nexusType, ['image', 'images', 'videos'], true)
+            && !empty($moduleConfig->relations->is_available[$field->name] ?? null);
+
+        $__nexusRegisteredView = $__nexusRelationBlocked ? null : $__nexusRegistry->resolveViewName($__nexusType);
+        $__nexusHasRenderer = !$__nexusRelationBlocked && $__nexusRegistry->hasRenderer($__nexusType);
+        $__nexusBuiltInView = 'nexus::' . config('nexus.template') . '.livewire.field_types.' . $__nexusType;
+    @endphp
+    @if($__nexusRegisteredView)
+        @include($__nexusRegisteredView, ['field' => $field])
+    @elseif($__nexusHasRenderer)
+        {{--
+            registerClass()/registerCallback() entries render via an explicit
+            FieldRenderContext rather than inheriting this Blade scope — same
+            contract the legacy pipeline's _field.blade.php already uses for
+            this step, so a FieldTypeRenderer implementation works unchanged
+            regardless of which theme/pipeline it ends up rendering under.
+        --}}
+        {!! $__nexusRegistry->render($__nexusType, new \Nodex\Nexus\Dto\FieldRenderContext($field, $this->id ? $moduleConfig->model::find($this->id) : new ($moduleConfig->model)(), $module, $action ?? null, null, $this->data ?? [], [])) !!}
+    @elseif(!$__nexusRelationBlocked && View::exists($__nexusBuiltInView))
+        @include($__nexusBuiltInView, ['field' => $field])
+    @elseif(!empty($field->repeaterColumns))
+        @include('nexus::' . config('nexus.template') . '.livewire.field_types.repeater', ['field' => $field])
+    @elseif($field->type === 'view' && $field->userType)
+        {{--
+            #[Field(type: 'view', view: '...')] — inject an arbitrary Blade
+            template. AttributeSchemaReader::processFieldAttr() stores the
+            configured view path in $field->userType (there's no separate
+            $field->view property) — this is a per-FIELD path rather than a
+            per-TYPE one, so it stays its own branch instead of going through
+            the registry.
+        --}}
+        @include($field->userType, [
+            'model' => $this->id ? $moduleConfig->model::find($this->id) : new ($moduleConfig->model)(),
+            'field' => $field,
+            'module' => $module,
+        ])
+    @else
+        @include('nexus::' . config('nexus.template') . '.livewire.field_types.unsupported', ['field' => $field])
+    @endif
 @endif

@@ -151,6 +151,7 @@ class NexusServiceProvider extends ServiceProvider
         Event::listen(ModuleInstalled::class, SendModuleInstalledNotification::class);
         $this->loadRelations();
         $this->loadFieldTypes();
+        $this->registerBuiltInFieldTypeAliases();
         $this->registerBuiltInFieldTypeDefaultRules();
         $this->loadWidgets();
         $this->loadLivewireComponents();
@@ -600,6 +601,22 @@ class NexusServiceProvider extends ServiceProvider
                 $registry->registerClass($fieldType['type'], $fieldType['class']);
             }
         }
+    }
+
+    /**
+     * The only two built-in field types whose Blade partial filename doesn't
+     * match the type string a #[Field] declares — every other built-in type
+     * resolves to its partial purely by convention (see
+     * Services/FieldTypeRegistry.php's resolution-order docblock), so this
+     * is the one place both need registering.
+     */
+    private function registerBuiltInFieldTypeAliases(): void
+    {
+        /** @var FieldTypeRegistry $registry */
+        $registry = $this->app->make(FieldTypeRegistry::class);
+
+        $registry->alias('editor', 'text');
+        $registry->alias('date', 'birthday');
     }
 
     /**

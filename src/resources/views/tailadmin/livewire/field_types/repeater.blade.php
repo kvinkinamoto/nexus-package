@@ -5,16 +5,20 @@
     shaped exactly like relation[{relation}][{index}][{column}] so
     StoreRelationActionMethod::saveMultipleRelation() needs no changes.
 
-    Per-cell dispatch follows the same "module override wins" convention as
-    the legacy FieldTypeRegistry: a module can drop a
-    {module}::admin.livewire_field_types.{type}.blade.php to render a
-    RepeaterField column type Livewire doesn't know natively (e.g. Cart's
-    cartProductSelect ajax product picker) without this package file
-    knowing anything module-specific.
+    Per-cell dispatch mirrors dispatch.blade.php's own resolution order (see
+    its docblock) one tier further down — module override (same
+    {module}::admin.livewire_field_types.{type}.blade.php a top-level field
+    would use, e.g. Cart's cartProductSelect ajax product picker) -> the
+    shared FieldTypeRegistry (so a type registered via a module's
+    FieldTypes/ folder or the plugin hook renders as a cell too, not just as
+    a full field) -> a built-in repeater_cells/{type}.blade.php partial
+    (deliberately separate from field_types/{type}.blade.php — a cell needs
+    compact markup, not a labeled form group) -> repeater_cells/unsupported.
 --}}
 @php
     $moduleNamespace = \Illuminate\Support\Str::lcfirst($module->name);
     $rows = $this->relationRows[$field->name] ?? [];
+    $__nexusCellRegistry = app(\Nodex\Nexus\Services\FieldTypeRegistry::class);
 @endphp
 <div class="mb-4" wire:key="repeater-{{ $field->name }}">
     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
@@ -42,17 +46,25 @@
                 @forelse($rows as $index => $row)
                     <tr wire:key="repeater-{{ $field->name }}-row-{{ $row['_rowKey'] ?? $index }}">
                         @foreach($field->repeaterColumns as $column)
+                            @php
+                                $__nexusCellType = $__nexusCellRegistry->resolveType($column->type);
+                                $__nexusCellModuleView = $moduleNamespace . '::admin.livewire_field_types.' . $column->type;
+                                $__nexusCellRegisteredView = $__nexusCellRegistry->resolveViewName($__nexusCellType);
+                                $__nexusCellBuiltInView = 'nexus::' . config('nexus.template') . '.livewire.field_types.repeater_cells.' . $__nexusCellType;
+                                $__nexusCellVars = ['field' => $field, 'column' => $column, 'index' => $index, 'row' => $row];
+                            @endphp
                             <td class="p-2 align-top">
-                                @includeFirst([
-                                    $moduleNamespace . '::admin.livewire_field_types.' . $column->type,
-                                    'nexus::' . config('nexus.template') . '.livewire.field_types.repeater_cells.' . $column->type,
-                                    'nexus::' . config('nexus.template') . '.livewire.field_types.repeater_cells.unsupported',
-                                ], [
-                                    'field' => $field,
-                                    'column' => $column,
-                                    'index' => $index,
-                                    'row' => $row,
-                                ])
+                                @if(View::exists($__nexusCellModuleView))
+                                    @include($__nexusCellModuleView, $__nexusCellVars)
+                                @elseif($__nexusCellRegisteredView)
+                                    @include($__nexusCellRegisteredView, $__nexusCellVars)
+                                @elseif($__nexusCellRegistry->hasRenderer($__nexusCellType))
+                                    {!! $__nexusCellRegistry->render($__nexusCellType, new \Nodex\Nexus\Dto\FieldRenderContext($field, $this->id ? $moduleConfig->model::find($this->id) : new ($moduleConfig->model)(), $module, $action ?? null, null, $row, [])) !!}
+                                @elseif(View::exists($__nexusCellBuiltInView))
+                                    @include($__nexusCellBuiltInView, $__nexusCellVars)
+                                @else
+                                    @include('nexus::' . config('nexus.template') . '.livewire.field_types.repeater_cells.unsupported', $__nexusCellVars)
+                                @endif
                             </td>
                         @endforeach
                         <td class="p-2 align-top">

@@ -7,15 +7,26 @@ use Illuminate\Support\Facades\View as ViewFacade;
 use Nodex\Nexus\Dto\FieldRenderContext;
 
 /**
- * Central place to register a field type's rendering, without editing the
- * shared templates/sections/*.blade.php dispatch chain for every new type.
+ * Central place to register a field type's rendering, without editing a
+ * dispatch chain for every new type. Shared by BOTH themes' field-type
+ * dispatchers — the legacy templates/sections/_field.blade.php and the
+ * Livewire livewire/field_types/dispatch.blade.php — so a type registered
+ * here (by a module's FieldTypes/ folder or a plugin's
+ * 'nexus.field_types.register' hook) is available to whichever pipeline the
+ * module actually renders through, instead of each pipeline needing its own
+ * registration.
  *
- * Resolution order (see templates/sections/base.blade.php and
- * columns_2.blade.php), unchanged from before this registry existed:
- *   1. {module}::admin.field_types.{type}   — a module's own override, always wins
+ * Resolution order, identical in both dispatchers:
+ *   1. {module}::admin.field_types.{type} (legacy) or
+ *      {module}::admin.livewire_field_types.{type} (Livewire) — a module's
+ *      own override, always wins, checked by the dispatcher itself before
+ *      consulting this registry at all
  *   2. this registry                        — registerView() / registerClass() / registerCallback()
- *   3. nexus::{template}.templates.field_types.{type} — built-in package partial
- *   4. .../field_types.unknown              — fallback warning banner
+ *   3. the built-in partial at the type's own conventional path
+ *      (.../templates.field_types.{type} or .../livewire.field_types.{type})
+ *      — resolved via View::exists(), so a built-in type needs no
+ *      registration here at all, only a file at that path
+ *   4. .../field_types.unknown (legacy) or .../field_types/unsupported (Livewire) — fallback warning banner
  *
  * registerView() targets are @include'd the same way built-in/override
  * partials are — they inherit the calling Blade scope ($field, $model,
@@ -73,6 +84,18 @@ class FieldTypeRegistry
     private function resolveAlias(string $type): string
     {
         return $this->aliases[$type] ?? $type;
+    }
+
+    /**
+     * Public alias resolution, for a dispatcher to resolve $field->type once
+     * up front (e.g. 'editor' -> 'text', 'date' -> 'birthday') and reuse the
+     * result for every resolution step — registry lookups, the conventional
+     * built-in-partial path, and validation defaults all agree on the same
+     * real type name this way.
+     */
+    public function resolveType(string $type): string
+    {
+        return $this->resolveAlias($type);
     }
 
     /**

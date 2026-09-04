@@ -4,6 +4,7 @@ namespace Nodex\Nexus\Services\Validation;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Nodex\Nexus\Dto\ModuleDtos\DefaultModuleConfigurationDto;
+use Nodex\Nexus\Enums\RelationConfigParamsEnum;
 use Nodex\Nexus\Events\GatheringValidationRules;
 use Nodex\Nexus\Services\FieldTypeRegistry;
 use Nodex\Nexus\Services\FieldVisibilityEvaluator;
@@ -37,15 +38,30 @@ use Nodex\Nexus\Services\FieldVisibilityEvaluator;
  *   7. GatheringValidationRules event (mutable $rules, by reference)
  *   8. nexus_filter('nexus.validation.rules', $rules, $moduleConfig, $action)
  *
- * Scoped deliberately: steps 1-4/6-8 only apply to non-relation fields.
- * A #[Field(type: 'relation')] field posts as relation[{name}] (see
- * field_types/relation.blade.php), not a top-level {name} key, and its
- * shape varies by relation type (single value vs array vs pivot data) —
- * getting that wrong risks silently breaking relation saves. Relation
- * fields (other than #[RepeaterField] columns, which already post under
- * the same relation[{name}][{index}][{column}] shape StoreRelationActionMethod
- * expects) are left to a dedicated Request's own hand-written rules, exactly
- * as before this collector existed.
+ * Steps 1-4/6-8 only apply to non-relation fields. A #[Field(type: 'relation')]
+ * field posts as relation[{name}] (see field_types/relation.blade.php), not a
+ * top-level {name} key, and its shape varies by relation type (single value
+ * vs array vs pivot data) — collectFieldRules()'s type/translate/required
+ * logic doesn't apply to it. Instead every relation field gets a minimal
+ * default of its own — collectRelationDefaultRules(), keyed by cardinality
+ * (RelationConfigDto::$type) and RelationConfigDto::$isRequired — so
+ * "relation.{name}" always has SOME rule and therefore always survives
+ * Laravel's validated() filtering, even when a module defines no dedicated
+ * Request at all. A #[RepeaterField]-carrying relation gets both this
+ * top-level default (so the key resolves to an array even with zero rows)
+ * AND its existing per-column "relation.{name}.*.{column}" rules below —
+ * the two don't conflict, Laravel validates parent-array and
+ * wildcard-children rules independently.
+ *
+ * This default is deliberately minimal (nullable/required, plus 'array' for
+ * a multi relation) — it has no way to know a related table's key column or
+ * whether a submitted id should exist there, so it only guarantees the
+ * field survives into validated() and (when marked required) can't be
+ * submitted empty. A module with a stricter need (Rule::exists(), a custom
+ * per-item shape, ...) still supplies its own dedicated Request — collect()
+ * only ever runs when that Request is absent or empty (see
+ * assertRelationCoverage()'s docblock), so the dedicated Request's own
+ * rules simply replace this default outright rather than merging with it.
  */
 class NexusRuleCollector
 {
@@ -64,9 +80,14 @@ class NexusRuleCollector
         $excludedKeys = [];
 
         foreach ($moduleConfig->form->fields as $name => $field) {
-            $isRelationField = isset($moduleConfig->relations->is_available[$name]);
+            $relationConfig = $moduleConfig->relations->is_available[$name] ?? null;
 
-            if (!$isRelationField) {
+            if ($relationConfig && !$this->postsRelationData($field)) {
+                // A read-only relation display (relationManager and friends —
+                // see self::postsRelationData()'s docblock) never submits a
+                // "relation.{name}" key at all, so there's nothing to validate
+                // and nothing whose absence would need covering.
+            } elseif (!$relationConfig) {
                 $key = $field->isTranslate ? "{$name}.*" : $name;
 
                 if (!empty($field->showWhen) && !$this->visibilityEvaluator->isVisible($field, $inputValues)) {
@@ -77,6 +98,15 @@ class NexusRuleCollector
                     if (!empty($fieldRules)) {
                         $rules[$key] = $fieldRules;
                     }
+                }
+            } else {
+                $key = "relation.{$name}";
+
+                if (!empty($field->showWhen) && !$this->visibilityEvaluator->isVisible($field, $inputValues)) {
+                    $rules[$key] = ['exclude'];
+                    $excludedKeys[] = $key;
+                } else {
+                    $rules[$key] = $this->collectRelationDefaultRules($relationConfig);
                 }
             }
 
@@ -105,30 +135,101 @@ class NexusRuleCollector
     }
 
     /**
-     * Merges $collect()'s output with a dedicated Request class's own
-     * hand-written rules() (steps 2-8 of any hand-written array win per-key
-     * over the collector — preserves every currently-hand-written Request's
-     * exact validation), except an exclude for a showWhen-hidden field
-     * always wins regardless of what the hand-written array says.
+     * A relation-backed field whose type has no editable control at all —
+     * relationManager (field_types/relationManager.blade.php) is the
+     * confirmed built-in example, a read-only list with links out to the
+     * related module, never a form input — has nothing to validate and
+     * nothing whose absence needs flagging: it never appears in submitted
+     * data in the first place, so requiring rules for it would be checking
+     * for a key that structurally cannot exist. 'relation' (the
+     * belongsTo/belongsToMany picker, field_types/relation.blade.php) and
+     * any #[RepeaterField]-carrying field are the only relation field types
+     * that actually post a value.
      */
-    public function resolveRules(DefaultModuleConfigurationDto $moduleConfig, string $action, ?FormRequest $dedicatedRequest, array $inputValues = []): array
+    private function postsRelationData(object $field): bool
     {
-        $collected = $this->collect($moduleConfig, $action, $inputValues, $dedicatedRequest);
+        return $field->type === 'relation' || !empty($field->repeaterColumns);
+    }
 
-        $dedicatedRules = [];
-        if ($dedicatedRequest && get_class($dedicatedRequest) !== FormRequest::class && method_exists($dedicatedRequest, 'rules')) {
-            $dedicatedRules = $dedicatedRequest->rules();
+    /**
+     * Minimal baseline for a relation field the collector otherwise knows
+     * nothing about beyond its cardinality and RelationConfigDto::$isRequired
+     * — see this class's own docblock for why it stops there.
+     */
+    private function collectRelationDefaultRules(object $relationConfig): array
+    {
+        $isMultiple = in_array($relationConfig->type, [
+            RelationConfigParamsEnum::BELONGS_TO_MANY->value,
+            RelationConfigParamsEnum::HAS_MANY->value,
+        ], true);
+
+        $rules = [$relationConfig->isRequired ? 'required' : 'nullable'];
+
+        if ($isMultiple) {
+            $rules[] = 'array';
         }
 
-        $merged = array_replace($collected, $dedicatedRules);
+        return $rules;
+    }
 
-        foreach ($collected as $key => $rule) {
-            if ($rule === ['exclude']) {
-                $merged[$key] = ['exclude'];
+    /**
+     * Dev-time safety net for the exact fragility that made this class's
+     * relation defaults necessary in the first place: StoreActionMethod,
+     * UpdateActionMethod and Livewire\ModuleForm::rules() all use a
+     * dedicated Request's rules() EXCLUSIVELY the moment it's non-empty
+     * (see each one's own docblock) — collect()'s relation defaults never
+     * run on that branch, so a hand-written Request that forgets a relation
+     * field silently loses it the same way an absent Request used to,
+     * before collectRelationDefaultRules() existed. Deliberately not fixed
+     * by merging collect()'s output into that branch instead: a dedicated
+     * Request's rules() is what Laravel's own FormRequest lifecycle
+     * resolves and validates against BEFORE this code ever sees it (so any
+     * withValidator() cross-field check it defines already ran) — replacing
+     * what it validated with a merged set after the fact would validate
+     * different rules than what actually ran. A module wanting the merge
+     * uses Concerns/ComposesNexusRules instead, which merges INSIDE rules()
+     * itself, before that lifecycle resolves anything.
+     *
+     * So this only fails loud, in non-production, instead of failing
+     * silent in every environment — call it wherever $moduleRequest->rules()
+     * is about to be trusted exclusively.
+     */
+    public function assertRelationCoverage(DefaultModuleConfigurationDto $moduleConfig, array $requestRules): void
+    {
+        if (app()->isProduction()) {
+            return;
+        }
+
+        $missing = [];
+
+        foreach ($moduleConfig->form->fields as $name => $field) {
+            if (!isset($moduleConfig->relations->is_available[$name]) || !$this->postsRelationData($field)) {
+                continue;
+            }
+
+            $prefix = "relation.{$name}";
+            $covered = array_key_exists($prefix, $requestRules)
+                || array_key_exists("{$prefix}.*", $requestRules)
+                || collect($requestRules)->keys()->contains(fn ($key) => str_starts_with($key, "{$prefix}."));
+
+            if (!$covered) {
+                $missing[] = $name;
             }
         }
 
-        return $merged;
+        if (!empty($missing)) {
+            throw new \RuntimeException(sprintf(
+                '[%s] dedicated Request validates some fields but none of these relation field(s): %s. '
+                .'Laravel\'s validated() silently drops any key rules() doesn\'t cover, so the submitted '
+                .'value(s) would never reach StoreRelationActionMethod. Add explicit "relation.%s" (or '
+                .'"relation.%s.*") rule(s), or use Nodex\Nexus\Concerns\ComposesNexusRules on this Request '
+                .'to inherit NexusRuleCollector\'s baseline automatically.',
+                $moduleConfig->name,
+                implode(', ', $missing),
+                $missing[0],
+                $missing[0],
+            ));
+        }
     }
 
     private function collectFieldRules(object $field, string $action): array

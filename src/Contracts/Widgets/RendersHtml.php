@@ -12,7 +12,15 @@ use Nodex\Nexus\Dto\Widgets\WidgetContext;
 interface RendersHtml
 {
     /**
-     * @return array<string, string> Blade view identifier => display name.
+     * Views live next to the widget class itself — e.g.
+     * app/Nexus/Widgets/{Name}/{lowerName}.blade.php — not under
+     * resources/views/, so a widget stays self-contained in its own folder.
+     * render() below is expected to resolve the returned identifier as a
+     * filename relative to the implementing class's own directory (typically
+     * `__DIR__ . '/' . $view`) and hand it to View::file(), rather than
+     * looking it up as a resources/views dot-notation name.
+     *
+     * @return array<string, string> Blade file name => display name.
      */
     public function availableViews(): array;
 

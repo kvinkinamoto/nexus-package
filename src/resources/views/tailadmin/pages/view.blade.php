@@ -37,7 +37,7 @@
                     <button type="button" @click="activeTab = '{{ $tab->name }}'"
                         class="border-b-2 px-3 py-2 text-sm font-medium"
                         :class="activeTab === '{{ $tab->name }}' ? 'border-brand-500 text-brand-500' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'">
-                        @lang($module->name . '::' . 'translate.' . $tab->label)
+                        @lang(lcfirst($module->name) . '::' . 'translate.' . $tab->label)
                     </button>
                 @endforeach
             </div>

@@ -13,7 +13,7 @@
                 {{ $index + 1 }}
             </span>
             <span class="hidden text-sm font-medium text-gray-700 sm:inline dark:text-gray-300">
-                @lang($module->name . '::' . 'translate.' . $tab->label)
+                @lang(Str::lcfirst($module->name) . '::' . 'translate.' . $tab->label)
             </span>
         </div>
         @if(!$loop->last)

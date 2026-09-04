@@ -43,11 +43,12 @@ class {{name}} implements WidgetInterface, RendersHtml
     }
 
     /**
-     * @return array<string, string> Blade view identifier => display name
+     * @return array<string, string> Blade file name (relative to this
+     *                                class's own folder) => display name
      */
     public function availableViews(): array
     {
-        return ['widgets.{{lowerName}}' => 'Default'];
+        return ['{{lowerName}}.blade.php' => 'Default'];
     }
 
     public function viewFor(?string $name): ?string
@@ -60,11 +61,12 @@ class {{name}} implements WidgetInterface, RendersHtml
     public function render(array $config, WidgetContext $context): string
     {
         $view = $this->viewFor($context->params['view'] ?? null);
+        $path = $view ? __DIR__ . DIRECTORY_SEPARATOR . $view : null;
 
-        if (! $view || ! view()->exists($view)) {
+        if (! $path || ! is_file($path)) {
             return '';
         }
 
-        return view($view, $this->getData($config, $context))->render();
+        return view()->file($path, $this->getData($config, $context))->render();
     }
 }

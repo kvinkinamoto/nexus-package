@@ -37,11 +37,13 @@ class MakeWidgetCommand extends Command
 
         File::put($classFile, $this->getStub('widget_class', $replacements));
 
-        $viewPath = resource_path('views/widgets');
-        $viewFile = "{$viewPath}/{$lowerName}.blade.php";
+        // Co-located with the class (not resources/views/widgets/) so the
+        // whole widget — class + template — lives in one self-contained
+        // folder; RendersHtml::render() resolves it via View::file() and
+        // __DIR__, see RendersHtml's own docblock.
+        $viewFile = "{$widgetPath}/{$lowerName}.blade.php";
 
         if (! File::exists($viewFile)) {
-            File::makeDirectory($viewPath, 0755, true, true);
             File::put($viewFile, $this->getStub('widget_view', $replacements));
         }
 

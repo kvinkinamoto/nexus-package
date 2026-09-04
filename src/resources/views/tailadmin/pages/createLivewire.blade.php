@@ -1,7 +1,7 @@
 @extends('nexus::' . config('nexus.template') . '.layouts.adminpanel')
 
 @section('contentPageCaption')
-    @lang($module->name . '::' . 'translate.' . $module->name)
+    @lang(lcfirst($module->name) . '::' . 'translate.' . $module->name)
 @endsection
 
 @section('mainContent')

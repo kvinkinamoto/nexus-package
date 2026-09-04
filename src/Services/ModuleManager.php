@@ -12,6 +12,8 @@ use Nodex\Nexus\Enums\AdminPanelPermissionEnum;
 use Nodex\Nexus\Enums\PermissionPlacesEnum;
 use Nodex\Nexus\Models\Module;
 use Nodex\Nexus\Services\AttributeSchemaReader;
+use Nodex\Nexus\Services\ModuleManifestCache;
+use Nodex\Nexus\Services\Widgets\WidgetRegistry;
 
 class ModuleManager
 {
@@ -20,7 +22,9 @@ class ModuleManager
 
     public function __construct(
         private PathManager $pathManager,
-        private ModuleRegistry $moduleRegistry
+        private ModuleRegistry $moduleRegistry,
+        private ModuleManifestCache $manifestCache,
+        private WidgetRegistry $widgetRegistry
     ) {
     }
 
@@ -250,7 +254,27 @@ class ModuleManager
             }
         }
 
+        $this->registerModuleWidgetsImmediately($regModule);
+
         event(new \Nodex\Nexus\Events\ModuleInstalled($name));
+    }
+
+    /**
+     * NexusServiceProvider::loadWidgets() only scans an enabled module's own
+     * Widgets/ folder at boot time — a module installed mid-request (via the
+     * admin UI's "install" action, or `nexus:module:install` inside a Pest
+     * test's single-boot process) would otherwise leave its widgets invisible
+     * to the already-booted WidgetRegistry singleton until the next fresh
+     * boot. Registering them here, right after install, closes that gap for
+     * the current process without waiting on one.
+     */
+    private function registerModuleWidgetsImmediately(array $regModule): void
+    {
+        $widgetsDir = $this->pathManager->getModulePath($regModule['name'], $regModule['is_user_module']) . DIRECTORY_SEPARATOR . 'Widgets';
+
+        foreach ($this->manifestCache->discoverWidgets($widgetsDir, $regModule['namespace']) as $widget) {
+            $this->widgetRegistry->registerFromDiscovery($widget);
+        }
     }
 
     public static function getModules(): array

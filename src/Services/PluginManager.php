@@ -102,6 +102,10 @@ class PluginManager
             return;
         }
 
+        if (in_array($className, config('nexus.plugins.disabled', []), true)) {
+            return;
+        }
+
         $reflection = new \ReflectionClass($className);
 
         $targetModuleAttrs = $reflection->getAttributes(\Nodex\Nexus\Attributes\TargetModule::class);

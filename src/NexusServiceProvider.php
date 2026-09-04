@@ -103,13 +103,22 @@ class NexusServiceProvider extends ServiceProvider
                 return $faker;
             });
         }
-        // Auto-discover and register plugins
+        // Auto-discover and register plugins. A broken plugin must not take
+        // the rest of the admin panel down — but silently swallowing every
+        // exception here (the previous behavior) meant a plugin bug had no
+        // way to ever surface, not even in local dev; same problem, same
+        // fix, as AttributeSchemaReader::guardAgainstMisconfiguration() and
+        // NexusController::action()'s app.debug gate elsewhere in this
+        // package.
         try {
             $pluginManager = $this->app->make(PluginManager::class);
             $pluginManager->autoDiscover();
             $pluginManager->registerAll();
         } catch (\Throwable $e) {
-            // Ignore errors
+            if (config('app.debug')) {
+                throw $e;
+            }
+            report($e);
         }
     }
 
@@ -176,12 +185,15 @@ class NexusServiceProvider extends ServiceProvider
         }
         $this->runCommand();
 
-        // Boot plugins
+        // Boot plugins — same app.debug gate as register(), above.
         try {
             $pluginManager = $this->app->make(PluginManager::class);
             $pluginManager->bootAll();
         } catch (\Throwable $e) {
-            // Ignore errors
+            if (config('app.debug')) {
+                throw $e;
+            }
+            report($e);
         }
 
         // Third field-type registration point (see Services/FieldTypeRegistry.php

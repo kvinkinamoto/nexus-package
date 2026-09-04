@@ -183,7 +183,14 @@ class ModuleManager
             return;
         }
 
-        Module::query()->updateOrCreate(['name' => $name], ['name' => $name]);
+        // updateOrCreate(['name' => $name], ...) would match-or-create by
+        // exact string, so installing the same module again under different
+        // casing (a plausible slip — see Module::findByName()'s docblock)
+        // would silently create a second row instead of finding the
+        // existing one.
+        if (! Module::findByName($name)) {
+            Module::query()->create(['name' => $name]);
+        }
 
         // A module's own migration may alter a table a base/vendor migration
         // creates (e.g. Permission's add_display_field ALTERs spatie/laravel-permission's
@@ -295,12 +302,12 @@ class ModuleManager
 
     public static function getInstalledModule(string $name)
     {
-        return Module::query()->where('name', $name)->firstOrFail();
+        return Module::findByName($name) ?? throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())->setModel(Module::class);
     }
 
     public function uninstall($name)
     {
-        $module = Module::where('name', $name)->first();
+        $module = Module::findByName($name);
         if (!$module) {
             return false;
         }

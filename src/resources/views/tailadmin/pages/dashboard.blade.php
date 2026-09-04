@@ -41,10 +41,12 @@
                         <i class="bx bx-x"></i>
                     </button>
                 </div>
-                <div class="custom-scrollbar h-[calc(100%-64px)] overflow-y-auto p-4">
+                <div class="custom-scrollbar h-[calc(100%-64px)] overflow-y-auto p-4" id="dashboardCustomizePanel">
                     <ul class="flex flex-col gap-2" id="dashboardWidgetList">
                         @foreach($widgetKeys as $key)
-                            @php($widget = $availableWidgets[$key] ?? null)
+                            @php
+                                $widget = $availableWidgets[$key] ?? null;
+                            @endphp
                             @continue(!$widget)
                             <li data-widget-key="{{ $key }}"
                                 class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
@@ -58,21 +60,41 @@
                                 </div>
                             </li>
                         @endforeach
-                        @foreach($availableWidgets as $key => $widget)
-                            @continue(in_array($key, $widgetKeys, true))
-                            <li data-widget-key="{{ $key }}"
-                                class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
-                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                    <input type="checkbox" class="widget-toggle h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" value="{{ $key }}">
-                                    {{ $widget['meta']->label }}
-                                </label>
-                                <div class="flex gap-1">
-                                    <button type="button" class="widget-move-up flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5" title="@lang('nexus::translate.move_up')"><i class="bx bx-up-arrow-alt text-sm"></i></button>
-                                    <button type="button" class="widget-move-down flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5" title="@lang('nexus::translate.move_down')"><i class="bx bx-down-arrow-alt text-sm"></i></button>
-                                </div>
-                            </li>
-                        @endforeach
                     </ul>
+
+                    {{--
+                        #[Widget(group:)] is real metadata (WidgetApiController::describe()
+                        already returns it) that this drawer never read — only the
+                        "not yet added" section is grouped by it; the section
+                        above stays one flat, orderable list, since dragging a
+                        widget across a group heading would conflict with the
+                        up/down reorder mechanic that only makes sense within a
+                        single ordered list.
+                    --}}
+                    @php
+                        $notYetAdded = collect($availableWidgets)->reject(fn ($w, $key) => in_array($key, $widgetKeys, true));
+                        // groupBy()'s 2nd arg (preserveKeys) defaults to false —
+                        // without it every group's items get renumbered 0, 1, 2...,
+                        // losing the widget key the "not yet added" @foreach below
+                        // needs for data-widget-key/value="{{ $key }}" (this is what
+                        // saved a literal "0" into nexus_dashboard_layouts.layout
+                        // instead of the real widget key, until caught live).
+                        $groupedRemaining = $notYetAdded->groupBy(fn ($w) => $w['meta']->group ?: 'general', true);
+                    @endphp
+                    @foreach($groupedRemaining as $groupName => $widgetsInGroup)
+                        <h6 class="mb-2 mt-4 px-1 text-xs font-semibold uppercase tracking-wide text-gray-400 first:mt-0">{{ $groupName }}</h6>
+                        <ul class="flex flex-col gap-2" id="dashboardWidgetList-{{ Str::slug($groupName) }}" data-widget-group-list>
+                            @foreach($widgetsInGroup as $key => $widget)
+                                <li data-widget-key="{{ $key }}"
+                                    class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
+                                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                        <input type="checkbox" class="widget-toggle h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" value="{{ $key }}">
+                                        {{ $widget['meta']->label }}
+                                    </label>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endforeach
                 </div>
             </div>
         </div>
@@ -97,10 +119,15 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     const list = document.getElementById('dashboardWidgetList');
-    if (!list) return;
+    const panel = document.getElementById('dashboardCustomizePanel');
+    if (!list || !panel) return;
 
+    // Scoped to the whole panel (the ordered "added" list plus every
+    // group-headed "not yet added" list below it), not just #dashboardWidgetList
+    // — a widget checked on from one of the grouped lists must still end up
+    // in the saved payload.
     function collectEnabledKeys() {
-        return Array.from(list.querySelectorAll('li'))
+        return Array.from(panel.querySelectorAll('li[data-widget-key]'))
             .filter((li) => li.querySelector('.widget-toggle').checked)
             .map((li) => li.dataset.widgetKey);
     }
@@ -127,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(() => alert("@lang('nexus::translate.error_saving_dashboard')"));
     }
 
-    list.addEventListener('change', function (e) {
+    panel.addEventListener('change', function (e) {
         if (e.target.classList.contains('widget-toggle')) {
             save();
         }

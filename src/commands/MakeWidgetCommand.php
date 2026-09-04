@@ -9,65 +9,64 @@ use Illuminate\Support\Str;
 class MakeWidgetCommand extends Command
 {
     protected $signature = 'nexus:make:widget {name}';
-    protected $description = 'Create a new Nexus widget';
 
-    public function handle()
+    protected $description = 'Scaffold a new Nexus dashboard widget (a #[Widget] class implementing WidgetInterface)';
+
+    public function handle(): int
     {
-        $name = Str::ucfirst($this->argument('name'));
-        if (!Str::endsWith($name, 'Widget')) {
-            $name .= 'Widget';
-        }
+        $name = Str::ucfirst(Str::camel($this->argument('name')));
+        $lowerName = Str::camel($name);
+        $humanName = Str::headline($name);
 
         $widgetPath = app_path("Nexus/Widgets/{$name}");
-        $viewPath = "{$widgetPath}/resources/views";
+        $classFile = "{$widgetPath}/{$name}.php";
 
-        if (File::exists("{$widgetPath}/{$name}.php")) {
-            $this->error("Widget {$name} already exists!");
-            return;
+        if (File::exists($classFile)) {
+            $this->error("Widget {$name} already exists at {$classFile}");
+
+            return self::FAILURE;
         }
 
         File::makeDirectory($widgetPath, 0755, true, true);
-        File::makeDirectory($viewPath, 0755, true, true);
 
-        $humanName = trim(preg_replace('/[A-Z]/', ' $0', str_replace('Widget', '', $name)));
+        $replacements = [
+            'name' => $name,
+            'lowerName' => $lowerName,
+            'humanName' => $humanName,
+        ];
 
-        try {
-            $classContent = $this->getStub('widget_class', [
-                'name'      => $name,
-                'humanName' => $humanName,
-            ]);
+        File::put($classFile, $this->getStub('widget_class', $replacements));
 
-            $viewContent = $this->getStub('widget_view', [
-                'name'      => Str::kebab(str_replace('Widget', '', $name)),
-                'humanName' => $humanName,
-            ]);
-        } catch (\RuntimeException $e) {
-            $this->error($e->getMessage());
-            return;
+        $viewPath = resource_path('views/widgets');
+        $viewFile = "{$viewPath}/{$lowerName}.blade.php";
+
+        if (! File::exists($viewFile)) {
+            File::makeDirectory($viewPath, 0755, true, true);
+            File::put($viewFile, $this->getStub('widget_view', $replacements));
         }
 
-        File::put("{$widgetPath}/{$name}.php", $classContent);
+        $this->info("Widget {$name} created at {$classFile}");
+        $this->line("View: {$viewFile}");
+        $this->line('Discovered automatically on the next request — no registration needed.');
+        $this->line("Add '{$lowerName}' to config('nexus.dashboard.default') to show it by default, or add it via the dashboard's Customize picker.");
 
-        $viewFile = "{$viewPath}/default.blade.php";
-        if (!File::exists($viewFile)) {
-            File::put($viewFile, $viewContent);
-        }
-
-        $this->info("Widget {$name} created successfully!");
-        $this->info("Class: {$widgetPath}/{$name}.php");
-        $this->info("View: {$viewFile}");
+        return self::SUCCESS;
     }
 
-    protected function getStub($name, $replacements = [])
+    protected function getStub(string $name, array $replacements = []): string
     {
-        $stubPath = __DIR__ . "/stubs/{$name}.stub";
-        if (!File::exists($stubPath)) {
-            throw new \RuntimeException("Stub not found: {$stubPath}");
+        $stubPath = __DIR__."/stubs/{$name}.stub";
+
+        if (! File::exists($stubPath)) {
+            return '';
         }
+
         $content = File::get($stubPath);
+
         foreach ($replacements as $key => $value) {
-            $content = str_replace('{{' . $key . '}}', $value, $content);
+            $content = str_replace('{{'.$key.'}}', (string) $value, $content);
         }
+
         return $content;
     }
 }

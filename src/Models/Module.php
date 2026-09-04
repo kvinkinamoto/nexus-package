@@ -84,4 +84,40 @@ class Module extends Model
         return 'name'; // або 'slug'
     }
 
+    /**
+     * Case-insensitive lookup by name — the row this table actually stores
+     * can carry whatever casing `nexus:module:install {name}` happened to
+     * be run with (folder/StudlyCase, e.g. 'Demo'), while `#[Module(name:)]`
+     * (and so route()/route-param values built from a module config's own
+     * ->name, e.g. 'demo') is always lowercase. MySQL's default collation
+     * makes `WHERE name = 'demo'` match a 'Demo' row anyway, which is why
+     * every {module}-bound route already worked in production — but that's
+     * MySQL-collation behavior, not something this table's data guarantees,
+     * and SQLite (this project's test suite, and now its CI matrix) compares
+     * case-sensitively, so the exact same lookup genuinely fails there. Use
+     * this instead of `Module::where('name', $x)` anywhere a caller can't
+     * be sure which casing it has.
+     */
+    public static function findByName(string $name): ?self
+    {
+        return static::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first();
+    }
+
+    /**
+     * Laravel calls this for implicit route-model-binding — every
+     * {module}-typed route parameter (nexus.module.action, .import, .export,
+     * ...) goes through here, not through resolveRouteBinding()'s default
+     * exact-match `where($field, $value)`. Only the plain {module} case
+     * (Nodex\Nexus\Models\Module type-hint, no explicit :column suffix) is
+     * overridden — {module:id} or similar stays exact-match, same as core.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        if ($field !== null) {
+            return parent::resolveRouteBinding($value, $field);
+        }
+
+        return static::findByName($value);
+    }
+
 }

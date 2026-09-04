@@ -673,7 +673,7 @@ class ModuleForm extends Component
 
     private function resolveModule(): Module
     {
-        return $this->moduleCache ??= Module::where('name', $this->moduleName)->firstOrFail();
+        return $this->moduleCache ??= Module::findByName($this->moduleName) ?? throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())->setModel(Module::class);
     }
 
     private function resolveModuleConfig(): DefaultModuleConfigurationDto

@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Nexus\Plugins\{{name}};
+
+use Nodex\Nexus\Attributes\Action;
+use Nodex\Nexus\Attributes\Filter;
+use Nodex\Nexus\Attributes\TargetModule;
+use Nodex\Nexus\Services\FieldTypeRegistry;
+
+/**
+ * #[TargetModule] makes handle() run every time {{targetModule}}'s module
+ * config is built (see Services/ModuleManager.php's resolveModuleConfig(),
+ * which calls PluginManager::apply()) — mutate $configuration's public
+ * properties (table, form, menu, permissions, sections, ...; see
+ * Dto/ModuleDtos/DefaultModuleConfigurationDto) to add/change columns,
+ * actions, menu entries, and so on, without editing {{targetModule}}'s own
+ * model class.
+ *
+ * #[Filter]/#[Action] wire a method to a named hook (see
+ * Services/HookManager.php) — remove the one(s) below you don't need, or
+ * add more. Every hook actually called anywhere in the package today:
+ *   nexus_filter('nexus.validation.rules', $rules, $moduleConfig, $action)
+ *   nexus_action('nexus.field_types.register', $fieldTypeRegistry)
+ *   nexus_filter("widget.data.{$key}", $raw, $context)
+ *
+ * register()/boot() run once, during Laravel's own register()/boot() phase
+ * (PluginManager::registerAll()/bootAll()) — delete either method if you
+ * don't need it; PluginManager only calls it when it exists.
+ *
+ * This plugin is discovered automatically from its location under
+ * app/Nexus/Plugins/{{name}}/ — no manual registration needed. To disable
+ * it without deleting the file, add its class name to
+ * config('nexus.plugins.disabled').
+ */
+#[TargetModule('{{targetModule}}')]
+class {{name}}Plugin
+{
+    public function register(): void
+    {
+    }
+
+    public function boot(): void
+    {
+    }
+
+    public function handle(object $configuration): void
+    {
+    }
+
+    #[Filter(hook: 'nexus.validation.rules', priority: 10)]
+    public function extendValidationRules(array $rules, object $moduleConfig, string $action): array
+    {
+        return $rules;
+    }
+
+    #[Action(hook: 'nexus.field_types.register', priority: 10)]
+    public function registerFieldTypes(FieldTypeRegistry $registry): void
+    {
+    }
+}

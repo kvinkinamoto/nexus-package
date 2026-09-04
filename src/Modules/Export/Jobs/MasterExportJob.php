@@ -43,7 +43,7 @@ class MasterExportJob implements ShouldQueue
     {
         $this->putProgress(0, 0, 'processing');
 
-        $module = Module::where('name', $this->moduleName)->first();
+        $module = Module::findByName($this->moduleName);
 
         if (! $module) {
             $this->putProgress(0, 0, 'failed');

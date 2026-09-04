@@ -2,60 +2,69 @@
 
 namespace App\Nexus\Widgets\{{name}};
 
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
+use Nodex\Nexus\Attributes\Widget;
+use Nodex\Nexus\Contracts\Widgets\RendersHtml;
+use Nodex\Nexus\Contracts\Widgets\WidgetInterface;
+use Nodex\Nexus\Dto\Widgets\WidgetContext;
+use Nodex\Nexus\Enums\WidgetSurface;
 
 /**
- * Self-contained widget — not wired into a shared widget contract yet.
- * Once the Nexus widget system lands, re-implement this against
- * Nodex\Nexus\Contracts\Widgets\WidgetInterface instead.
+ * Auto-discovered from this file's location — app/Nexus/Widgets/{{name}}/{{name}}.php,
+ * matching the same folder-per-widget convention as this file's own path —
+ * no manual registration needed. Add '{{lowerName}}' to
+ * config('nexus.dashboard.default') to show it on every fresh admin
+ * dashboard, or leave it out and let users add it themselves through the
+ * dashboard's "Customize" picker.
+ *
+ * implements RendersHtml (real, working Blade output) here as the default;
+ * implement Nodex\Nexus\Contracts\Widgets\ProvidesMetric instead for a
+ * single-number stat card with no view of your own — see
+ * templates/widgets/metric_card.blade.php for the built-in fallback that
+ * renders for you in that case, and App\Nexus\Widgets\UsersCount for a
+ * real example. A widget may implement both.
  */
-class {{name}}
+#[Widget(
+    name: '{{lowerName}}',
+    label: '{{humanName}}',
+    surfaces: [WidgetSurface::Admin],
+    icon: 'solar:widget-bold',
+    group: 'general',
+)]
+class {{name}} implements WidgetInterface, RendersHtml
 {
-    public static function getName(): string
+    public function getData(array $config, WidgetContext $context): array
     {
-        return '{{humanName}}';
+        return [];
     }
 
-    public static function getConfigFields(): array
+    public static function configFields(): array
     {
         return [];
     }
 
     /**
-     * @return array<string, string> Blade view identifier => display name,
-     *   discovered from this widget's own resources/views/ directory.
+     * @return array<string, string> Blade view identifier => display name
      */
-    public function getAvailableViews(): array
+    public function availableViews(): array
     {
-        $viewsPath = __DIR__ . '/resources/views';
-        $namespace = 'widget-' . Str::kebab(str_replace('Widget', '', class_basename(static::class)));
-
-        $views = [];
-        if (File::isDirectory($viewsPath)) {
-            foreach (File::files($viewsPath) as $file) {
-                $viewName = str_replace('.blade.php', '', $file->getFilename());
-                $views["{$namespace}::{$viewName}"] = $viewName;
-            }
-        }
-
-        return $views;
+        return ['widgets.{{lowerName}}' => 'Default'];
     }
 
-    public function getData(array $config = []): array
+    public function viewFor(?string $name): ?string
     {
-        return ['config' => $config];
+        $views = $this->availableViews();
+
+        return $name && isset($views[$name]) ? $name : array_key_first($views);
     }
 
-    public function render(array $config = [], ?string $viewName = null): string
+    public function render(array $config, WidgetContext $context): string
     {
-        $views = $this->getAvailableViews();
-        $view = $viewName ?? array_key_first($views);
+        $view = $this->viewFor($context->params['view'] ?? null);
 
-        if (!$view || !view()->exists($view)) {
+        if (! $view || ! view()->exists($view)) {
             return '';
         }
 
-        return view($view, $this->getData($config))->render();
+        return view($view, $this->getData($config, $context))->render();
     }
 }

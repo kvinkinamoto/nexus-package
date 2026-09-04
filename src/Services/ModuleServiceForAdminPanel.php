@@ -4,6 +4,7 @@ namespace Nodex\Nexus\Services;
 
 
 use Nodex\Nexus\Enums\AdminPanelPermissionEnum;
+use Nodex\Nexus\Events\SidebarMenuBuilding;
 
 class ModuleServiceForAdminPanel
 {
@@ -40,6 +41,12 @@ class ModuleServiceForAdminPanel
 
             $menu[] = $item;
         }
-        return $menu;
+
+        // Lets a plugin append an entirely new top-level menu entry (not
+        // tied to any single module's own #[Module] config) or re-order/
+        // drop what's already here.
+        event(new SidebarMenuBuilding($menu));
+
+        return nexus_filter('nexus.menu.sidebar', $menu);
     }
 }

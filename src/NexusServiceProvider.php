@@ -201,7 +201,10 @@ class NexusServiceProvider extends ServiceProvider
         // Third field-type registration point (see Services/FieldTypeRegistry.php
         // docblock): plugins hook this action to register/override field types
         // imperatively, after every module's own FieldTypes/ directory is loaded.
-        nexus_action('nexus.field_types.register', $this->app->make(FieldTypeRegistry::class));
+        // FieldTypesRegistering fires first — same registry, no plugin class needed.
+        $fieldTypeRegistry = $this->app->make(FieldTypeRegistry::class);
+        event(new \Nodex\Nexus\Events\FieldTypesRegistering($fieldTypeRegistry));
+        nexus_action('nexus.field_types.register', $fieldTypeRegistry);
     }
 
     /**
@@ -690,8 +693,8 @@ class NexusServiceProvider extends ServiceProvider
     }
 
     /**
-     * Guaranteed call site for nexus_filter('nexus.validation.rules', ...) —
-     * hooks Illuminate\Contracts\Validation\Factory::resolver() (the same
+     * Guaranteed call site for GatheringValidationRules + nexus_filter(
+     * 'nexus.validation.rules', ...) — hooks Illuminate\Contracts\Validation\Factory::resolver() (the same
      * "runs no matter what the resolved class looks like" pattern Laravel's
      * own FormRequestServiceProvider uses for validateResolved(), via
      * Container::resolving()) rather than any method on NexusFormRequest.
@@ -721,6 +724,7 @@ class NexusServiceProvider extends ServiceProvider
                     $moduleConfig = \Nodex\Nexus\Services\ModuleManager::getModuleConfig($module->name);
                     $action = (string) (request()->route('action') ?? '');
 
+                    event(new \Nodex\Nexus\Events\GatheringValidationRules($moduleConfig, $rules, $action));
                     $rules = nexus_filter('nexus.validation.rules', $rules, $moduleConfig, $action);
                 }
 

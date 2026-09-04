@@ -70,17 +70,17 @@ class WidgetApiController extends Controller
         $data = $this->outputCache->remember(
             $entry['meta'],
             'api:show:' . md5(json_encode($context->params)) . ':' . ($context->locale ?? 'default') . ':' . (Auth::id() ?? 'guest'),
-            function () use ($entry, $context, $key) {
+            function () use ($entry, $context) {
                 /** @var WidgetInterface $instance */
                 $instance = app($entry['class']);
                 $config = [];
 
-                $raw = $instance instanceof ApiSerializable
+                return $instance instanceof ApiSerializable
                     ? $instance->toApiPayload($config, $context)
                     : $instance->getData($config, $context);
-
-                return nexus_filter("widget.data.{$key}", $raw, $context);
             },
+            'data',
+            $context,
         );
 
         return response()->json([

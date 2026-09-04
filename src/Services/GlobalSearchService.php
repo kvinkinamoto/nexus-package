@@ -4,6 +4,7 @@ namespace Nodex\Nexus\Services;
 
 use Illuminate\Database\Eloquent\Model;
 use Nodex\Nexus\Dto\ModuleDtos\DefaultModuleConfigurationDto;
+use Nodex\Nexus\Events\GlobalSearchCompleted;
 use Nodex\Nexus\Models\Module;
 
 /**
@@ -76,6 +77,11 @@ class GlobalSearchService
             ];
         }
 
-        return $results;
+        // Lets a plugin append its own result group (a source this loop has
+        // no way to know about — an external API, a non-module data source)
+        // or re-rank/trim what every module already contributed.
+        event(new GlobalSearchCompleted($results, $term));
+
+        return nexus_filter('nexus.search.results', $results, $term);
     }
 }

@@ -97,6 +97,8 @@ class AdminDashboardRenderer
 
                 return '';
             },
+            'html',
+            $context,
         );
     }
 

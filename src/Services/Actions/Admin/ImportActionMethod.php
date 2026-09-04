@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Nodex\Nexus\Dto\ModuleDtos\ColumnConfigDto;
 use Nodex\Nexus\Dto\ModuleDtos\DefaultModuleConfigurationDto;
+use Nodex\Nexus\Events\ImportRowBuilding;
 
 /**
  * v1-scoped CSV import: synchronous (no queue/progress-poll, unlike export —
@@ -84,6 +85,12 @@ class ImportActionMethod
                 $data[$fieldName] = $value;
             }
 
+            // Before the fillable intersect below, so a plugin can transform
+            // a value (reformat a date, map an external id, ...) but can
+            // never inject a field the model doesn't already allow mass
+            // assignment of.
+            event(new ImportRowBuilding($data, $moduleConfig));
+            $data = nexus_filter('nexus.import.row', $data, $moduleConfig);
             $data = array_intersect_key($data, $fillable);
 
             if (empty($data)) {

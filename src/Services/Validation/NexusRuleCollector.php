@@ -4,6 +4,7 @@ namespace Nodex\Nexus\Services\Validation;
 
 use Nodex\Nexus\Dto\ModuleDtos\DefaultModuleConfigurationDto;
 use Nodex\Nexus\Enums\RelationConfigParamsEnum;
+use Nodex\Nexus\Events\GatheringValidationRules;
 use Nodex\Nexus\Services\FieldTypeRegistry;
 use Nodex\Nexus\Services\FieldVisibilityEvaluator;
 
@@ -28,7 +29,10 @@ use Nodex\Nexus\Services\FieldVisibilityEvaluator;
  *   6. showWhen -> ['exclude'] when FieldVisibilityEvaluator says hidden
  *      (always wins — reapplied after step 7 so it can't resurrect
  *      validation for a field the form itself won't submit)
- *   7. nexus_filter('nexus.validation.rules', $rules, $moduleConfig, $action)
+ *   7. GatheringValidationRules event, then nexus_filter('nexus.validation.rules', $rules, $moduleConfig, $action)
+ *      — deliberately both, not one or the other: a module's own Listeners/
+ *      folder can react without a plugin class, a reusable cross-module
+ *      plugin uses the filter, same call site either way.
  *
  * A module WITH a dedicated Request gets this same filter applied a second,
  * independent way too — see NexusServiceProvider::registerValidationRulesFilter(),
@@ -128,6 +132,7 @@ class NexusRuleCollector
             }
         }
 
+        event(new GatheringValidationRules($moduleConfig, $rules, $action));
         $rules = nexus_filter('nexus.validation.rules', $rules, $moduleConfig, $action);
 
         foreach ($excludedKeys as $key) {

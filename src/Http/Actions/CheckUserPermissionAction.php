@@ -5,6 +5,7 @@ namespace Nodex\Nexus\Http\Actions;
 use Nodex\Nexus\Dto\ModuleDtos\DefaultModuleConfigurationDto;
 use Nodex\Nexus\Enums\AdminPanelPermissionEnum;
 use Nodex\Nexus\Enums\PermissionPlacesEnum;
+use Nodex\Nexus\Events\PermissionChecking;
 use Nodex\Nexus\Models\Module;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
@@ -30,6 +31,18 @@ class CheckUserPermissionAction
     }
 
     public static function handle(string $action, ?Module $module, string $place = PermissionPlacesEnum::ADMIN_PANEL->value): bool
+    {
+        // Lets a plugin override or extend a permission decision (e.g. grant
+        // a custom role blanket access, or deny an action this method would
+        // otherwise allow) without needing to seed/manage a real spatie
+        // permission for every such rule.
+        $result = self::resolve($action, $module, $place);
+        event(new PermissionChecking($action, $module, $place, $result));
+
+        return (bool) nexus_filter('nexus.permission.check', $result, $action, $module, $place);
+    }
+
+    private static function resolve(string $action, ?Module $module, string $place): bool
     {
         $user = auth()->user();
         if ($user && self::hasPermission($user, AdminPanelPermissionEnum::ALL->value)) {

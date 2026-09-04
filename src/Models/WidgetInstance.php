@@ -99,6 +99,8 @@ class WidgetInstance extends Model
             $entry['meta'],
             "front:{$this->id}:" . ($this->widget_view ?? 'default') . ':' . app()->getLocale(),
             fn () => app($class)->render((array) ($this->config ?? []), $context),
+            'html',
+            $context,
         );
     }
 }

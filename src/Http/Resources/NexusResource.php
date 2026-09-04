@@ -5,6 +5,7 @@ namespace Nodex\Nexus\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Nodex\Nexus\Attributes\Field as FieldAttr;
+use Nodex\Nexus\Events\ApiResourceBuilding;
 
 /**
  * Auto-generated API Resource based on #[Field(apiExpose: true)] attributes.
@@ -55,7 +56,13 @@ class NexusResource extends JsonResource
             $data['updated_at'] = $this->resource->updated_at;
         }
 
-        return $data;
+        // Lets a plugin add/hide/reshape a field in a module's generic API
+        // output without needing a custom Resource class of its own — a
+        // module that already has one (see resolveFor()) never reaches this
+        // class at all, so this only ever applies to the generic fallback.
+        event(new ApiResourceBuilding($this->resource, $data));
+
+        return nexus_filter('nexus.api.resource', $data, $this->resource);
     }
 
     /**

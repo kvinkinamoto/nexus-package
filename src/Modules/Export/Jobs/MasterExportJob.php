@@ -10,6 +10,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Nodex\Nexus\Dto\ModuleDtos\ColumnConfigDto;
+use Nodex\Nexus\Events\ExportRowBuilding;
 use Nodex\Nexus\Models\Module;
 use Nodex\Nexus\Services\TableBuilder;
 
@@ -73,10 +74,16 @@ class MasterExportJob implements ShouldQueue
         $processed = 0;
         $query->chunk($chunkSize, function ($rows) use ($stream, $columns, &$processed, $total) {
             foreach ($rows as $row) {
-                fputcsv($stream, array_map(
+                $line = array_map(
                     fn (ColumnConfigDto $column) => (string) ($row->{$column->fieldName ?? $column->name} ?? ''),
                     $columns,
-                ));
+                );
+
+                // Lets a plugin reformat a value (dates, lookups, computed
+                // columns) or redact one for export without a bespoke export
+                // pipeline per module.
+                event(new ExportRowBuilding($row, $line, $this->moduleName));
+                fputcsv($stream, nexus_filter('nexus.export.row', $line, $row, $this->moduleName));
                 $processed++;
             }
 

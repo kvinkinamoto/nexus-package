@@ -207,12 +207,30 @@ class ModuleTable extends Component
         event(new ModuleActionExecuted($module->name, $actionName, id: $id));
     }
 
+    /**
+     * Above this many selected rows, runGroupAction() dispatches
+     * Nodex\Nexus\Modules\BulkAction\Jobs\BulkActionJob (queued, with a
+     * polled progress bar) instead of running synchronously in the request —
+     * a handful of rows is instant either way and doesn't need the extra
+     * queue round-trip/polling UI, but hundreds of rows each firing their
+     * own before/after hooks and events genuinely can't finish inside one
+     * HTTP request. Not user-configurable (yet) — a fixed, conservative cutoff.
+     */
+    private const ASYNC_BULK_ACTION_THRESHOLD = 50;
+
     public function runGroupAction(string $actionName): void
     {
         $module = $this->resolveModule();
         abort_unless(ModuleManager::checkPermission($actionName, $module), 403);
 
         $moduleConfig = $module->config;
+
+        if (count($this->selected) > self::ASYNC_BULK_ACTION_THRESHOLD) {
+            $this->dispatchAsyncBulkAction($module, $actionName);
+
+            return;
+        }
+
         $request = $this->makeFormRequest(['items' => $this->selected]);
 
         $this->withRealRedirector(function () use ($actionName, $request, $moduleConfig) {
@@ -228,6 +246,51 @@ class ModuleTable extends Component
 
         event(new ModuleActionExecuted($module->name, $actionName, ids: $this->selected));
         $this->selected = [];
+    }
+
+    private function dispatchAsyncBulkAction(Module $module, string $actionName): void
+    {
+        $cacheKey = 'bulk_'.\Illuminate\Support\Str::random(10);
+        $jobClass = ModuleManager::nexus_module_class('BulkAction', 'Jobs\\BulkActionJob');
+
+        dispatch(new $jobClass($module->name, $actionName, $this->selected, $cacheKey, auth()->id()));
+
+        $this->dispatch('nexus-bulk-action-started', cacheKey: $cacheKey, moduleName: $module->name);
+        $this->selected = [];
+    }
+
+    /**
+     * Same filter/sort/lens state this component is already showing (not a
+     * fresh, independent read of the request) — "export" means "export the
+     * table as I currently have it filtered", so the job needs exactly what
+     * TableBuilder::build() would use to render the current page, minus
+     * pagination itself.
+     *
+     * Dispatches Nodex\Nexus\Modules\Export\Jobs\MasterExportJob (queued —
+     * QUEUE_CONNECTION must be a real driver with a worker running, not
+     * 'sync' pretending to be one, for the progress bar to mean anything)
+     * and hands the cache key to the browser via a dispatched event; the
+     * page's own JS polls nexus.module.export.progress and redirects to
+     * nexus.module.export.download once status is 'completed' — mirrors
+     * ImportActionMethod's existing synchronous JSON-response pattern for
+     * the small-file case, but export needs to survive a full table scan.
+     */
+    public function exportTable(): void
+    {
+        $module = $this->resolveModule();
+        abort_unless(ModuleManager::checkPermission('index', $module), 403);
+
+        $cacheKey = 'export_'.\Illuminate\Support\Str::random(10);
+        $jobClass = ModuleManager::nexus_module_class('Export', 'Jobs\\MasterExportJob');
+
+        dispatch(new $jobClass(
+            $module->name,
+            $cacheKey,
+            ['filter' => $this->filter, 'sort' => $this->sort, 'lens' => $this->lens],
+            auth()->id(),
+        ));
+
+        $this->dispatch('nexus-export-started', cacheKey: $cacheKey, moduleName: $module->name);
     }
 
     public function render()

@@ -25,18 +25,21 @@
   "minimum-stability": "stable",
   "prefer-stable": true,
   "require": {
+    "php": "^8.3",
     "ext-dom": "*",
+    "illuminate/support": "^13.0",
     "barryvdh/laravel-elfinder": "^0.6.0",
     "spatie/laravel-permission": "^8.3.0",
     "spatie/laravel-translatable": "^6.14.1",
     "kalnoy/nestedset": "^7.0.0",
     "livewire/livewire": "^3.6",
     "mcamara/laravel-localization": "^2.4.1",
-    "intervention/image": "3.11.6"
+    "intervention/image": "3.11.6",
+    "spatie/laravel-medialibrary": "^11.23"
   },
   "require-dev": {
-    "pestphp/pest": "^3.0",
-    "pestphp/pest-plugin-laravel": "^3.0"
+    "pestphp/pest": "^5.1",
+    "pestphp/pest-plugin-laravel": "^5.0"
   },
   "scripts": {
     "test": "pest"

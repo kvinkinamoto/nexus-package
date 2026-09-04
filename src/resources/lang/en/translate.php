@@ -118,7 +118,8 @@ return [
     'created' => 'Created',
     'updated' => 'Updated',
     'skipped' => 'Skipped',
-    
+    'save_first_for_gallery' => 'Save the record first to add gallery images.',
+
     'universal_filters' => 'Universal Filters',
     'active_filters' => 'active filters',
     'add_condition' => 'Add Condition',

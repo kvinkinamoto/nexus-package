@@ -15,7 +15,11 @@
                 <i class="{{ nexus_icon('search') }} pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                 <input type="text" id="nexusGlobalSearchInput" autocomplete="off"
                     placeholder="{{ __('nexus::translate.search') ?? 'Search...' }}"
-                    class="h-10 w-64 rounded-lg border border-gray-200 bg-transparent py-2 pl-9 pr-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 xl:w-80 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90">
+                    class="h-10 w-64 rounded-lg border border-gray-200 bg-transparent py-2 pl-9 pr-14 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 xl:w-80 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90">
+                <kbd id="nexusGlobalSearchShortcutHint"
+                    class="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded border border-gray-200 px-1.5 py-0.5 text-[11px] font-medium text-gray-400 md:inline-flex dark:border-gray-700 dark:text-gray-500">
+                    <span id="nexusGlobalSearchShortcutKey">Ctrl</span>K
+                </kbd>
                 <div id="nexusGlobalSearchResults"
                     class="absolute left-0 top-full z-40 mt-2 hidden max-h-80 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white p-2 shadow-theme-lg dark:border-gray-800 dark:bg-gray-900"></div>
             </form>
@@ -64,6 +68,37 @@
                     document.addEventListener('click', function (e) {
                         if (!input.contains(e.target) && !results.contains(e.target)) {
                             results.classList.add('hidden');
+                        }
+                    });
+
+                    input.addEventListener('keydown', function (e) {
+                        if (e.key === 'Escape') {
+                            results.classList.add('hidden');
+                            input.blur();
+                        }
+                    });
+
+                    // Cmd+K on Mac, Ctrl+K everywhere else — jumps to and
+                    // focuses global search from anywhere on the page, same
+                    // as Filament/Linear/GitHub's command-palette shortcut.
+                    // Global (not gated on current focus) is deliberate: the
+                    // whole point is "I don't need to click the search box
+                    // first". preventDefault() stops some browsers' own
+                    // Ctrl+K (focus address bar) from firing alongside it.
+                    const shortcutHint = document.getElementById('nexusGlobalSearchShortcutHint');
+                    const shortcutKeyLabel = document.getElementById('nexusGlobalSearchShortcutKey');
+                    if (shortcutHint) {
+                        shortcutHint.classList.remove('hidden');
+                        if (/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)) {
+                            shortcutKeyLabel.textContent = '⌘';
+                        }
+                    }
+
+                    document.addEventListener('keydown', function (e) {
+                        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                            e.preventDefault();
+                            input.focus();
+                            input.select();
                         }
                     });
                 })();

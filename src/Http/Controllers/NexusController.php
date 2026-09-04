@@ -542,6 +542,14 @@ class NexusController extends Controller implements HasMiddleware
 
     public function import(FormRequest $request, Module $module)
     {
+        // $this->moduleConfig is otherwise only populated by action() (see
+        // its own inline assignment above) — import() never went through
+        // that method, so this stayed null and ImportActionMethod::handle()
+        // threw a TypeError on every real call. Never caught until now
+        // because, before this route existed at all, nothing could reach
+        // this method to notice.
+        $this->moduleConfig = DefaultModuleConfigurationDto::fromArray($module->config);
+
         return ImportActionMethod::handle($request, $this->moduleConfig);
     }
 

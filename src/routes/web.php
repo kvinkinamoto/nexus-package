@@ -7,6 +7,10 @@ Route::middleware(config('nexus.admin_middleware'))->prefix(config('nexus.admin_
     Route::get('/', [NexusController::class, 'admin'])->name('nexus.admin');
 
     Route::post("/{module}/bulk/{action}", [NexusController::class, 'bulkAction'])->name("nexus.module.bulk");
+    Route::post("/{module}/import", [NexusController::class, 'import'])->name("nexus.module.import");
+    Route::post("/{module}/export", [NexusController::class, 'export'])->name("nexus.module.export");
+    Route::get("/{module}/export/progress", [NexusController::class, 'progressExport'])->name("nexus.module.export.progress");
+    Route::get("/{module}/export/download", [NexusController::class, 'downloadExport'])->name("nexus.module.export.download");
     Route::post("/preferences/table-columns/{module}", [NexusController::class, 'saveTableColumns'])->name("nexus.preferences.table-columns");
     Route::post("/preferences/filters/{module}", [NexusController::class, 'saveDynamicFilters'])->name("nexus.preferences.filters");
     Route::post("/preferences/dashboard-layout", [NexusController::class, 'saveDashboardLayout'])->name("nexus.preferences.dashboard-layout");

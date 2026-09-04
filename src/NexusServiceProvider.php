@@ -82,6 +82,19 @@ class NexusServiceProvider extends ServiceProvider
         $this->app->singleton(TemplateTypeResolver::class);
         $this->app->singleton(NexusRuleCollector::class);
 
+        // Plain bind(), not singleton() — this is the interface
+        // #[Field(type: 'gallery')] and Livewire\ModuleForm's gallery
+        // methods depend on. An app can override it with `$this->app->bind(
+        // \Nodex\Nexus\Contracts\MediaLibrary\MediaLibraryInterface::class,
+        // YourOwnService::class)` in its own service provider — that
+        // provider registers after this one, so the override simply wins,
+        // no Nexus-specific extension point needed. See
+        // MediaLibraryInterface's docblock and config('nexus.media_library.enabled').
+        $this->app->bind(
+            \Nodex\Nexus\Contracts\MediaLibrary\MediaLibraryInterface::class,
+            \Nodex\Nexus\Services\MediaLibrary\SpatieMediaLibraryService::class,
+        );
+
         if (class_exists(FakerGenerator::class)) {
             $this->app->singleton(FakerGenerator::class, function ()
             {

@@ -89,6 +89,7 @@ class AttributeSchemaReader
         $this->guardAgainstUnshadowedProperties($reflection, $modelClass);
         $this->processPropertiesAndMethods($reflection, $config);
         $this->sortFieldsAndColumns($config);
+        $this->guardAgainstMisconfiguration($config, $modelClass);
 
         return $config;
     }
@@ -457,6 +458,47 @@ class AttributeSchemaReader
                     HasAttributeSchemaProperties::class,
                     $property->getName(),
                     class_basename(HasAttributeSchemaProperties::class),
+                ));
+            }
+        }
+    }
+
+    /**
+     * Structural impossibilities nothing downstream recovers from — same
+     * tier as guardAgainstUnshadowedProperties() above, so it follows the
+     * same policy: always throw, no environment gate. This runs on every
+     * read() call (module install, manifest caching, and — via
+     * ModuleManager's per-request DTO cache — every request that renders
+     * the module), so a misconfigured module fails loudly wherever it's
+     * actually hit instead of quietly producing a broken DTO that only
+     * surfaces as a confusing failure several layers downstream (a dangling
+     * relation reference in FormBuilder, a missing class in
+     * GetModuleRequestAction, ...).
+     *
+     * Deliberately does NOT check a #[Field(section:)] against declared
+     * #[Section] names — an unmatched section is a supported fallback
+     * (section_cards.blade.php's trailing "unsectioned" card), not a bug.
+     */
+    private function guardAgainstMisconfiguration(DefaultModuleConfigurationDto $config, string $modelClass): void
+    {
+        foreach ($config->form->fields as $name => $field) {
+            if ($field->type === 'relation' && ! isset($config->relations->is_available[$name])) {
+                throw new \Nodex\Nexus\Exceptions\ModuleMisconfiguredException(sprintf(
+                    "%s::\$%s is #[Field(type: 'relation')] but has no matching #[Relation] attribute — ".
+                    "add #[Relation(type: 'belongsTo'|'belongsToMany'|'hasOne'|'hasMany', ...)] on the same property/method.",
+                    $modelClass,
+                    $name,
+                ));
+            }
+        }
+
+        foreach ($config->methodRequests as $action => $requestClass) {
+            if (! class_exists($requestClass)) {
+                throw new \Nodex\Nexus\Exceptions\ModuleMisconfiguredException(sprintf(
+                    "%s declares #[Requests(%s: %s::class)], but that class doesn't exist.",
+                    $modelClass,
+                    $action,
+                    $requestClass,
                 ));
             }
         }

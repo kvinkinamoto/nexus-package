@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\MissingAttributeException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Nodex\Nexus\Dto\ModuleDtos\DefaultModuleConfigurationDto;
 use Nodex\Nexus\Dto\ModuleDtos\FieldConfigDto;
 use Nodex\Nexus\Enums\RelationConfigParamsEnum;
@@ -13,6 +14,7 @@ use Nodex\Nexus\Events\AdminFormBuilding;
 use Nodex\Nexus\Events\ModuleActionExecuted;
 use Nodex\Nexus\Http\Actions\GetModuleRequestAction;
 use Nodex\Nexus\Livewire\Concerns\CallsLegacyActionMethods;
+use Nodex\Nexus\Livewire\Concerns\ManagesGalleryFields;
 use Nodex\Nexus\Livewire\Concerns\ManagesMultiFileFields;
 use Nodex\Nexus\Livewire\Concerns\ManagesRelationPicker;
 use Nodex\Nexus\Livewire\Concerns\ManagesRepeaterFields;
@@ -49,10 +51,12 @@ use Nodex\Nexus\Services\Validation\NexusRuleCollector;
 class ModuleForm extends Component
 {
     use CallsLegacyActionMethods;
+    use ManagesGalleryFields;
     use ManagesMultiFileFields;
     use ManagesRelationPicker;
     use ManagesRepeaterFields;
     use ManagesWizardSteps;
+    use WithFileUploads;
 
     public string $moduleName;
 

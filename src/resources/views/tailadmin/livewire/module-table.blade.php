@@ -48,6 +48,22 @@
                 @endforeach
             </div>
             <div class="flex flex-wrap items-center justify-end gap-2">
+                @if(!empty($module->config->table->imports))
+                    <span id="nexusImportStatus-{{ $module->name }}" class="text-xs text-gray-400"></span>
+                    <input type="file" id="nexusImportInput-{{ $module->name }}" accept=".csv,text/csv" class="hidden">
+                    <button type="button" onclick="document.getElementById('nexusImportInput-{{ $module->name }}').click()"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/5">
+                        <i class="bx bx-upload"></i>
+                        @lang('nexus::translate.Import')
+                    </button>
+                @endif
+                @if(!empty($module->config->table->exports))
+                    <button type="button" wire:click="exportTable" wire:loading.attr="disabled" wire:target="exportTable"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/5">
+                        <i class="bx bx-download"></i>
+                        <span id="nexusExportStatus-{{ $module->name }}">@lang('nexus::translate.Export')</span>
+                    </button>
+                @endif
                 @foreach($module->config->table->mainActions ?? [] as $mainAction)
                     @if($mainAction->isActive)
                         <a href="{{ route('nexus.module.action', ['module' => $module->name, 'action' => $mainAction->name]) }}"
@@ -58,6 +74,14 @@
                         </a>
                     @endif
                 @endforeach
+                {{--
+                    Not inside the @if($selected) block below on purpose —
+                    ModuleTable::dispatchAsyncBulkAction() clears $selected
+                    immediately after dispatching the job (nothing left to
+                    act on), so a status shown only while rows are selected
+                    would disappear right as the job starts.
+                --}}
+                <span id="nexusBulkStatus-{{ $module->name }}" class="text-xs text-gray-400"></span>
                 @if(!empty($selected) && !empty($module->config->table->actionGroup))
                     @foreach($module->config->table->actionGroup as $groupAction)
                         @if($groupAction->isActive)
@@ -186,8 +210,23 @@
                                                     <i class="{{ nexus_icon($rowAction->icon, $module->name, 'default_icon') }}"></i>
                                                 </button>
                                             @else
+                                                {{--
+                                                    Any #[TableAction] not in the small $isMutatingAction
+                                                    whitelist above (edit/view/a custom action name) has no
+                                                    ModuleTable::runAction() handler to call via Livewire, so
+                                                    it stays a plain full-page link to NexusController::action()
+                                                    — but that meant $rowAction->confirm was silently ignored
+                                                    here even though it's real and honored on the Livewire
+                                                    branch (wire:confirm). sendFormConfirm() (defined in
+                                                    pages/indexLivewire.blade.php, this table's page wrapper)
+                                                    is the same plain-onclick-confirm idiom already used for
+                                                    #[Column(action:)] row buttons just above.
+                                                --}}
                                                 <a href="{{ route('nexus.module.action', [$module->name, $rowAction->name, 'id' => $item->id]) }}"
-                                                    title="{{ $rowAction->label }}" class="{{ $rowBtnClass }}">
+                                                    title="{{ $rowAction->label }}" class="{{ $rowBtnClass }}"
+                                                    @if($rowAction->confirm ?? false)
+                                                        onclick="return sendFormConfirm(true, '{{ $rowAction->name }}', @js(__('nexus::translate.are_u_sure')))"
+                                                    @endif>
                                                     <i class="{{ nexus_icon($rowAction->icon, $module->name, 'default_icon') }}"></i>
                                                 </a>
                                             @endif

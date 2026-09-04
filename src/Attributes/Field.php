@@ -27,9 +27,12 @@ class Field
         /**
          * Field type. Built-in types:
          *   'string', 'text', 'number', 'email', 'password', 'boolean',
-         *   'image', 'images', 'video', 'videos',
-         *   'relation', 'enum', 'date', 'datetime', 'select',
+         *   'image', 'images', 'video', 'videos', 'gallery', 'file',
+         *   'relation', 'relationManager', 'enum', 'select', 'radio',
+         *   'date', 'datetime', 'time', 'json', 'repeater',
          *   'editor' (alias for text+isEditor=true),
+         *   'location', 'multiple_string', 'slug', 'color', 'icon',
+         *   'markdown', 'range', 'currency', 'rating', 'url', 'phone',
          *   'view' (inject custom Blade template — requires $view parameter)
          */
         public readonly string $type,
@@ -133,5 +136,13 @@ class Field
          * sense as form inputs but not as a displayed value (e.g. password).
          */
         public readonly bool $showInInfolist = true,
+
+        /**
+         * For type='slug': the name of another field on this same form whose
+         * current value the "generate" button (see livewire/field_types/slug.blade.php)
+         * slugifies into this one, via Livewire\ModuleForm::generateSlug().
+         * Example: #[Field(type: 'slug', slugSource: 'title')]
+         */
+        public readonly ?string $slugSource = null,
     ) {}
 }

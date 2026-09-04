@@ -671,6 +671,17 @@ class NexusServiceProvider extends ServiceProvider
         $registry->registerDefaultRules('video', ['string']);
         $registry->registerDefaultRules('phone', ['string']);
         $registry->registerDefaultRules('url', ['url']);
+        $registry->registerDefaultRules('time', ['date_format:H:i']);
+        $registry->registerDefaultRules('location', ['string']);
+        $registry->registerDefaultRules('multiple_string', ['array']);
+        $registry->registerDefaultRules('slug', ['string', 'alpha_dash']);
+        $registry->registerDefaultRules('color', ['string', 'regex:/^#[0-9A-Fa-f]{6}$/']);
+        $registry->registerDefaultRules('icon', ['string']);
+        $registry->registerDefaultRules('file', ['string']);
+        $registry->registerDefaultRules('markdown', ['string']);
+        $registry->registerDefaultRules('range', ['numeric']);
+        $registry->registerDefaultRules('currency', ['numeric']);
+        $registry->registerDefaultRules('rating', ['integer', 'min:0']);
     }
 
     /**

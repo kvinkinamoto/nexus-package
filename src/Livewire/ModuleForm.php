@@ -374,6 +374,24 @@ class ModuleForm extends Component
     }
 
     /**
+     * Backs #[Field(type: 'slug', slugSource: '...')]'s "generate" button
+     * (see livewire/field_types/slug.blade.php) — server-side so every
+     * module gets Str::slug()'s exact behavior instead of a JS
+     * reimplementation that could drift from it.
+     */
+    public function generateSlug(string $fieldName): void
+    {
+        $field = $this->resolveModuleConfig()->form->fields[$fieldName] ?? null;
+        $source = $field->slugSource ?? null;
+
+        if (! $source) {
+            return;
+        }
+
+        $this->data[$fieldName] = \Illuminate\Support\Str::slug((string) ($this->data[$source] ?? ''));
+    }
+
+    /**
      * Widget-specific, not a generic mechanism: Livewire's magic
      * updated{Path}() hook for data.widget_key. Mirrors the legacy
      * widgetConfigFields.blade.php's inline keySelect 'change' listener,

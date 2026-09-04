@@ -562,6 +562,12 @@ class AttributeSchemaReader
             showInInfolist: $fieldMeta->showInInfolist,
         );
 
+        // FieldConfigDto extends \stdClass specifically so a rarely-used
+        // property like this doesn't need its own constructor parameter —
+        // see the class's own docblock on the customFiledType/defaultValue
+        // aliasing it already relies on for the same reason.
+        $dto->slugSource = $fieldMeta->slugSource;
+
         // Handle 'view' type: store the blade path in userType
         if ($fieldMeta->type === 'view' && $fieldMeta->view) {
             $dto->userType = $fieldMeta->view;

@@ -3,6 +3,7 @@
 namespace Nodex\Nexus\Notifications;
 
 use Illuminate\Notifications\Notification;
+use Nodex\Nexus\Events\NotificationDataBuilding;
 
 /**
  * The first real dispatcher for the admin notification bell — see
@@ -23,9 +24,13 @@ class ModuleInstalledNotification extends Notification
 
     public function toArray($notifiable): array
     {
-        return [
+        $data = [
             'title' => __('nexus::translate.notifications.module_installed_title'),
             'body' => __('nexus::translate.notifications.module_installed_body', ['module' => $this->moduleName]),
         ];
+
+        event(new NotificationDataBuilding($this, $notifiable, $data));
+
+        return nexus_filter('nexus.notification.data', $data, $this, $notifiable);
     }
 }

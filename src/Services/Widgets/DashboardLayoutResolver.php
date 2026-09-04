@@ -4,6 +4,7 @@ namespace Nodex\Nexus\Services\Widgets;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\DB;
+use Nodex\Nexus\Events\DashboardLayoutResolving;
 
 /**
  * Resolves the ordered list of widget keys for a user's admin dashboard.
@@ -24,25 +25,38 @@ class DashboardLayoutResolver
      */
     public function resolveFor(?Authenticatable $user): array
     {
+        $layout = null;
+
         if ($user) {
             $ownLayout = DB::table('nexus_dashboard_layouts')
                 ->where('user_id', $user->getAuthIdentifier())
                 ->value('layout');
 
             if ($ownLayout !== null) {
-                return json_decode($ownLayout, true) ?? [];
+                $layout = json_decode($ownLayout, true) ?? [];
             }
         }
 
-        $defaultLayout = DB::table('nexus_dashboard_layouts')
-            ->where('is_default', true)
-            ->value('layout');
+        if ($layout === null) {
+            $defaultLayout = DB::table('nexus_dashboard_layouts')
+                ->where('is_default', true)
+                ->value('layout');
 
-        if ($defaultLayout !== null) {
-            return json_decode($defaultLayout, true) ?? [];
+            if ($defaultLayout !== null) {
+                $layout = json_decode($defaultLayout, true) ?? [];
+            }
         }
 
-        return config('nexus.dashboard.default', []);
+        if ($layout === null) {
+            $layout = config('nexus.dashboard.default', []);
+        }
+
+        // Lets a plugin override the resolved default entirely (e.g. a
+        // role-scoped default — see this class's own docblock on why that
+        // tier doesn't exist as a first-class waterfall step yet).
+        event(new DashboardLayoutResolving($user, $layout));
+
+        return nexus_filter('nexus.dashboard.layout', $layout, $user);
     }
 
     public function saveFor(Authenticatable $user, array $widgetKeys): void

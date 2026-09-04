@@ -5,6 +5,7 @@ namespace Nodex\Nexus\Services;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Nodex\Nexus\Events\ModuleDiscoveryCompleted;
 use Nodex\Nexus\Models\Module;
 
 class ModuleRegistry
@@ -35,6 +36,12 @@ class ModuleRegistry
 
         // Scan user modules
         $this->scanDirectory($this->pathManager->getUserModulesRoot(), true, $modules);
+
+        // Lets a plugin register a module that isn't a real directory under
+        // either root (a package shipping one purely in PHP), or hide one
+        // that is.
+        event(new ModuleDiscoveryCompleted($modules));
+        $modules = nexus_filter('nexus.module.discovery', $modules);
 
         $this->modules = $modules;
         return $modules;

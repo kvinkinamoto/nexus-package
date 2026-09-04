@@ -7,6 +7,8 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Nodex\Nexus\Contracts\MediaLibrary\MediaLibraryInterface;
 use Nodex\Nexus\Dto\MediaLibrary\MediaItemDto;
+use Nodex\Nexus\Events\MediaAttached;
+use Nodex\Nexus\Events\MediaAttaching;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -20,6 +22,11 @@ class SpatieMediaLibraryService implements MediaLibraryInterface
     public function attach(Model $model, UploadedFile $file, string $collection = 'default'): MediaItemDto
     {
         $this->assertHasMedia($model);
+
+        // Earliest point to reject/transform an upload — a listener rejects
+        // by throwing, same as every other *ing hook in this package.
+        event(new MediaAttaching($model, $file, $collection));
+        nexus_action('nexus.media.attaching', $model, $file, $collection);
 
         // Dedup within the same collection: re-uploading a file whose
         // content already matches one already attached returns the
@@ -45,7 +52,11 @@ class SpatieMediaLibraryService implements MediaLibraryInterface
         // this object's lifetime.
         $model->unsetRelation('media');
 
-        return $this->toDto($media);
+        $item = $this->toDto($media);
+        event(new MediaAttached($model, $item, $collection));
+        nexus_action('nexus.media.attached', $model, $item, $collection);
+
+        return $item;
     }
 
     public function detach(Model $model, string $mediaId, string $collection = 'default'): void

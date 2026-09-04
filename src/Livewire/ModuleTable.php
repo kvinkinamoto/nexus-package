@@ -4,6 +4,7 @@ namespace Nodex\Nexus\Livewire;
 
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Nodex\Nexus\Events\BulkActionExecuting;
 use Nodex\Nexus\Events\ModuleActionExecuted;
 use Nodex\Nexus\Livewire\Concerns\CallsLegacyActionMethods;
 use Nodex\Nexus\Models\Module;
@@ -226,6 +227,12 @@ class ModuleTable extends Component
         abort_unless(ModuleManager::checkPermission($actionName, $module), 403);
 
         $moduleConfig = $module->config;
+
+        // Fires before the sync/async threshold split below, so it applies
+        // uniformly either way — a listener can drop specific ids from the
+        // batch (partial veto) or throw to abort the whole action.
+        event(new BulkActionExecuting($module->name, $actionName, $this->selected));
+        $this->selected = nexus_filter('nexus.bulk_action.executing', $this->selected, $module->name, $actionName);
 
         if (count($this->selected) > self::ASYNC_BULK_ACTION_THRESHOLD) {
             $this->dispatchAsyncBulkAction($module, $actionName);

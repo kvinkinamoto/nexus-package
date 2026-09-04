@@ -70,7 +70,6 @@ class DeleteActionMethod
             }
 
             return redirect()->route("nexus.module.action", $routeParameters)
-                ->with('success', 'Record delete successfully.')
                 ->with('alert_message', __('nexus::translate.alert.delete_success'))->with('alert_type', 'success');
         });
     }

@@ -9,6 +9,20 @@
 --}}
 <div>
     <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.02]">
+        @error('form')
+            {{--
+                Same 'error-*' red the per-field @error() partials already use
+                (see .ai/rules for why it must stay full literal class names).
+                A save() failure that isn't a validation error (e.g. a DB or
+                hook exception) has nowhere else to surface in embedded/
+                slide-over mode — no page navigation to carry a session-flash
+                toast through — so it's reported here via $this->addError('form', ...)
+                instead, using the exact same visual language as everything else.
+            --}}
+            <div class="mb-4 rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-700 dark:border-error-800 dark:bg-error-500/10 dark:text-error-400">
+                {{ $message }}
+            </div>
+        @enderror
         <form wire:submit="save">
             @if($moduleConfig->wizard && !empty($moduleConfig->tabs))
                 @include('nexus::' . config('nexus.template') . '.livewire.wizard_progress')

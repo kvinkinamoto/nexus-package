@@ -555,13 +555,30 @@ class ModuleForm extends Component
         $input = $this->buildLegacyInput($moduleConfig);
         $request = $this->makeFormRequest($input, $this->id);
 
-        $this->withRealRedirector(function () use ($request, $moduleConfig) {
-            if ($this->id) {
-                UpdateActionMethod::handle($request, $moduleConfig, $this->id);
-            } else {
-                StoreActionMethod::handle($request, $moduleConfig, $this->id);
+        try {
+            $this->withRealRedirector(function () use ($request, $moduleConfig) {
+                if ($this->id) {
+                    UpdateActionMethod::handle($request, $moduleConfig, $this->id);
+                } else {
+                    StoreActionMethod::handle($request, $moduleConfig, $this->id);
+                }
+            });
+        } catch (\Throwable $exception) {
+            // Same app.debug gate as NexusController::action() — rethrow in
+            // local/dev so a real bug (or assertRelationCoverage()'s
+            // dev-only guard) still surfaces normally instead of being
+            // swallowed into this banner. In production, the alternative to
+            // catching here was nothing: no try/catch existed at all, so a
+            // save failure just crashed with no user-visible feedback.
+            if (config('app.debug')) {
+                throw $exception;
             }
-        });
+
+            report($exception);
+            $this->addError('form', __('nexus::translate.alert.action_error'));
+
+            return;
+        }
 
         event(new ModuleActionExecuted($moduleConfig->name, $this->id ? 'update' : 'store', id: $this->id));
 

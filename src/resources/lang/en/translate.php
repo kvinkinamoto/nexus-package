@@ -105,6 +105,7 @@ return [
         'bulk_unpublish_success' => 'Records unpublished successfully',
         'duplicate_success' => 'Record duplicated successfully',
         'duplicate_group_success' => 'Records duplicated successfully',
+        'action_error' => 'Something went wrong while processing this action. Please try again.',
     ],
     'columns' => 'Columns',
     'Export' => 'Export',

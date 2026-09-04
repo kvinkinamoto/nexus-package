@@ -1,45 +1,20 @@
 {{--
-    Livewire Етап 6 — backed-enum select, mirrors templates/field_types/enum.blade.php's
-    option list ($field->enum::cases(), labeled via the same 'nexus::translate.{value}'
+    Backed-enum select, mirrors templates/field_types/enum.blade.php's option
+    list ($field->enum::cases(), labeled via the same 'nexus::translate.{value}'
     key, falling back to the literal value when untranslated). Not translatable —
     ModuleForm::mount() reads a scalar (enum->value) into data.{name} directly.
+    Not nullable — a backed enum field always carries a default value.
+
+    Rendered by the shared _native_select partial (see its own docblock for
+    why — this used to be a Choices.js-wrapped <select>).
 --}}
 @php
-    $errorKey = "data.{$field->name}";
     $moduleName = $module->name ?? 'nexus';
-    $cases = $field->enum::cases();
-    $selectClass = 'h-11 w-full appearance-none rounded-lg border bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-900 dark:text-white/90 ' . ($errors->has($errorKey) ? 'border-error-500 focus:ring-3 focus:ring-error-500/10' : 'border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700');
+    $options = collect($field->enum::cases())
+        ->map(fn ($case) => [
+            'value' => $case->value,
+            'label' => method_exists($case, 'label') ? $case->label() : __($moduleName . '::translate.' . $case->value),
+        ])
+        ->all();
 @endphp
-<div class="mb-4">
-    @include('nexus::' . config('nexus.template') . '.livewire.field_types._label', ['field' => $field])
-
-    <select id="field-{{ $field->name }}" wire:model="data.{{ $field->name }}"
-        @disabled($field->isDisabledForAction($action ?? null))
-        data-choices data-choices-sorting-false
-        class="{{ $selectClass }}">
-        @foreach($cases as $case)
-            {{--
-                @selected() so Choices.js's re-init on every Livewire morph
-                (app.js's 'morphed' hook clones the <select>, which only
-                reflects the `selected` HTML attribute, not a live DOM
-                .value set post-clone) shows the current pick instead of
-                reverting to the placeholder after every selection.
-            --}}
-            <option value="{{ $case->value }}" @selected(($this->data[$field->name] ?? null) === $case->value)>
-                {{-- Prefer the enum's own label() when it declares one (its
-                     translation key shape is then the enum's business, not
-                     this generic partial's) — falls back to the flat
-                     '{module}::translate.{value}' convention otherwise. --}}
-                @if(method_exists($case, 'label'))
-                    {{ $case->label() }}
-                @else
-                    @lang($moduleName . '::translate.' . $case->value)
-                @endif
-            </option>
-        @endforeach
-    </select>
-
-    @error($errorKey)
-        <p class="mt-1.5 text-xs text-error-500">{{ $message }}</p>
-    @enderror
-</div>
+@include('nexus::' . config('nexus.template') . '.livewire.field_types._native_select', ['field' => $field, 'options' => $options, 'nullable' => false])

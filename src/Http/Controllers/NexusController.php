@@ -302,15 +302,46 @@ class NexusController extends Controller implements HasMiddleware
             return response("Action {$action} not implemented", 405);
         }
 
-        $response = isset($id)
-            ? $callController->$action(request: $request, module: $module, id: $id)
-            : $callController->$action(request: $request, module: $module);
+        $isReadOnly = in_array($action, self::READ_ONLY_ACTIONS, true);
 
-        if (! in_array($action, self::READ_ONLY_ACTIONS, true)) {
+        try {
+            $response = isset($id)
+                ? $callController->$action(request: $request, module: $module, id: $id)
+                : $callController->$action(request: $request, module: $module);
+        } catch (\Throwable $exception) {
+            // A read-only action (index/edit/create/view) failing is a page
+            // that failed to render — that's Laravel's normal error page's
+            // job, not this action-result toast. A mutating action failing
+            // (store/update/delete/...) is exactly the "operation failed"
+            // case the toast exists for, and previously had nowhere to go:
+            // nothing here caught it, so it surfaced as a bare exception
+            // instead of the red error toast a failed save/delete should show.
+            //
+            // With app.debug on (local/dev), rethrow instead — this is also
+            // how NexusRuleCollector::assertRelationCoverage()'s dev-only
+            // guard reaches the developer; swallowing it into a friendly
+            // banner here would silently defeat that guard.
+            if ($isReadOnly || config('app.debug')) {
+                throw $exception;
+            }
+
+            report($exception);
+
+            return redirect()->route('nexus.module.action', ['module' => $module->name, 'action' => 'index'])
+                ->with('alert_message', __('nexus::translate.alert.action_error'))
+                ->with('alert_type', 'error');
+        }
+
+        if (! $isReadOnly) {
             event(new ModuleActionExecuted($module->name, $action, id: $id, ids: $request->input('items')));
         }
 
-        if (method_exists($response, 'with') && session()->has('alert_message')) {
+        // Default flash for a mutating action that didn't set its own
+        // (e.g. RestoreActionMethod) — must not fire when the action already
+        // flashed its own alert_message/alert_type, or it silently stomps a
+        // specific success/error message (and, worse, an error state) back
+        // to a generic "updated successfully".
+        if (method_exists($response, 'with') && ! session()->has('alert_message')) {
             return $response->with('alert_message', __('nexus::translate.alert.update_success'))
                 ->with('alert_type', 'success');
         }

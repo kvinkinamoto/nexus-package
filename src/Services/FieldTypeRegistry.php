@@ -114,6 +114,26 @@ class FieldTypeRegistry
     }
 
     /**
+     * @return array<string, string> alias => real type name, for introspection (e.g. nexus:docs:field-types)
+     */
+    public function getAliases(): array
+    {
+        return $this->aliases;
+    }
+
+    /**
+     * @return string[] every type with a registerView()/registerClass()/registerCallback() entry, for introspection (e.g. nexus:docs:field-types)
+     */
+    public function getRegisteredTypes(): array
+    {
+        return array_values(array_unique(array_merge(
+            array_keys($this->views),
+            array_keys($this->classes),
+            array_keys($this->callbacks),
+        )));
+    }
+
+    /**
      * View-name resolution step (registry step 2a). Returns null if nothing
      * is registered for $type, or the registered view doesn't exist.
      */

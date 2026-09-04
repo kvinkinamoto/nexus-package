@@ -1,15 +1,21 @@
 {{--
-    Livewire Етап 6 — textarea counterpart of string.blade.php; same
-    translatable-locale-rows approach. $field->isEditor (set for both
-    #[Field(type:'text', editor:true)] and #[Field(type:'editor')] — see
-    AttributeSchemaReader::processFieldAttr()) swaps the plain textarea for
-    CKEditor via data-ckeditor, wired up in app.js's 'morphed' hook the same
-    way Choices.js is: (re)init on every morph since Livewire's diff strips
-    CKEditor's injected chrome back to the bare <textarea>, and push content
-    changes to Livewire directly via CKEDITOR's own 'change' event rather
-    than a native DOM event wire:model could listen for. Translated
-    (isTranslate) + isEditor together isn't wired — CKEditor here only
-    covers the single, non-translated textarea below.
+    Textarea counterpart of string.blade.php; same translatable-locale-rows
+    approach. $field->isEditor (set for both #[Field(type:'text', editor:true)]
+    and #[Field(type:'editor')] — see AttributeSchemaReader::processFieldAttr())
+    swaps the plain textarea for CKEditor.
+
+    The CKEditor-enabled textarea is wrapped in wire:ignore — Livewire never
+    diffs anything inside it, so CKEditor's injected chrome is never stripped
+    back to a bare <textarea> the way it used to be on every morph (the same
+    failure mode Choices.js had — see .ai/rules/views.md's sibling rule about
+    that class of bug). x-data="nexusCkEditor(...)" (app.js) then only ever
+    needs to initialize once, on first mount, instead of being destroyed and
+    recreated on every single render. Content changes push to Livewire
+    directly via CKEditor's own 'change'/'blur' events, not a native DOM
+    event wire:model could listen for — see nexusCkEditor's own comment for
+    why 'blur' is the trigger that actually matters. Translated (isTranslate)
+    + isEditor together isn't wired — CKEditor here only covers the single,
+    non-translated textarea below.
 --}}
 @php
     $errorKey = "data.{$field->name}";
@@ -31,10 +37,19 @@
                 <p class="mb-1.5 text-xs text-error-500">{{ $message }}</p>
             @enderror
         @endforeach
+    @elseif($field->isEditor)
+        <div wire:ignore x-data="nexusCkEditor('data.{{ $field->name }}')">
+            <textarea rows="4" id="field-{{ $field->name }}"
+                @disabled($field->isDisabledForAction($action ?? null))
+                class="{{ $areaClass }}">{{ $this->data[$field->name] ?? '' }}</textarea>
+        </div>
+
+        @error($errorKey)
+            <p class="mt-1.5 text-xs text-error-500">{{ $message }}</p>
+        @enderror
     @else
         <textarea rows="4" id="field-{{ $field->name }}" wire:model="data.{{ $field->name }}"
             @disabled($field->isDisabledForAction($action ?? null))
-            @if($field->isEditor) data-ckeditor @endif
             class="{{ $areaClass }}"></textarea>
 
         @error($errorKey)

@@ -1,0 +1,15 @@
+<?php
+
+namespace App\Nexus\Modules\{{name}}\Requests;
+
+use Nodex\Nexus\Http\Requests\NexusFormRequest;
+
+class Admin{{type}}Request extends NexusFormRequest
+{
+    public function rules(): array
+    {
+        return [
+            'name' => 'required|string',
+        ];
+    }
+}

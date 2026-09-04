@@ -126,5 +126,6 @@ abstract class NexusFormRequest extends FormRequest
 
         // Allow plugins to modify request data before validation runs
         event(new PreparingForValidation($this));
+        nexus_action('nexus.validation.preparing', $this);
     }
 }

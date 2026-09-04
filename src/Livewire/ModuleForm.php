@@ -585,6 +585,7 @@ class ModuleForm extends Component
         }
 
         event(new ModuleActionExecuted($moduleConfig->name, $this->id ? 'update' : 'store', id: $this->id));
+        nexus_action('nexus.module.action_executed', $moduleConfig->name, $this->id ? 'update' : 'store', $this->id, null);
 
         if ($this->embedded) {
             // No page navigation to carry a flash message through — the
@@ -690,12 +691,15 @@ class ModuleForm extends Component
         // with zero coupling from this generic component. $model is looked
         // up fresh rather than reusing mount()'s copy since this can also be
         // the very first resolution, called from mount() itself.
+        $currentModel = $this->id ? $config->model::query()->find($this->id) : null;
+
         event(new AdminFormBuilding(
             moduleName: $config->name,
             config: $config,
-            model: $this->id ? $config->model::query()->find($this->id) : null,
+            model: $currentModel,
             liveData: $this->data,
         ));
+        nexus_action('nexus.form.building', $config, $config->name, $currentModel, $this->data);
 
         return $this->moduleConfigCache = $config;
     }

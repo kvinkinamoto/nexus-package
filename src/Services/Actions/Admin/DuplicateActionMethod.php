@@ -92,6 +92,7 @@ class DuplicateActionMethod
 
         // Trigger events and hooks before saving
         event(new EntityCreating($newModel, $data, $moduleConfig));
+        $data = nexus_filter('nexus.entity.creating', $data, $newModel, $moduleConfig);
 
         CallModuleHookAction::hook(
             moduleConfig: $moduleConfig,
@@ -107,6 +108,7 @@ class DuplicateActionMethod
 
         // Trigger events and hooks after saving
         event(new EntityCreated($newModel, $moduleConfig));
+        nexus_action('nexus.entity.created', $newModel, $moduleConfig);
         CallModuleHookAction::hook(
             moduleConfig: $moduleConfig,
             callPosition: 'after',

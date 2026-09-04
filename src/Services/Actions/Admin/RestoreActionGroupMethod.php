@@ -47,6 +47,7 @@ class RestoreActionGroupMethod
                 $oldData = $model->attributesToArray();
 
                 event(new EntityRestoring($model, $moduleConfig));
+                nexus_action('nexus.entity.restoring', $model, $moduleConfig);
                 CallModuleHookAction::hook(
                     moduleConfig: $moduleConfig,
                     callPosition: 'before',
@@ -59,6 +60,7 @@ class RestoreActionGroupMethod
                 $model->restore();
 
                 event(new EntityRestored($model, $moduleConfig));
+                nexus_action('nexus.entity.restored', $model, $moduleConfig);
                 CallModuleHookAction::hook(
                     moduleConfig: $moduleConfig,
                     callPosition: 'after',

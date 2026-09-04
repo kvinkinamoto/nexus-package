@@ -150,6 +150,7 @@ class ModuleTable extends Component
         ));
 
         event(new ModuleActionExecuted($module->name, 'boolToggle', id: $id));
+        nexus_action('nexus.module.action_executed', $module->name, 'boolToggle', $id, null);
     }
 
     /**
@@ -205,6 +206,7 @@ class ModuleTable extends Component
         ));
 
         event(new ModuleActionExecuted($module->name, $actionName, id: $id));
+        nexus_action('nexus.module.action_executed', $module->name, $actionName, $id, null);
     }
 
     /**
@@ -245,6 +247,7 @@ class ModuleTable extends Component
         });
 
         event(new ModuleActionExecuted($module->name, $actionName, ids: $this->selected));
+        nexus_action('nexus.module.action_executed', $module->name, $actionName, null, $this->selected);
         $this->selected = [];
     }
 

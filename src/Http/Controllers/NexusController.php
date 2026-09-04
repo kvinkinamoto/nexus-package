@@ -295,6 +295,7 @@ class NexusController extends Controller implements HasMiddleware
             if (isset($actionGroup[$action])) {
                 $response = CallGroupActionMethod::handle($request, $this->moduleConfig, $actionGroup[$action]);
                 event(new ModuleActionExecuted($module->name, $action, ids: $request->input('items')));
+                nexus_action('nexus.module.action_executed', $module->name, $action, null, $request->input('items'));
 
                 return $response;
             }
@@ -334,6 +335,7 @@ class NexusController extends Controller implements HasMiddleware
 
         if (! $isReadOnly) {
             event(new ModuleActionExecuted($module->name, $action, id: $id, ids: $request->input('items')));
+            nexus_action('nexus.module.action_executed', $module->name, $action, $id, $request->input('items'));
         }
 
         // Default flash for a mutating action that didn't set its own

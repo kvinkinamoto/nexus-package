@@ -257,6 +257,7 @@ class ModuleManager
         $this->registerModuleWidgetsImmediately($regModule);
 
         event(new \Nodex\Nexus\Events\ModuleInstalled($name));
+        nexus_action('nexus.module.installed', $name);
     }
 
     /**
@@ -359,6 +360,7 @@ class ModuleManager
         }
 
         event(new \Nodex\Nexus\Events\ModuleUninstalled($name));
+        nexus_action('nexus.module.uninstalled', $name);
 
         return $module->delete();
     }

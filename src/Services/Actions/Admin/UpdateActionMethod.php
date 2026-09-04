@@ -42,6 +42,7 @@ class UpdateActionMethod
             $oldData = $model->attributesToArray();
 
             event(new \Nodex\Nexus\Events\EntityUpdating($model, $validated, $oldData, $moduleConfig));
+            $validated = nexus_filter('nexus.entity.updating', $validated, $model, $oldData, $moduleConfig);
 
             StoreRelationActionMethod::handle($model, $moduleConfig, $validated);
 
@@ -60,6 +61,7 @@ class UpdateActionMethod
             $model->save();
 
             event(new \Nodex\Nexus\Events\EntityUpdated($model, $moduleConfig));
+            nexus_action('nexus.entity.updated', $model, $moduleConfig);
 
             CallModuleHookAction::hook(
                 moduleConfig: $moduleConfig,

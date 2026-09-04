@@ -26,6 +26,7 @@ class FormBuilder
             config: $moduleConfiguration,
             model: $model instanceof Model ? $model : null,
         ));
+        nexus_action('nexus.form.building', $moduleConfiguration, $moduleConfiguration->name, $model instanceof Model ? $model : null);
 
         $fields = $moduleConfiguration->form->fields ?? [];
 
@@ -33,6 +34,7 @@ class FormBuilder
         Event::dispatch('nexus.form.fields.building', [$moduleConfiguration->name, &$fields]);
 
         event(new \Nodex\Nexus\Events\FormFieldsPrepared($moduleConfiguration->name, $fields));
+        $fields = nexus_filter('nexus.form.fields_prepared', $fields, $moduleConfiguration->name);
 
         $validation = collect($fields)
             ->filter(fn($field) => isset($field->validation))

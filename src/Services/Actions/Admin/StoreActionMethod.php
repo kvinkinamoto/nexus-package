@@ -39,6 +39,7 @@ class StoreActionMethod
             $model = new $modelClass;
 
             event(new \Nodex\Nexus\Events\EntityCreating($model, $validated, $moduleConfig));
+            $validated = nexus_filter('nexus.entity.creating', $validated, $model, $moduleConfig);
 
             CallModuleHookAction::hook(
                 moduleConfig: $moduleConfig,
@@ -58,6 +59,7 @@ class StoreActionMethod
             StoreRelationActionMethod::handle($model, $moduleConfig, $validated);
 
             event(new \Nodex\Nexus\Events\EntityCreated($model, $moduleConfig));
+            nexus_action('nexus.entity.created', $model, $moduleConfig);
 
             CallModuleHookAction::hook(
                 moduleConfig: $moduleConfig,

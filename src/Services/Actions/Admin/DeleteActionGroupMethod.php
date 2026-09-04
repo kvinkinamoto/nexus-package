@@ -38,6 +38,7 @@ class DeleteActionGroupMethod
                 $oldData = $model->attributesToArray();
 
                 event(new EntityDeleting($model, $moduleConfig));
+                nexus_action('nexus.entity.deleting', $model, $moduleConfig);
 
                 CallModuleHookAction::hook(
                     moduleConfig: $moduleConfig,
@@ -51,6 +52,7 @@ class DeleteActionGroupMethod
                 $model->delete();
 
                 event(new EntityDeleted($model, $moduleConfig));
+                nexus_action('nexus.entity.deleted', $model, $moduleConfig);
 
                 CallModuleHookAction::hook(
                     moduleConfig: $moduleConfig,

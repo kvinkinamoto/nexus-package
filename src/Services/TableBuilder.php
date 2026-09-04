@@ -39,6 +39,7 @@ class TableBuilder
             moduleName: $module->name,
             config: $config,
         ));
+        nexus_action('nexus.table.building', $config, $module->name);
 
         /**
          * @var Model $modelClass
@@ -191,6 +192,7 @@ class TableBuilder
         }
 
         event(new TableDataPrepared($module->name, $data));
+        $data = nexus_filter('nexus.table.data_prepared', $data, $module->name);
 
         return [
             'data' => $data,

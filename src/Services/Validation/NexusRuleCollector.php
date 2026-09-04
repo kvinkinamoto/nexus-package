@@ -2,10 +2,8 @@
 
 namespace Nodex\Nexus\Services\Validation;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Nodex\Nexus\Dto\ModuleDtos\DefaultModuleConfigurationDto;
 use Nodex\Nexus\Enums\RelationConfigParamsEnum;
-use Nodex\Nexus\Events\GatheringValidationRules;
 use Nodex\Nexus\Services\FieldTypeRegistry;
 use Nodex\Nexus\Services\FieldVisibilityEvaluator;
 
@@ -17,15 +15,10 @@ use Nodex\Nexus\Services\FieldVisibilityEvaluator;
  * did — that read #[Field] straight off the model's PHP attributes, which a
  * plugin's DTO mutation can't affect.
  *
- * Note this DTO is NOT the same one AdminFormBuilding listeners (like SEO's
- * InjectSeoFields, which adds meta_title/meta_description as form fields for
- * display) mutate — that event only fires from FormBuilder, a GET-only
- * concern, never during POST validation. SEO validation instead comes back
- * through step 7 below: GatheringValidationRules is dispatched independently
- * by THIS class, and InjectSeoValidationRules reacts to it directly via its
- * own SeoHelper lookup, not by reading $moduleConfig->form->fields.
+ * Note this DTO is NOT the same one AdminFormBuilding listeners mutate —
+ * that event only fires from FormBuilder, a GET-only concern, never during
+ * POST validation.
  *
-
  * Merge order:
  *   1. Type defaults (FieldTypeRegistry::getDefaultRules())
  *   2. FieldConfigDto::$rules, then $storeRules/$updateRules for the given action
@@ -33,10 +26,24 @@ use Nodex\Nexus\Services\FieldVisibilityEvaluator;
  *   4. isTranslate -> key becomes "{name}.*"
  *   5. #[RepeaterField(rules:)] -> "relation.{relation}.*.{column}"
  *   6. showWhen -> ['exclude'] when FieldVisibilityEvaluator says hidden
- *      (always wins — reapplied after steps 7/8 so neither can resurrect
+ *      (always wins — reapplied after step 7 so it can't resurrect
  *      validation for a field the form itself won't submit)
- *   7. GatheringValidationRules event (mutable $rules, by reference)
- *   8. nexus_filter('nexus.validation.rules', $rules, $moduleConfig, $action)
+ *   7. nexus_filter('nexus.validation.rules', $rules, $moduleConfig, $action)
+ *
+ * A module WITH a dedicated Request gets this same filter applied a second,
+ * independent way too — see NexusServiceProvider::registerValidationRulesFilter(),
+ * which hooks Illuminate\Contracts\Validation\Factory::resolver() and so
+ * catches every Validator built anywhere, including one built from a
+ * dedicated Request's own hand-written rules() that never calls collect() at
+ * all. This collect()-internal call stays regardless, since a caller that
+ * only wants the assembled rules array (never builds a real Validator, e.g.
+ * the no-dedicated-Request case below, or anyone introspecting rules without
+ * validating) would otherwise never see the filter applied. The two overlap
+ * — for a plain call to collect() followed immediately by validator($data,
+ * $rules)->validate() (the no-dedicated-Request path), the filter runs
+ * twice on the same rules. Accepted: a plugin filter here is expected to be
+ * an idempotent append/adjust (see ExamplePlugin's own example), so running
+ * it twice produces the same effective rule set as running it once.
  *
  * Steps 1-4/6-8 only apply to non-relation fields. A #[Field(type: 'relation')]
  * field posts as relation[{name}] (see field_types/relation.blade.php), not a
@@ -74,7 +81,7 @@ class NexusRuleCollector
      * @param  string  $action  'store'|'update' (AvailableActionEnum values)
      * @param  array  $inputValues  Currently-submitted values, used to evaluate showWhen.
      */
-    public function collect(DefaultModuleConfigurationDto $moduleConfig, string $action, array $inputValues = [], ?FormRequest $request = null): array
+    public function collect(DefaultModuleConfigurationDto $moduleConfig, string $action, array $inputValues = []): array
     {
         $rules = [];
         $excludedKeys = [];
@@ -119,10 +126,6 @@ class NexusRuleCollector
                     $rules["relation.{$name}.*.{$column->name}"] = $columnRules;
                 }
             }
-        }
-
-        if ($request) {
-            event(new GatheringValidationRules($request, $rules));
         }
 
         $rules = nexus_filter('nexus.validation.rules', $rules, $moduleConfig, $action);

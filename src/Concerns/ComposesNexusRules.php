@@ -43,7 +43,7 @@ trait ComposesNexusRules
 
         $action = str_contains(static::class, 'Update') ? 'update' : 'store';
 
-        $collected = app(NexusRuleCollector::class)->collect($moduleConfig, $action, $this->all(), $this);
+        $collected = app(NexusRuleCollector::class)->collect($moduleConfig, $action, $this->all());
 
         return array_replace($collected, $this->extraRules());
     }

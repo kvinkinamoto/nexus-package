@@ -4,7 +4,6 @@ namespace Nodex\Nexus\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Nodex\Nexus\Attributes\Field as FieldAttr;
-use Nodex\Nexus\Events\GatheringValidationRules;
 use Nodex\Nexus\Events\PreparingForValidation;
 
 abstract class NexusFormRequest extends FormRequest
@@ -34,6 +33,16 @@ abstract class NexusFormRequest extends FormRequest
 
     /**
      * Get the validation rules that apply to the request.
+     *
+     * Override this in your FormRequest to define custom rules — including
+     * withValidator() too, if you need it; neither is touched by Nexus.
+     * The nexus.validation.rules plugin filter still applies regardless of
+     * how this is overridden — see NexusServiceProvider::registerValidationRulesFilter(),
+     * which hooks Illuminate\Contracts\Validation\Factory::resolver() (the
+     * same "guaranteed regardless of subclass" mechanism Laravel's own
+     * FormRequestServiceProvider uses for validateResolved()) rather than
+     * this class, so nothing here needs to be final or otherwise protected
+     * from being overridden.
      */
     public function rules(): array
     {
@@ -43,9 +52,6 @@ abstract class NexusFormRequest extends FormRequest
         if (empty($rules)) {
             $rules = $this->collectRulesFromAttributes();
         }
-
-        // Dispatch event so plugins (e.g. SEO module) can inject their own rules dynamically
-        event(new GatheringValidationRules($this, $rules));
 
         return $rules;
     }

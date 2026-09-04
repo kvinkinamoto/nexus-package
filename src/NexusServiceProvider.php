@@ -151,6 +151,8 @@ class NexusServiceProvider extends ServiceProvider
             return "<?php echo app(\Nodex\Nexus\Services\Widgets\FrontWidgetRenderer::class)->render({$positionArg}, {$templateTypeExpr}); ?>";
         });
 
+        $this->registerValidationRulesFilter();
+
         /** @var ModuleRegistry $registry */
         $registry = $this->app->make(ModuleRegistry::class);
 
@@ -685,6 +687,46 @@ class NexusServiceProvider extends ServiceProvider
     {
         \Livewire\Livewire::component('nexus-module-table', \Nodex\Nexus\Livewire\ModuleTable::class);
         \Livewire\Livewire::component('nexus-module-form', \Nodex\Nexus\Livewire\ModuleForm::class);
+    }
+
+    /**
+     * Guaranteed call site for nexus_filter('nexus.validation.rules', ...) —
+     * hooks Illuminate\Contracts\Validation\Factory::resolver() (the same
+     * "runs no matter what the resolved class looks like" pattern Laravel's
+     * own FormRequestServiceProvider uses for validateResolved(), via
+     * Container::resolving()) rather than any method on NexusFormRequest.
+     * A module's dedicated AdminStoreRequest/AdminUpdateRequest can override
+     * rules(), moduleRules(), or even define its own withValidator() however
+     * it wants — none of that is touched, so there's nothing to keep in sync
+     * and no final method that could turn into a fatal "Cannot override"
+     * error for a legitimate use.
+     *
+     * Scoped to routes carrying a {module} param (every nexus.module.action
+     * request, which is the only place a module's own validation happens) —
+     * everywhere else (a plain `Validator::make()` call unrelated to any
+     * Nexus module, Auth's LoginRequest, ...) $module is null and this is a
+     * no-op passthrough to the stock Validator.
+     *
+     * Illuminate\Validation\Factory only holds one resolver at a time
+     * (resolver() overwrites, doesn't stack) — safe here since nothing else
+     * in this app calls it.
+     */
+    private function registerValidationRulesFilter(): void
+    {
+        $this->app->make(\Illuminate\Contracts\Validation\Factory::class)->resolver(
+            function ($translator, array $data, array $rules, array $messages, array $attributes) {
+                $module = request()->route('module');
+
+                if ($module) {
+                    $moduleConfig = \Nodex\Nexus\Services\ModuleManager::getModuleConfig($module->name);
+                    $action = (string) (request()->route('action') ?? '');
+
+                    $rules = nexus_filter('nexus.validation.rules', $rules, $moduleConfig, $action);
+                }
+
+                return new \Illuminate\Validation\Validator($translator, $data, $rules, $messages, $attributes);
+            }
+        );
     }
 
     private function loadWidgets(): void

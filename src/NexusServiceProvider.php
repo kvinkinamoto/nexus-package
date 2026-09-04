@@ -151,6 +151,14 @@ class NexusServiceProvider extends ServiceProvider
             return "<?php echo app(\Nodex\Nexus\Services\Widgets\FrontWidgetRenderer::class)->render({$positionArg}, {$templateTypeExpr}); ?>";
         });
 
+        // @nexusForm('contact-slug') — embeds a Form module record's public
+        // submission form anywhere in a Blade view. Silently renders nothing
+        // for an unknown/inactive slug, same fail-quiet posture as
+        // @position() above for a position with no active placement.
+        Blade::directive('nexusForm', function (string $expression) {
+            return "<?php \$__nexusForm = \Nodex\Nexus\Modules\Form\Models\Form::query()->where('slug', {$expression})->where('is_active', true)->first(); if (\$__nexusForm) { echo view('form::public.form', ['form' => \$__nexusForm])->render(); } ?>";
+        });
+
         $this->registerValidationRulesFilter();
 
         /** @var ModuleRegistry $registry */

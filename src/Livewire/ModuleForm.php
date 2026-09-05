@@ -4,7 +4,9 @@ namespace Nodex\Nexus\Livewire;
 
 use Illuminate\Database\Eloquent\MissingAttributeException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Nodex\Nexus\Dto\ModuleDtos\DefaultModuleConfigurationDto;
@@ -14,6 +16,7 @@ use Nodex\Nexus\Events\AdminFormBuilding;
 use Nodex\Nexus\Events\ModuleActionExecuted;
 use Nodex\Nexus\Http\Actions\GetModuleRequestAction;
 use Nodex\Nexus\Livewire\Concerns\CallsLegacyActionMethods;
+use Nodex\Nexus\Livewire\Concerns\ManagesBlockFields;
 use Nodex\Nexus\Livewire\Concerns\ManagesGalleryFields;
 use Nodex\Nexus\Livewire\Concerns\ManagesMultiFileFields;
 use Nodex\Nexus\Livewire\Concerns\ManagesRelationPicker;
@@ -51,6 +54,7 @@ use Nodex\Nexus\Services\Validation\NexusRuleCollector;
 class ModuleForm extends Component
 {
     use CallsLegacyActionMethods;
+    use ManagesBlockFields;
     use ManagesGalleryFields;
     use ManagesMultiFileFields;
     use ManagesRelationPicker;
@@ -131,6 +135,14 @@ class ModuleForm extends Component
             if ($relationConfig && ! empty($field->repeaterColumns)) {
                 $this->relationRows[$field->name] = $model
                     ? $this->hydrateRepeaterRows($model, $field)
+                    : [];
+
+                continue;
+            }
+
+            if ($relationConfig && $field->type === 'blockEditor') {
+                $this->relationRows[$field->name] = $model
+                    ? $this->hydrateBlockRows($model, $field)
                     : [];
 
                 continue;
@@ -388,7 +400,7 @@ class ModuleForm extends Component
             return;
         }
 
-        $this->data[$fieldName] = \Illuminate\Support\Str::slug((string) ($this->data[$source] ?? ''));
+        $this->data[$fieldName] = Str::slug((string) ($this->data[$source] ?? ''));
     }
 
     /**
@@ -653,7 +665,7 @@ class ModuleForm extends Component
         foreach ($moduleConfig->relations->is_available as $name => $relationConfig) {
             $field = $moduleConfig->form->fields[$name] ?? null;
 
-            if ($field && ! empty($field->repeaterColumns)) {
+            if ($field && (! empty($field->repeaterColumns) || $field->type === 'blockEditor')) {
                 // A new row's 'id' is null (see addRepeaterRow()) — the
                 // legacy repeater's hidden id input is only rendered for a
                 // row that already has one (_repeater_row.blade.php), so a
@@ -662,13 +674,22 @@ class ModuleForm extends Component
                 // 'id' as "new" for its own routing decision, but still
                 // passes the whole row array straight into Model::create(),
                 // which would mass-assignment-reject an explicit null 'id'.
+                //
+                // For a 'blockEditor' field there's no fixed column list to
+                // preserve order for — 'position' is derived here from the
+                // final on-screen array order instead of tracked live in
+                // ManagesBlockFields (see that trait's docblock).
                 $relation[$name] = array_values(array_map(
-                    function (array $row) {
+                    function (array $row, int $index) use ($field) {
                         $row = Arr::except($row, ['_rowKey']);
+                        if ($field->type === 'blockEditor') {
+                            $row['position'] = $index;
+                        }
 
                         return empty($row['id']) ? Arr::except($row, ['id']) : $row;
                     },
-                    $this->relationRows[$name] ?? []
+                    $this->relationRows[$name] ?? [],
+                    array_keys($this->relationRows[$name] ?? [])
                 ));
             } elseif (array_key_exists($name, $input)) {
                 $relation[$name] = $input[$name];
@@ -692,7 +713,7 @@ class ModuleForm extends Component
 
     private function resolveModule(): Module
     {
-        return $this->moduleCache ??= Module::findByName($this->moduleName) ?? throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())->setModel(Module::class);
+        return $this->moduleCache ??= Module::findByName($this->moduleName) ?? throw (new ModelNotFoundException)->setModel(Module::class);
     }
 
     private function resolveModuleConfig(): DefaultModuleConfigurationDto

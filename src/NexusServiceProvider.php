@@ -76,6 +76,7 @@ class NexusServiceProvider extends ServiceProvider
         $this->app->singleton(FieldTypeRegistry::class);
         $this->app->singleton(FieldVisibilityEvaluator::class);
         $this->app->singleton(WidgetRegistry::class);
+        $this->app->singleton(\Nodex\Nexus\Services\Blocks\BlockTypeRegistry::class);
         $this->app->singleton(DashboardLayoutResolver::class);
         $this->app->singleton(AdminDashboardRenderer::class);
         $this->app->singleton(FrontWidgetRenderer::class);
@@ -158,6 +159,19 @@ class NexusServiceProvider extends ServiceProvider
         Blade::directive('nexusForm', function (string $expression) {
             return "<?php \$__nexusForm = \Nodex\Nexus\Modules\Form\Models\Form::query()->where('slug', {$expression})->where('is_active', true)->first(); if (\$__nexusForm) { echo view('form::public.form', ['form' => \$__nexusForm])->render(); } ?>";
         });
+
+        // @nexusBlocks($page->blocks) — renders an ordered collection of
+        // PageBlock (or any #[Field(type:'blockEditor')]-backed) rows by
+        // resolving each one's own public partial from its 'type'
+        // discriminator. Same fail-quiet posture as @position()/@nexusForm
+        // above — an unknown/missing block type is silently skipped rather
+        // than erroring, since a page must keep rendering its other blocks
+        // even if one type was since removed from BlockTypeRegistry.
+        Blade::directive('nexusBlocks', function (string $expression) {
+            return "<?php foreach (({$expression}) as \$__nexusBlock) { \$__nexusBlockView = 'nexus::public.block_types.' . \$__nexusBlock->type; if (\Illuminate\Support\Facades\View::exists(\$__nexusBlockView)) { echo view(\$__nexusBlockView, ['block' => \$__nexusBlock, 'data' => (object) (\$__nexusBlock->data ?? [])])->render(); } } ?>";
+        });
+
+        $this->registerBuiltInBlockTypes();
 
         $this->registerValidationRulesFilter();
 
@@ -655,6 +669,24 @@ class NexusServiceProvider extends ServiceProvider
 
         $registry->alias('editor', 'text');
         $registry->alias('date', 'birthday');
+    }
+
+    /**
+     * The four block types Nexus ships out of the box for
+     * #[Field(type: 'blockEditor')] fields (see Page::blocks()). A
+     * plugin/module can register its own the same way, from its own service
+     * provider's boot(), via BlockTypeRegistry::register() directly — no
+     * discovery mechanism needed for this registry (see its own docblock).
+     */
+    private function registerBuiltInBlockTypes(): void
+    {
+        /** @var \Nodex\Nexus\Services\Blocks\BlockTypeRegistry $registry */
+        $registry = $this->app->make(\Nodex\Nexus\Services\Blocks\BlockTypeRegistry::class);
+
+        $registry->register(new \Nodex\Nexus\Services\Blocks\Types\HeroBlockType);
+        $registry->register(new \Nodex\Nexus\Services\Blocks\Types\TextBlockType);
+        $registry->register(new \Nodex\Nexus\Services\Blocks\Types\ImageBlockType);
+        $registry->register(new \Nodex\Nexus\Services\Blocks\Types\CtaBlockType);
     }
 
     /**

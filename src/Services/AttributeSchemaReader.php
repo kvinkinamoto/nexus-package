@@ -560,6 +560,7 @@ class AttributeSchemaReader
             showWhenLogic: $fieldMeta->showWhenLogic,
             clearWhenHidden: $fieldMeta->clearWhenHidden,
             showInInfolist: $fieldMeta->showInInfolist,
+            apiExpose: $fieldMeta->apiExpose,
         );
 
         // FieldConfigDto extends \stdClass specifically so a rarely-used

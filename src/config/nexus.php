@@ -10,6 +10,9 @@ return [
     'api_prefix' => env('API_PREFIX', 'api'),
     'api_middleware' => ['api'],
 
+    'graphql_prefix' => env('GRAPHQL_PREFIX', 'graphql'),
+    'graphql_middleware' => ['api', 'auth:sanctum'],
+
     'table' => [
         'pagination' => [
             'per_page_options' => [15, 30, 50, 100],

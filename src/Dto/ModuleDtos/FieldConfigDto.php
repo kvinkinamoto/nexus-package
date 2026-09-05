@@ -33,6 +33,15 @@ class FieldConfigDto extends \stdClass
         /** @var RepeaterFieldConfigDto[] */
         public array $repeaterColumns = [],
         public bool $showInInfolist = true,
+        /**
+         * Mirrors #[Field(apiExpose:)] — see AttributeSchemaReader::processFieldAttr(),
+         * the only place this is actually set from the attribute. Read by
+         * Services/GraphQL/SchemaBuilder to decide which fields get a
+         * GraphQL type; NexusResource additionally re-reflects the raw
+         * #[Field] attribute itself rather than reading this DTO property,
+         * so keep both in sync if this ever changes.
+         */
+        public bool $apiExpose = false,
     ) {
         $this->label = $label ?? ucfirst($this->name);
     }
@@ -185,6 +194,7 @@ class FieldConfigDto extends \stdClass
             showWhenLogic: $field->showWhenLogic ?? 'and',
             clearWhenHidden: $field->clearWhenHidden ?? false,
             showInInfolist: $field->showInInfolist ?? true,
+            apiExpose: $field->apiExpose ?? false,
         );
     }
 

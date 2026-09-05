@@ -29,9 +29,15 @@
         @if($items->isNotEmpty())
             <div class="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                 @foreach($items as $i => $item)
+                    @php $focal = $item->focalPoint ?? ['x' => 0.5, 'y' => 0.5]; @endphp
                     <div class="relative" wire:key="{{ $field->name }}-{{ $item->id }}">
-                        <div class="flex h-24 w-full items-center justify-center overflow-hidden rounded-lg bg-gray-100 dark:bg-white/5">
+                        <div class="relative flex h-24 w-full cursor-crosshair items-center justify-center overflow-hidden rounded-lg bg-gray-100 dark:bg-white/5"
+                            x-data="{}"
+                            title="@lang('nexus::translate.click_to_set_focal_point')"
+                            @click="const r = $el.getBoundingClientRect(); $wire.setGalleryFocalPoint('{{ $field->name }}', '{{ $item->id }}', (($event.clientX - r.left) / r.width).toFixed(2), (($event.clientY - r.top) / r.height).toFixed(2))">
                             <img src="{{ $item->thumbnailUrl ?? $item->url }}" class="h-24 w-full object-cover" title="{{ $item->name }}">
+                            <span class="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-brand-500 shadow"
+                                style="left: {{ $focal['x'] * 100 }}%; top: {{ $focal['y'] * 100 }}%"></span>
                         </div>
                         @unless($isDisabled)
                             <button type="button" wire:click="deleteGalleryItem('{{ $field->name }}', '{{ $item->id }}')"

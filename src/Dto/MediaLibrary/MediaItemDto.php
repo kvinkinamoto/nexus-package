@@ -17,5 +17,9 @@ class MediaItemDto extends \stdClass
         public ?string $thumbnailUrl = null,
         public ?int $size = null,
         public ?string $mimeType = null,
+        /** @var array{x: float, y: float}|null Fractional (0-1), null until an editor sets one — see SpatieMediaLibraryService::setFocalPoint(). */
+        public ?array $focalPoint = null,
+        /** @var array<string, string> Named responsive conversion URLs (e.g. 'sm'/'md'/'lg'), only those actually generated. */
+        public array $variants = [],
     ) {}
 }

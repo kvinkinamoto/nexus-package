@@ -8,6 +8,10 @@ return [
     'admin_middleware' => ['web', 'auth', NexusAdminMiddleware::class],
 
     'api_prefix' => env('API_PREFIX', 'api'),
+    // Kept plain — /widgets under this group must stay reachable
+    // anonymously (see routes/api.php's own comment on WidgetApiController).
+    // The data-CRUD wildcard route gets 'auth:sanctum' at the route level
+    // instead, scoped to just that route, not this whole group.
     'api_middleware' => ['api'],
 
     'graphql_prefix' => env('GRAPHQL_PREFIX', 'graphql'),

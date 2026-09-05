@@ -1,0 +1,17 @@
+@php
+    $errorKey = "data.{$field->name}";
+    $value = old($field->name, data_get($formData, $field->name, $field->default));
+@endphp
+<div class="mb-4">
+    <label for="field-{{ $field->name }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+        {{ $field->label }}
+    </label>
+
+    <input type="text" id="field-{{ $field->name }}" name="{{ $field->name }}" value="{{ $value }}"
+        wire:model="data.{{ $field->name }}"
+        class="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:text-white/90">
+
+    @error($errorKey)
+        <p class="mt-1.5 text-xs text-error-500">{{ $message }}</p>
+    @enderror
+</div>

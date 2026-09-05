@@ -9,6 +9,7 @@ use Nodex\Nexus\Contracts\MediaLibrary\MediaLibraryInterface;
 use Nodex\Nexus\Dto\MediaLibrary\MediaItemDto;
 use Nodex\Nexus\Events\MediaAttached;
 use Nodex\Nexus\Events\MediaAttaching;
+use Spatie\MediaLibrary\Conversions\FileManipulator;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -82,6 +83,33 @@ class SpatieMediaLibraryService implements MediaLibraryInterface
         $model->unsetRelation('media');
     }
 
+    public function setFocalPoint(Model $model, string $mediaId, float $x, float $y, string $collection = 'default'): MediaItemDto
+    {
+        $this->assertHasMedia($model);
+
+        $media = $model->getMedia($collection)->firstWhere('id', $mediaId);
+
+        if (! $media) {
+            throw new \InvalidArgumentException("Media [{$mediaId}] not found in collection [{$collection}].");
+        }
+
+        $media->setCustomProperty('focal_point', [
+            'x' => max(0.0, min(1.0, $x)),
+            'y' => max(0.0, min(1.0, $y)),
+        ]);
+        $media->save();
+
+        // registerMediaConversions() reads the custom property we just
+        // saved, so regenerating now (synchronously — every conversion here
+        // is ->nonQueued()) makes the new crop visible immediately instead
+        // of waiting for whatever next touches this media's derived files.
+        app(FileManipulator::class)->createDerivedFiles($media);
+
+        $model->unsetRelation('media');
+
+        return $this->toDto($media->fresh());
+    }
+
     private function assertHasMedia(Model $model): void
     {
         if (! $model instanceof HasMedia) {
@@ -94,6 +122,13 @@ class SpatieMediaLibraryService implements MediaLibraryInterface
 
     private function toDto(Media $media): MediaItemDto
     {
+        $variants = [];
+        foreach (['sm', 'md', 'lg'] as $name) {
+            if ($media->hasGeneratedConversion($name)) {
+                $variants[$name] = $media->getUrl($name);
+            }
+        }
+
         return new MediaItemDto(
             id: (string) $media->id,
             name: $media->file_name,
@@ -101,6 +136,8 @@ class SpatieMediaLibraryService implements MediaLibraryInterface
             thumbnailUrl: $media->hasGeneratedConversion('thumb') ? $media->getUrl('thumb') : null,
             size: $media->size,
             mimeType: $media->mime_type,
+            focalPoint: $media->getCustomProperty('focal_point'),
+            variants: $variants,
         );
     }
 }

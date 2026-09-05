@@ -37,4 +37,15 @@ interface MediaLibraryInterface
      * @param  string[]  $orderedMediaIds
      */
     public function reorder(Model $model, array $orderedMediaIds, string $collection = 'default'): void;
+
+    /**
+     * Sets the crop center used by a fixed-aspect conversion (e.g. 'thumb')
+     * — see Concerns/HasNexusMedia's docblock on why only that one needs it,
+     * not the proportional-resize responsive variants. $x/$y are fractional
+     * (0-1) relative to the original image; out-of-range input is clamped,
+     * not rejected. Implementations regenerate derived files synchronously
+     * so the new crop is visible immediately, matching every conversion
+     * here already being ->nonQueued().
+     */
+    public function setFocalPoint(Model $model, string $mediaId, float $x, float $y, string $collection = 'default'): MediaItemDto;
 }

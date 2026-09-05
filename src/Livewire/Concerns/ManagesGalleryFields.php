@@ -3,7 +3,9 @@
 namespace Nodex\Nexus\Livewire\Concerns;
 
 use Illuminate\Support\Collection;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Nodex\Nexus\Contracts\MediaLibrary\MediaLibraryInterface;
+use Nodex\Nexus\Dto\MediaLibrary\MediaItemDto;
 
 /**
  * Backs #[Field(type: 'gallery')] — unlike #[Field(type: 'images')]'s plain
@@ -19,7 +21,7 @@ use Nodex\Nexus\Contracts\MediaLibrary\MediaLibraryInterface;
  */
 trait ManagesGalleryFields
 {
-    /** @var array<string, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile|null> */
+    /** @var array<string, TemporaryUploadedFile|null> */
     public array $galleryUpload = [];
 
     /**
@@ -99,8 +101,23 @@ trait ManagesGalleryFields
         $service->reorder($model, $ids, $fieldName);
     }
 
+    public function setGalleryFocalPoint(string $fieldName, string $mediaId, float $x, float $y): void
+    {
+        if (! $this->id) {
+            return;
+        }
+
+        $model = $this->resolveModuleConfig()->model::find($this->id);
+
+        if (! $model) {
+            return;
+        }
+
+        app(MediaLibraryInterface::class)->setFocalPoint($model, $mediaId, $x, $y, $fieldName);
+    }
+
     /**
-     * @return Collection<int, \Nodex\Nexus\Dto\MediaLibrary\MediaItemDto>
+     * @return Collection<int, MediaItemDto>
      */
     public function galleryItems(string $fieldName): Collection
     {

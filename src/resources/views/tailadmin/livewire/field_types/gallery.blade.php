@@ -61,6 +61,7 @@
                     </div>
                 @endforeach
             </div>
+            <p class="mb-3 text-xs text-gray-400">@lang('nexus::translate.click_to_set_focal_point')</p>
         @endif
 
         @unless($isDisabled)

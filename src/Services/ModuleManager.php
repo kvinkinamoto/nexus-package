@@ -193,7 +193,16 @@ class ModuleManager
         // would silently create a second row instead of finding the
         // existing one.
         if (! Module::findByName($name)) {
-            Module::query()->create(['name' => $name]);
+            // The 'Modules' module manages every other module's is_enabled
+            // flag (see App\Nexus\Modules\Modules\Models\Module) — without
+            // is_system it could disable itself and lock an admin out of the
+            // only screen that could turn it back on. Forced here, not left
+            // to a manual DB edit, so a fresh install is protected from the
+            // start like every other system invariant this method sets up.
+            Module::query()->create([
+                'name' => $name,
+                'is_system' => Str::lower($name) === 'modules',
+            ]);
         }
 
         // A module's own migration may alter a table a base/vendor migration

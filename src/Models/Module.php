@@ -59,9 +59,30 @@ class Module extends Model
         'config' => 'json',
     ];
 
+    /**
+     * Blocks turning off (or deleting) a system module's is_enabled flag —
+     * uninstall() already guards is_system for the delete path, but the
+     * boolToggle admin action (and anything else calling save() directly)
+     * goes straight through Eloquent, bypassing that check. Without this, an
+     * admin could disable the very module that manages module enable/disable
+     * and lock themselves out of the screen that would undo it. Returning
+     * false from an `updating`/`deleting` listener cancels the operation
+     * silently, per Eloquent's own convention — no exception, the checkbox
+     * just doesn't take.
+     */
     protected static function booted(): void
     {
+        static::updating(function (self $module) {
+            if ($module->is_system && $module->isDirty('is_enabled') && ! $module->is_enabled) {
+                return false;
+            }
+        });
 
+        static::deleting(function (self $module) {
+            if ($module->is_system) {
+                return false;
+            }
+        });
     }
 
     public function getConfigAttribute($value)

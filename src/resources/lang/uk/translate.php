@@ -68,6 +68,7 @@ return [
     'publishGroup' => 'Опублікувати вибрані',
     'unpublishGroup' => 'Зняти з публікації вибрані',
     'duplicateGroup' => 'Дублювати вибрані',
+    'selected' => 'вибрано',
     'restore_not_supported' => 'Модель не підтримує відновлення',
     'bulk_restore_not_supported' => 'Вибрані моделі не підтримують відновлення',
     'Modules' => 'Модулі',

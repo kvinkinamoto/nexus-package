@@ -68,6 +68,7 @@ return [
     'publishGroup' => 'Publish selected',
     'unpublishGroup' => 'Un publish selected',
     'duplicateGroup' => 'Duplicate selected',
+    'selected' => 'selected',
     'restore_not_supported' => 'Model does not support restore operation',
     'bulk_restore_not_supported' => 'Selected models do not support restore operation',
     'Modules' => 'Modules',

@@ -11,6 +11,56 @@
     run through ModuleTable::runAction().
 --}}
 <div>
+    @if(!empty($module->config->table->actionGroup))
+        @php $activeGroupActions = collect($module->config->table->actionGroup)->filter(fn ($a) => $a->isActive)->values(); @endphp
+        @if($activeGroupActions->isNotEmpty())
+            {{--
+                A genuine docked sidebar (full viewport height, flush to the
+                right edge) rather than a floating card mid-screen — that
+                first version visually looked like it popped out of the
+                middle of the table instead of belonging to the page chrome.
+                Slides in once any row is checked, rather than a toolbar
+                button/dropdown the user has to notice and open — every
+                available bulk action is listed at once, so this scales to
+                any number of them without further UI changes. x-show reads
+                $wire.selected directly (Alpine's reactive proxy onto the
+                Livewire property) so the slide transition actually animates;
+                a plain server-rendered @if would just pop in/out with each
+                Livewire diff instead.
+            --}}
+            <div x-data
+                x-show="$wire.selected.length > 0"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="-translate-x-full"
+                x-transition:enter-end="translate-x-0"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="translate-x-0"
+                x-transition:leave-end="-translate-x-full"
+                x-cloak
+                class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+                <div class="flex items-center justify-between gap-2 border-b border-gray-100 p-4 dark:border-white/5">
+                    <span class="text-sm font-medium text-gray-800 dark:text-white/90">
+                        {{ count($selected) }} @lang('nexus::translate.selected')
+                    </span>
+                    <button type="button" wire:click="$set('selected', [])"
+                        class="flex h-6 w-6 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-white/5">
+                        <i class="bx bx-x text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex flex-col gap-1 p-3">
+                    @foreach($activeGroupActions as $groupAction)
+                        <button type="button"
+                            wire:click="runGroupAction('{{ $groupAction->name }}')"
+                            @if($groupAction->confirm) wire:confirm="@lang('nexus::translate.' . $groupAction->name)?" @endif
+                            class="flex items-center rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5">
+                            @lang('nexus::translate.' . $groupAction->name)
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+    @endif
+
     @if(!empty($tableData['lenses']))
         <div class="mb-4 flex gap-1 border-b border-gray-200 dark:border-gray-800">
             <a href="javascript:void(0);" wire:click="selectLens(null)"
@@ -111,18 +161,6 @@
                     would disappear right as the job starts.
                 --}}
                 <span id="nexusBulkStatus-{{ $module->name }}" class="text-xs text-gray-400"></span>
-                @if(!empty($selected) && !empty($module->config->table->actionGroup))
-                    @foreach($module->config->table->actionGroup as $groupAction)
-                        @if($groupAction->isActive)
-                            <button type="button"
-                                wire:click="runGroupAction('{{ $groupAction->name }}')"
-                                @if($groupAction->confirm) wire:confirm="@lang('nexus::translate.' . $groupAction->name)?" @endif
-                                class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/5">
-                                @lang('nexus::translate.' . $groupAction->name) ({{ count($selected) }})
-                            </button>
-                        @endif
-                    @endforeach
-                @endif
             </div>
         </div>
 

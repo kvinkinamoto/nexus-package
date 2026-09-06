@@ -4,7 +4,12 @@ namespace Nodex\Nexus;
 
 use Faker\Factory as FakerFactory;
 use Faker\Generator as FakerGenerator;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Contracts\Validation\Factory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Blade;
@@ -13,17 +18,30 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Validator;
+use Livewire\Livewire;
+use Nodex\Nexus\Contracts\MediaLibrary\MediaLibraryInterface;
+use Nodex\Nexus\database\seeders\DatabaseSeeder;
+use Nodex\Nexus\Events\FieldTypesRegistering;
+use Nodex\Nexus\Events\GatheringValidationRules;
 use Nodex\Nexus\Events\ModuleInstalled;
 use Nodex\Nexus\Faker\FakerImageProvider;
 use Nodex\Nexus\Listeners\SendModuleInstalledNotification;
+use Nodex\Nexus\Livewire\ModuleForm;
+use Nodex\Nexus\Livewire\ModuleSettingsForm;
+use Nodex\Nexus\Livewire\ModuleTable;
 use Nodex\Nexus\Models\Module as ModuleModel;
 use Nodex\Nexus\Services\AttributeSchemaReader;
+use Nodex\Nexus\Services\Blocks\BlockTypeRegistry;
+use Nodex\Nexus\Services\DatabaseSettingsProvider;
 use Nodex\Nexus\Services\DirectTranslationService;
 use Nodex\Nexus\Services\FieldTypeRegistry;
 use Nodex\Nexus\Services\FieldVisibilityEvaluator;
 use Nodex\Nexus\Services\FormBuilder;
 use Nodex\Nexus\Services\HookManager;
 use Nodex\Nexus\Services\IconManager;
+use Nodex\Nexus\Services\Interfaces\SettingsProviderInterface;
+use Nodex\Nexus\Services\MediaLibrary\SpatieMediaLibraryService;
 use Nodex\Nexus\Services\ModuleDependencyChecker;
 use Nodex\Nexus\Services\ModuleManager;
 use Nodex\Nexus\Services\ModuleManifestCache;
@@ -41,7 +59,6 @@ use Nodex\Nexus\Services\Widgets\WidgetRegistry;
 
 /**
  * Class nexusServiceProvider
- * @package Nodex\Nexus
  */
 class NexusServiceProvider extends ServiceProvider
 {
@@ -56,7 +73,7 @@ class NexusServiceProvider extends ServiceProvider
 
     public function register()
     {
-        require_once __DIR__ . '/helpers/functions.php';
+        require_once __DIR__.'/helpers/functions.php';
 
         // Plain singletons — constructor deps (if any) are container-resolvable,
         // so no explicit factory closure is needed.
@@ -76,7 +93,7 @@ class NexusServiceProvider extends ServiceProvider
         $this->app->singleton(FieldTypeRegistry::class);
         $this->app->singleton(FieldVisibilityEvaluator::class);
         $this->app->singleton(WidgetRegistry::class);
-        $this->app->singleton(\Nodex\Nexus\Services\Blocks\BlockTypeRegistry::class);
+        $this->app->singleton(BlockTypeRegistry::class);
         $this->app->singleton(DashboardLayoutResolver::class);
         $this->app->singleton(AdminDashboardRenderer::class);
         $this->app->singleton(FrontWidgetRenderer::class);
@@ -92,22 +109,34 @@ class NexusServiceProvider extends ServiceProvider
         // no Nexus-specific extension point needed. See
         // MediaLibraryInterface's docblock and config('nexus.media_library.enabled').
         $this->app->bind(
-            \Nodex\Nexus\Contracts\MediaLibrary\MediaLibraryInterface::class,
-            \Nodex\Nexus\Services\MediaLibrary\SpatieMediaLibraryService::class,
+            MediaLibraryInterface::class,
+            SpatieMediaLibraryService::class,
+        );
+
+        // Same "app can override" shape as MediaLibraryInterface above.
+        // SettingsBuilder::get()/set() (what Livewire\ModuleSettingsForm and
+        // any module's own runtime code call) were previously calling into
+        // this interface with nothing ever bound to it — every #[Setting(...)]
+        // was read into the module config DTO but had no real storage, so
+        // ::get() always fell back to the caller's own $default and ::set()
+        // silently no-op'd.
+        $this->app->bind(
+            SettingsProviderInterface::class,
+            DatabaseSettingsProvider::class,
         );
 
         if (class_exists(FakerGenerator::class)) {
-            $this->app->singleton(FakerGenerator::class, function ()
-            {
+            $this->app->singleton(FakerGenerator::class, function () {
                 $faker = FakerFactory::create();
                 $faker->addProvider(new FakerImageProvider($faker));
+
                 return $faker;
             });
         }
     }
 
     /**
-     * @throws \Illuminate\Contracts\Container\BindingResolutionException
+     * @throws BindingResolutionException
      */
     public function boot(): void
     {
@@ -139,12 +168,12 @@ class NexusServiceProvider extends ServiceProvider
             report($e);
         }
 
-        $shouldBeStrict = !$this->app->isProduction();
+        $shouldBeStrict = ! $this->app->isProduction();
         Model::shouldBeStrict($shouldBeStrict);
 
         $this->mergeConfig();
         $this->publish();
-        $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/database/migrations');
         $this->registerDefaultApiRateLimiter();
 
         // @position('name') or @position('name', $templateType) — renders every
@@ -188,7 +217,7 @@ class NexusServiceProvider extends ServiceProvider
         /** @var ModuleRegistry $registry */
         $registry = $this->app->make(ModuleRegistry::class);
 
-        if (!$this->app->runningInConsole()) {
+        if (! $this->app->runningInConsole()) {
             /** @var ModuleManifestCache $manifestCache */
             $manifestCache = $this->app->make(ModuleManifestCache::class);
             $this->moduleManifest = $manifestCache->get();
@@ -235,7 +264,7 @@ class NexusServiceProvider extends ServiceProvider
         // imperatively, after every module's own FieldTypes/ directory is loaded.
         // FieldTypesRegistering fires first — same registry, no plugin class needed.
         $fieldTypeRegistry = $this->app->make(FieldTypeRegistry::class);
-        event(new \Nodex\Nexus\Events\FieldTypesRegistering($fieldTypeRegistry));
+        event(new FieldTypesRegistering($fieldTypeRegistry));
         nexus_action('nexus.field_types.register', $fieldTypeRegistry);
     }
 
@@ -265,7 +294,7 @@ class NexusServiceProvider extends ServiceProvider
     {
         try {
             $enabledNames = ModuleModel::query()->where('is_enabled', 1)->pluck('name')->toArray();
-            $enabledNames = array_map(fn($n) => Str::lower($n), $enabledNames);
+            $enabledNames = array_map(fn ($n) => Str::lower($n), $enabledNames);
         } catch (\Throwable $e) {
             return collect();
         }
@@ -277,11 +306,10 @@ class NexusServiceProvider extends ServiceProvider
 
     protected function registerSeeders()
     {
-        $this->app->booted(function ()
-        {
+        $this->app->booted(function () {
             if (in_array('db:seed', request()->server('argv', []))) {
                 Artisan::call('db:seed', [
-                    '--class' => \Nodex\Nexus\database\seeders\DatabaseSeeder::class,
+                    '--class' => DatabaseSeeder::class,
                 ]);
             }
         });
@@ -289,7 +317,7 @@ class NexusServiceProvider extends ServiceProvider
 
     private function mergeConfig(): void
     {
-        $this->mergeConfigFrom(__DIR__ . '/config/nexus.php', 'nexus');
+        $this->mergeConfigFrom(__DIR__.'/config/nexus.php', 'nexus');
     }
 
     /**
@@ -308,18 +336,18 @@ class NexusServiceProvider extends ServiceProvider
      */
     private function registerDefaultApiRateLimiter(): void
     {
-        if ($this->app->make(\Illuminate\Cache\RateLimiter::class)->limiter('api')) {
+        if ($this->app->make(RateLimiter::class)->limiter('api')) {
             return;
         }
 
-        \Illuminate\Support\Facades\RateLimiter::for('api', function (\Illuminate\Http\Request $request) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        \Illuminate\Support\Facades\RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
     }
 
     private function loadView(): void
     {
-        $this->loadViewsFrom(__DIR__ . '/resources/views', 'nexus');
+        $this->loadViewsFrom(__DIR__.'/resources/views', 'nexus');
 
         /** @var PathManager $pathManager */
         $pathManager = $this->app->make(PathManager::class);
@@ -336,14 +364,14 @@ class NexusServiceProvider extends ServiceProvider
             }
 
             // Register views for widgets inside this module (not cached — rare/cheap)
-            $widgetsDir = $pathManager->getModulePath($module['name'], $module['is_user_module']) . DIRECTORY_SEPARATOR . 'Widgets';
+            $widgetsDir = $pathManager->getModulePath($module['name'], $module['is_user_module']).DIRECTORY_SEPARATOR.'Widgets';
             if (is_dir($widgetsDir)) {
                 $widgetFolders = File::directories($widgetsDir);
                 foreach ($widgetFolders as $widgetFolder) {
-                    $widgetViewsDir = $widgetFolder . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'views';
+                    $widgetViewsDir = $widgetFolder.DIRECTORY_SEPARATOR.'resources'.DIRECTORY_SEPARATOR.'views';
                     if (is_dir($widgetViewsDir)) {
                         $widgetName = basename($widgetFolder);
-                        $namespace = Str::lcfirst($module['name']) . '_widget_' . Str::snake($widgetName);
+                        $namespace = Str::lcfirst($module['name']).'_widget_'.Str::snake($widgetName);
                         $this->loadViewsFrom($widgetViewsDir, $namespace);
                     }
                 }
@@ -359,7 +387,7 @@ class NexusServiceProvider extends ServiceProvider
         // same view-namespace convention ("widget-{kebab-folder}") either
         // way, so both roots share one loop.
         $this->loadWidgetViewsFromRoot(app_path('Nexus/Widgets'));
-        $this->loadWidgetViewsFromRoot(__DIR__ . '/Widgets');
+        $this->loadWidgetViewsFromRoot(__DIR__.'/Widgets');
     }
 
     private function loadWidgetViewsFromRoot(string $widgetsPath): void
@@ -368,7 +396,7 @@ class NexusServiceProvider extends ServiceProvider
             $widgetDirectories = File::directories($widgetsPath);
             foreach ($widgetDirectories as $directory) {
                 $widgetName = basename($directory);
-                $viewsPath = $directory . '/resources/views';
+                $viewsPath = $directory.'/resources/views';
                 if (File::isDirectory($viewsPath)) {
                     $namespace = Str::kebab($widgetName);
                     $this->loadViewsFrom($viewsPath, "widget-{$namespace}");
@@ -379,8 +407,8 @@ class NexusServiceProvider extends ServiceProvider
 
     private function loadRoute(): void
     {
-        $this->loadRoutesFrom(__DIR__ . '/routes/web.php');
-        $this->loadRoutesFrom(__DIR__ . '/routes/api.php');
+        $this->loadRoutesFrom(__DIR__.'/routes/web.php');
+        $this->loadRoutesFrom(__DIR__.'/routes/api.php');
 
         /** @var PathManager $pathManager */
         $pathManager = $this->app->make(PathManager::class);
@@ -393,22 +421,22 @@ class NexusServiceProvider extends ServiceProvider
                 $hasWeb = $module['has_route_web'] ?? false;
                 $hasApi = $module['has_route_api'] ?? false;
             } else {
-                $hasWeb = is_dir($dir) && is_file($dir . '/web.php');
-                $hasApi = is_dir($dir) && is_file($dir . '/api.php');
+                $hasWeb = is_dir($dir) && is_file($dir.'/web.php');
+                $hasApi = is_dir($dir) && is_file($dir.'/api.php');
             }
 
             if ($hasWeb) {
-                $this->loadRoutesFrom($dir . '/web.php');
+                $this->loadRoutesFrom($dir.'/web.php');
             }
             if ($hasApi) {
-                $this->loadRoutesFrom($dir . '/api.php');
+                $this->loadRoutesFrom($dir.'/api.php');
             }
         }
     }
 
     private function loadTranslation(): void
     {
-        $this->loadTranslationsFrom(__DIR__ . '/resources/lang', 'nexus');
+        $this->loadTranslationsFrom(__DIR__.'/resources/lang', 'nexus');
 
         /** @var PathManager $pathManager */
         $pathManager = $this->app->make(PathManager::class);
@@ -460,7 +488,7 @@ class NexusServiceProvider extends ServiceProvider
             $this->loadMigrationsFrom($dir);
         }
 
-        $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/database/migrations');
     }
 
     private function runCommand(): void
@@ -480,26 +508,25 @@ class NexusServiceProvider extends ServiceProvider
             }
 
             foreach ($candidates as $fullClass) {
-                if (!$this->app->runningInConsole()) {
+                if (! $this->app->runningInConsole()) {
                     $isOnlyConsoleDefined = defined("$fullClass::isOnlyConsole");
-                    if (!$isOnlyConsoleDefined) {
+                    if (! $isOnlyConsoleDefined) {
                         $moduleCommands[] = $fullClass;
                     }
-                }
-                else {
+                } else {
                     $moduleCommands[] = $fullClass;
                 }
             }
         }
 
         // Core commands
-        $dir = __DIR__ . '/commands';
+        $dir = __DIR__.'/commands';
         $commands = [];
         if (File::exists($dir)) {
             $files = File::files($dir);
             foreach ($files as $file) {
                 $className = $file->getBasename('.php');
-                $commandNamespace = 'Nodex\\Nexus\\commands\\' . Str::ucfirst($className);
+                $commandNamespace = 'Nodex\\Nexus\\commands\\'.Str::ucfirst($className);
                 if (class_exists($commandNamespace)) {
                     $commands[] = $commandNamespace;
                 }
@@ -515,31 +542,31 @@ class NexusServiceProvider extends ServiceProvider
     protected function publish(): void
     {
         $this->publishes([
-            __DIR__ . '/config/nexus.php' => config_path('nexus.php'),
+            __DIR__.'/config/nexus.php' => config_path('nexus.php'),
         ], ['nexus-config', 'nexus']);
 
         $this->publishes([
-            __DIR__ . '/database/migrations' => database_path('migrations'),
+            __DIR__.'/database/migrations' => database_path('migrations'),
         ], ['nexus-migrations', 'nexus']);
 
         $this->publishes([
-            __DIR__ . '/resources/views' => resource_path('views/vendor/nexus'),
+            __DIR__.'/resources/views' => resource_path('views/vendor/nexus'),
         ], ['nexus-views', 'nexus']);
 
         $this->publishes([
-            __DIR__ . '/resources/lang' => resource_path('lang/nexus'),
+            __DIR__.'/resources/lang' => resource_path('lang/nexus'),
         ], ['nexus-lang', 'nexus']);
 
         $this->publishes([
-            __DIR__ . '/resources/publish' => public_path('/'),
+            __DIR__.'/resources/publish' => public_path('/'),
         ], ['nexus-resources-publish', 'nexus']);
 
         $this->publishes([
-            __DIR__ . '/resources/js' => resource_path('js/nexus'),
+            __DIR__.'/resources/js' => resource_path('js/nexus'),
         ], ['nexus-js', 'nexus']);
 
         $this->publishes([
-            __DIR__ . '/Modules' => app_path('/Nexus/Modules'),
+            __DIR__.'/Modules' => app_path('/Nexus/Modules'),
         ], ['nexus-modules-publish', 'nexus']);
 
     }
@@ -547,13 +574,13 @@ class NexusServiceProvider extends ServiceProvider
     private function viewCompose(): void
     {
         $template = config('nexus.template');
-        if (!$template)
+        if (! $template) {
             return;
+        }
 
         View::composer(
-            ['nexus::' . $template . '.layouts.adminpanel'],
-            function ($view)
-            {
+            ['nexus::'.$template.'.layouts.adminpanel'],
+            function ($view) {
                 $moduleServiceForAdmin = app()->make(ModuleServiceForAdminPanel::class);
                 $view->with('menus', $moduleServiceForAdmin->getSideBarMenu());
 
@@ -591,7 +618,7 @@ class NexusServiceProvider extends ServiceProvider
         $pathManager = $this->app->make(PathManager::class);
 
         foreach ($this->modules as $module) {
-            if (!isset($module['namespace'])) {
+            if (! isset($module['namespace'])) {
                 continue;
             }
 
@@ -601,13 +628,14 @@ class NexusServiceProvider extends ServiceProvider
                 /** @var ModuleManifestCache $manifestCache */
                 $manifestCache = $this->app->make(ModuleManifestCache::class);
                 $moduleDir = $pathManager->getModulePath($module['name'], $module['is_user_module'] ?? false);
-                $listeners = $manifestCache->discoverListeners($moduleDir . '/Listeners', $module['namespace']);
+                $listeners = $manifestCache->discoverListeners($moduleDir.'/Listeners', $module['namespace']);
             }
 
             foreach ($listeners as $listener) {
                 // Pattern 1: subscribe() — один клас реєструє кілька подій
                 if ($listener['type'] === 'subscribe') {
                     Event::subscribe($listener['class']);
+
                     continue;
                 }
 
@@ -632,7 +660,7 @@ class NexusServiceProvider extends ServiceProvider
         $registrar = $this->app->make(RelationRegistrar::class);
 
         foreach ($this->modules as $module) {
-            if (!isset($module['namespace'])) {
+            if (! isset($module['namespace'])) {
                 continue;
             }
 
@@ -642,7 +670,7 @@ class NexusServiceProvider extends ServiceProvider
             } else {
                 /** @var ModuleManifestCache $manifestCache */
                 $manifestCache = $this->app->make(ModuleManifestCache::class);
-                $relationsDir = $pathManager->getModulePath($module['name'], $module['is_user_module'] ?? false) . '/Relations';
+                $relationsDir = $pathManager->getModulePath($module['name'], $module['is_user_module'] ?? false).'/Relations';
                 $relations = $manifestCache->discoverRelations($relationsDir, $module['namespace']);
                 $scopes = $manifestCache->discoverScopes($relationsDir, $module['namespace']);
             }
@@ -671,7 +699,7 @@ class NexusServiceProvider extends ServiceProvider
         $registry = $this->app->make(FieldTypeRegistry::class);
 
         foreach ($this->modules as $module) {
-            if (!isset($module['namespace'])) {
+            if (! isset($module['namespace'])) {
                 continue;
             }
 
@@ -680,7 +708,7 @@ class NexusServiceProvider extends ServiceProvider
             } else {
                 /** @var ModuleManifestCache $manifestCache */
                 $manifestCache = $this->app->make(ModuleManifestCache::class);
-                $fieldTypesDir = $pathManager->getModulePath($module['name'], $module['is_user_module'] ?? false) . '/FieldTypes';
+                $fieldTypesDir = $pathManager->getModulePath($module['name'], $module['is_user_module'] ?? false).'/FieldTypes';
                 $fieldTypes = $manifestCache->discoverFieldTypes($fieldTypesDir, $module['namespace']);
             }
 
@@ -756,8 +784,9 @@ class NexusServiceProvider extends ServiceProvider
      */
     private function loadLivewireComponents(): void
     {
-        \Livewire\Livewire::component('nexus-module-table', \Nodex\Nexus\Livewire\ModuleTable::class);
-        \Livewire\Livewire::component('nexus-module-form', \Nodex\Nexus\Livewire\ModuleForm::class);
+        Livewire::component('nexus-module-table', ModuleTable::class);
+        Livewire::component('nexus-module-form', ModuleForm::class);
+        Livewire::component('nexus-module-settings-form', ModuleSettingsForm::class);
     }
 
     /**
@@ -784,19 +813,19 @@ class NexusServiceProvider extends ServiceProvider
      */
     private function registerValidationRulesFilter(): void
     {
-        $this->app->make(\Illuminate\Contracts\Validation\Factory::class)->resolver(
+        $this->app->make(Factory::class)->resolver(
             function ($translator, array $data, array $rules, array $messages, array $attributes) {
                 $module = request()->route('module');
 
                 if ($module) {
-                    $moduleConfig = \Nodex\Nexus\Services\ModuleManager::getModuleConfig($module->name);
+                    $moduleConfig = ModuleManager::getModuleConfig($module->name);
                     $action = (string) (request()->route('action') ?? '');
 
-                    event(new \Nodex\Nexus\Events\GatheringValidationRules($moduleConfig, $rules, $action));
+                    event(new GatheringValidationRules($moduleConfig, $rules, $action));
                     $rules = nexus_filter('nexus.validation.rules', $rules, $moduleConfig, $action);
                 }
 
-                return new \Illuminate\Validation\Validator($translator, $data, $rules, $messages, $attributes);
+                return new Validator($translator, $data, $rules, $messages, $attributes);
             }
         );
     }
@@ -812,7 +841,7 @@ class NexusServiceProvider extends ServiceProvider
         // Built-in (package) and legacy top-level roots aren't part of any
         // module's manifest entry — small and rare enough to always scan
         // live, same as loadWidgetView()'s handling of the legacy root.
-        foreach ($manifestCache->discoverWidgets(__DIR__ . '/Widgets', 'Nodex\\Nexus') as $widget) {
+        foreach ($manifestCache->discoverWidgets(__DIR__.'/Widgets', 'Nodex\\Nexus') as $widget) {
             $widgetRegistry->registerFromDiscovery($widget);
         }
         foreach ($manifestCache->discoverWidgets(app_path('Nexus/Widgets'), 'App\\Nexus') as $widget) {
@@ -823,14 +852,14 @@ class NexusServiceProvider extends ServiceProvider
         $pathManager = $this->app->make(PathManager::class);
 
         foreach ($this->modules as $module) {
-            if (!isset($module['namespace'])) {
+            if (! isset($module['namespace'])) {
                 continue;
             }
 
             if ($this->moduleManifest !== null) {
                 $widgets = $module['widgets'] ?? [];
             } else {
-                $widgetsDir = $pathManager->getModulePath($module['name'], $module['is_user_module'] ?? false) . '/Widgets';
+                $widgetsDir = $pathManager->getModulePath($module['name'], $module['is_user_module'] ?? false).'/Widgets';
                 $widgets = $manifestCache->discoverWidgets($widgetsDir, $module['namespace']);
             }
 
@@ -839,6 +868,4 @@ class NexusServiceProvider extends ServiceProvider
             }
         }
     }
-
 }
-

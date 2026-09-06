@@ -26,7 +26,7 @@ use Spatie\Translatable\HasTranslations;
     menuResolver: null,
     livewire: true
 )]
-#[Requests(store: \Nodex\Nexus\Modules\Role\Requests\AdminStoreRequest::class, update: \Nodex\Nexus\Modules\Role\Requests\AdminUpdateRequest::class)]
+#[Requests(actions: ['store' => \Nodex\Nexus\Modules\Role\Requests\AdminStoreRequest::class, 'update' => \Nodex\Nexus\Modules\Role\Requests\AdminUpdateRequest::class])]
 #[TableAction(name: 'edit', label: 'Edit', icon: 'edit', isConfirm: false)]
 #[TableAction(name: 'delete', label: 'Delete', icon: 'delete', isConfirm: true)]
 #[TableAction(name: 'restore', label: 'Restore', icon: 'restore', isConfirm: true)]

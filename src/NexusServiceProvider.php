@@ -104,11 +104,28 @@ class NexusServiceProvider extends ServiceProvider
                 return $faker;
             });
         }
-        // Auto-discover and register plugins. A broken plugin must not take
-        // the rest of the admin panel down — but silently swallowing every
-        // exception here (the previous behavior) meant a plugin bug had no
-        // way to ever surface, not even in local dev; same problem, same
-        // fix, as AttributeSchemaReader::guardAgainstMisconfiguration() and
+    }
+
+    /**
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
+     */
+    public function boot(): void
+    {
+        // Auto-discover and register plugins. Deliberately in boot(), not
+        // register(): PluginManager::isPluginEnabled() queries the
+        // nexus_plugins table, and Eloquent's connection resolver isn't set
+        // yet during register() — every provider's register() runs before
+        // any provider's boot(), including Laravel's own
+        // DatabaseServiceProvider. Running this from register() meant every
+        // DB lookup there threw "Call to a member function connection() on
+        // null", was swallowed by the catch below, and silently fell back to
+        // "enabled" every single time — so disabling a plugin from the admin
+        // screen had no effect on actual discovery, only on what the list
+        // page displayed. A broken plugin must not take the rest of the
+        // admin panel down — but silently swallowing every exception here
+        // (the previous behavior) meant a plugin bug had no way to ever
+        // surface, not even in local dev; same problem, same fix, as
+        // AttributeSchemaReader::guardAgainstMisconfiguration() and
         // NexusController::action()'s app.debug gate elsewhere in this
         // package.
         try {
@@ -121,13 +138,7 @@ class NexusServiceProvider extends ServiceProvider
             }
             report($e);
         }
-    }
 
-    /**
-     * @throws \Illuminate\Contracts\Container\BindingResolutionException
-     */
-    public function boot(): void
-    {
         $shouldBeStrict = !$this->app->isProduction();
         Model::shouldBeStrict($shouldBeStrict);
 

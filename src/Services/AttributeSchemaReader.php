@@ -133,7 +133,7 @@ class AttributeSchemaReader
     }
 
     /**
-     * #[Requests] — dedicated store/update FormRequest classes, if declared.
+     * #[Requests] — dedicated FormRequest classes per action, if declared.
      */
     private function processRequestsAttr(ReflectionClass $reflection, DefaultModuleConfigurationDto $config): void
     {
@@ -144,11 +144,8 @@ class AttributeSchemaReader
 
         /** @var RequestsAttr $requestsMeta */
         $requestsMeta = $requestsAttrInstances[0]->newInstance();
-        if ($requestsMeta->store) {
-            $config->methodRequests['store'] = $requestsMeta->store;
-        }
-        if ($requestsMeta->update) {
-            $config->methodRequests['update'] = $requestsMeta->update;
+        foreach ($requestsMeta->actions as $action => $requestClass) {
+            $config->methodRequests[$action] = $requestClass;
         }
     }
 

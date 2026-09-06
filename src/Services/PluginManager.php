@@ -71,6 +71,10 @@ class PluginManager
         foreach ($directories as $dir) {
             $pluginDirName = basename($dir);
 
+            if (!$this->isPluginEnabled($pluginDirName)) {
+                continue;
+            }
+
             // Look for PHP files in the plugin directory
             $files = glob($dir . '/*.php');
 
@@ -84,8 +88,43 @@ class PluginManager
         // Also check the root directory for backward compatibility or simple plugins
         $files = glob($pluginsPath . '/*.php');
         foreach ($files as $file) {
-            $className = 'App\\Nexus\\Plugins\\' . basename($file, '.php');
+            $pluginName = basename($file, '.php');
+
+            if (!$this->isPluginEnabled($pluginName)) {
+                continue;
+            }
+
+            $className = 'App\\Nexus\\Plugins\\' . $pluginName;
             $this->discoverClass($className);
+        }
+    }
+
+    /**
+     * Folder-level (or loose top-level file) enable/disable, backed by the
+     * `nexus_plugins` table (see App\Nexus\Modules\Plugins\Models\Plugin) —
+     * the admin-facing counterpart to the class-level
+     * config('nexus.plugins.disabled') check in discoverClass() below, which
+     * still runs independently and covers the individual-class case.
+     * firstOrCreate() means a newly added plugin folder shows up in the
+     * admin list (enabled by default) the next time it's discovered, with no
+     * separate install step. Fails open (enabled) on any error — e.g. the
+     * table not migrated yet on a fresh install — so a missing/pending
+     * migration never silently disables every plugin, matching
+     * ModuleRegistry::getEnabledModules()'s own fail-open precedent.
+     */
+    private function isPluginEnabled(string $name): bool
+    {
+        if (!class_exists(\App\Nexus\Modules\Plugins\Models\Plugin::class)) {
+            return true;
+        }
+
+        try {
+            $plugin = \App\Nexus\Modules\Plugins\Models\Plugin::findByName($name)
+                ?? \App\Nexus\Modules\Plugins\Models\Plugin::create(['name' => $name, 'is_enabled' => true]);
+
+            return (bool) $plugin->is_enabled;
+        } catch (\Throwable) {
+            return true;
         }
     }
 

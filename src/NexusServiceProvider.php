@@ -134,6 +134,7 @@ class NexusServiceProvider extends ServiceProvider
         $this->mergeConfig();
         $this->publish();
         $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+        $this->registerDefaultApiRateLimiter();
 
         // @position('name') or @position('name', $templateType) — renders every
         // active widget_assignments row for that position (see FrontWidgetRenderer).
@@ -278,6 +279,31 @@ class NexusServiceProvider extends ServiceProvider
     private function mergeConfig(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/config/nexus.php', 'nexus');
+    }
+
+    /**
+     * REST and GraphQL both default to the 'api' middleware group
+     * (config('nexus.api_middleware')/('graphql_middleware')). Laravel's
+     * own skeleton doesn't define an 'api' rate limiter out of the box —
+     * $middleware->throttleApi() in the app's bootstrap/app.php only
+     * attaches throttle:api, it does NOT define the limiter itself. If an
+     * app enables throttleApi() without separately registering
+     * RateLimiter::for('api', ...), every api-group request 500s with
+     * MissingRateLimiterException. Registering a sane default here means
+     * that "just works" the moment an app calls throttleApi(), with no
+     * boilerplate the app has to remember to add. Guarded so an app's own
+     * RateLimiter::for('api', ...) (registered in a provider that boots
+     * after this one) simply overrides this default — never a conflict.
+     */
+    private function registerDefaultApiRateLimiter(): void
+    {
+        if ($this->app->make(\Illuminate\Cache\RateLimiter::class)->limiter('api')) {
+            return;
+        }
+
+        \Illuminate\Support\Facades\RateLimiter::for('api', function (\Illuminate\Http\Request $request) {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
     }
 
     private function loadView(): void

@@ -31,6 +31,13 @@ trait ManagesGalleryFields
      */
     public function updatedGalleryUpload($value, $key): void
     {
+        // Only a client-side accept="image/*" hint guarded this before —
+        // trivially bypassed, and nothing downstream (attach()/
+        // SpatieMediaLibraryService) checked mime/extension either.
+        $this->validateOnly("galleryUpload.{$key}", [
+            "galleryUpload.{$key}" => ['image', 'max:10240'],
+        ]);
+
         $this->uploadGalleryFile($key);
     }
 

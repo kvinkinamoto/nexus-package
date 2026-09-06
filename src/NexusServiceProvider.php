@@ -171,8 +171,6 @@ class NexusServiceProvider extends ServiceProvider
             return "<?php foreach (({$expression}) as \$__nexusBlock) { \$__nexusBlockView = 'nexus::public.block_types.' . \$__nexusBlock->type; if (\Illuminate\Support\Facades\View::exists(\$__nexusBlockView)) { echo view(\$__nexusBlockView, ['block' => \$__nexusBlock, 'data' => (object) (\$__nexusBlock->data ?? [])])->render(); } } ?>";
         });
 
-        $this->registerBuiltInBlockTypes();
-
         $this->registerValidationRulesFilter();
 
         /** @var ModuleRegistry $registry */
@@ -669,24 +667,6 @@ class NexusServiceProvider extends ServiceProvider
 
         $registry->alias('editor', 'text');
         $registry->alias('date', 'birthday');
-    }
-
-    /**
-     * The four block types Nexus ships out of the box for
-     * #[Field(type: 'blockEditor')] fields (see Page::blocks()). A
-     * plugin/module can register its own the same way, from its own service
-     * provider's boot(), via BlockTypeRegistry::register() directly — no
-     * discovery mechanism needed for this registry (see its own docblock).
-     */
-    private function registerBuiltInBlockTypes(): void
-    {
-        /** @var \Nodex\Nexus\Services\Blocks\BlockTypeRegistry $registry */
-        $registry = $this->app->make(\Nodex\Nexus\Services\Blocks\BlockTypeRegistry::class);
-
-        $registry->register(new \Nodex\Nexus\Services\Blocks\Types\HeroBlockType);
-        $registry->register(new \Nodex\Nexus\Services\Blocks\Types\TextBlockType);
-        $registry->register(new \Nodex\Nexus\Services\Blocks\Types\ImageBlockType);
-        $registry->register(new \Nodex\Nexus\Services\Blocks\Types\CtaBlockType);
     }
 
     /**

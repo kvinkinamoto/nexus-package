@@ -2,25 +2,24 @@
 
 namespace Nodex\Nexus\commands;
 
-use App\Models\User;
 use Illuminate\Console\Command;
 
 /**
- * v1 has no self-service token UI (see Services/GraphQL/SchemaBuilder's
- * docblock on scope) — this is enough to demonstrate and test the GraphQL
- * endpoint's Sanctum auth. A real admin-panel "API tokens" screen is
- * separate scope.
+ * No self-service token UI yet — this is enough to issue/demonstrate a
+ * Sanctum token for REST (and any installed API plugin, e.g. GraphQL) auth.
+ * A real admin-panel "API tokens" screen is separate scope.
  */
 class IssueApiToken extends Command
 {
     protected $signature = 'nexus:api-token:issue {email}';
 
-    protected $description = 'Issue a Sanctum personal access token for a user, for GraphQL/API access';
+    protected $description = 'Issue a Sanctum personal access token for a user, for API access';
 
     public function handle(): int
     {
         $email = $this->argument('email');
-        $user = User::where('email', $email)->first();
+        $modelClass = config('auth.providers.users.model');
+        $user = $modelClass::where('email', $email)->first();
 
         if (! $user) {
             $this->error("No user found with email [{$email}].");
@@ -28,7 +27,7 @@ class IssueApiToken extends Command
             return Command::FAILURE;
         }
 
-        $token = $user->createToken('graphql')->plainTextToken;
+        $token = $user->createToken('api')->plainTextToken;
 
         $this->info('Token issued:');
         $this->line($token);

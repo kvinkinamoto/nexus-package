@@ -36,10 +36,11 @@ class FieldConfigDto extends \stdClass
         /**
          * Mirrors #[Field(apiExpose:)] — see AttributeSchemaReader::processFieldAttr(),
          * the only place this is actually set from the attribute. Read by
-         * Services/GraphQL/SchemaBuilder to decide which fields get a
-         * GraphQL type; NexusResource additionally re-reflects the raw
-         * #[Field] attribute itself rather than reading this DTO property,
-         * so keep both in sync if this ever changes.
+         * an installed GraphQL plugin (e.g. app/Nexus/Plugins/GraphQL, a
+         * premium add-on — not part of this open-core package) to decide
+         * which fields get a GraphQL type; NexusResource additionally
+         * re-reflects the raw #[Field] attribute itself rather than reading
+         * this DTO property, so keep both in sync if this ever changes.
          */
         public bool $apiExpose = false,
     ) {

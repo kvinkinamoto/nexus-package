@@ -1,39 +1,21 @@
-Copyright (c) 2025 nodex
+MIT License
 
-All rights reserved.
+Copyright (c) 2026 nodex
 
-This software package ("nexus") is proprietary software owned by nodex.
-The Package, including all source code, documentation, and related materials,
-is protected by copyright laws and international copyright treaties, as well as other intellectual property laws and treaties.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-1. **Grant of License**:
-   nodex grants you a limited, non-exclusive, non-transferable, non-sublicensable license to use
-   the Package solely for personal or internal business purposes within your organization.
-   This license does not permit any commercial use, distribution, or modification of the Package
-   without prior written consent from [Назва вашої компанії].
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-2. **Restrictions**:
-   - You may not use the Package for commercial purposes, including but not limited to selling, licensing,
-   or distributing the Package or any derivative works, without explicit written permission from nodex.
-   - You may not copy, modify, distribute, sell, or lease any part of the Package.
-   - You may not reverse engineer, decompile, or disassemble the Package, except to the extent that such activity
-   is expressly permitted by applicable law.
-   - You may not remove or alter any copyright, trademark, or other proprietary notices contained in the Package.
-
-3. **Ownership**:
-   The Package is licensed, not sold. nodex retains all title, ownership, and intellectual property rights in
-   and to the Package.
-
-4. **Termination**:
-   This license is effective until terminated. nodex may terminate this license immediately if you fail
-   to comply with any of its terms. Upon termination, you must cease all use of the Package and destroy all copies
-   in your possession.
-
-5. **No Warranty**:
-   The Package is provided "as is" without warranty of any kind, either expressed or implied, including but not
-   limited to the implied warranties of merchantability and fitness for a particular purpose.
-
-6. **Contact**:
-   For inquiries regarding commercial use or licensing, please contact https://nodex.com/
-
-By using this Package, you agree to be bound by the terms of this license.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

@@ -14,9 +14,6 @@ return [
     // instead, scoped to just that route, not this whole group.
     'api_middleware' => ['api'],
 
-    'graphql_prefix' => env('GRAPHQL_PREFIX', 'graphql'),
-    'graphql_middleware' => ['api', 'auth:sanctum'],
-
     'table' => [
         'pagination' => [
             'per_page_options' => [15, 30, 50, 100],

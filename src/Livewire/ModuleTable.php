@@ -2,6 +2,9 @@
 
 namespace Nodex\Nexus\Livewire;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Nodex\Nexus\Events\BulkActionExecuting;
@@ -132,6 +135,45 @@ class ModuleTable extends Component
         $this->page = 1;
     }
 
+    /**
+     * Backs the "Columns" picker in module-table.blade.php. The read side of
+     * this (nexus_user_table_preferences.visible_columns, filtered against
+     * per user+module in TableBuilder::build()) already existed and worked —
+     * only a way to actually write a preference was ever missing, the same
+     * "backend ready, no UI ever called it" gap as the #[Setting] registry
+     * (see project-nexus-settings-registry memory). Mirrors
+     * NexusController::saveTableColumns()'s persistence exactly; that HTTP
+     * route stays for any non-Livewire caller, this is the reactive path.
+     *
+     * $tableData['columns'] already reflects the current preference-or-
+     * default visible set, so toggling one entry against it (rather than
+     * re-deriving "preference or default" here too) keeps this the single
+     * source of truth for "what's visible right now".
+     */
+    public function toggleColumnVisibility(string $columnName): void
+    {
+        $data = $this->tableData();
+
+        $allNames = collect($data['allColumns'])->map(fn ($c) => $c->name ?? $c['name'])->all();
+        if (! in_array($columnName, $allNames, true)) {
+            return;
+        }
+
+        $visible = collect($data['columns'])->map(fn ($c) => $c->name ?? $c['name'])->all();
+        $visible = in_array($columnName, $visible, true)
+            ? array_values(array_diff($visible, [$columnName]))
+            : array_merge($visible, [$columnName]);
+
+        if (empty($visible)) {
+            return;
+        }
+
+        DB::table('nexus_user_table_preferences')->updateOrInsert(
+            ['user_id' => auth()->id(), 'module' => $this->resolveModule()->name],
+            ['visible_columns' => json_encode(array_values($visible)), 'updated_at' => now()]
+        );
+    }
+
     public function toggleSelectAll(bool $checked): void
     {
         $this->selected = $checked
@@ -260,7 +302,7 @@ class ModuleTable extends Component
 
     private function dispatchAsyncBulkAction(Module $module, string $actionName): void
     {
-        $cacheKey = 'bulk_'.\Illuminate\Support\Str::random(10);
+        $cacheKey = 'bulk_'.Str::random(10);
         $jobClass = ModuleManager::nexus_module_class('BulkAction', 'Jobs\\BulkActionJob');
 
         dispatch(new $jobClass($module->name, $actionName, $this->selected, $cacheKey, auth()->id()));
@@ -290,7 +332,7 @@ class ModuleTable extends Component
         $module = $this->resolveModule();
         abort_unless(ModuleManager::checkPermission('index', $module), 403);
 
-        $cacheKey = 'export_'.\Illuminate\Support\Str::random(10);
+        $cacheKey = 'export_'.Str::random(10);
         $jobClass = ModuleManager::nexus_module_class('Export', 'Jobs\\MasterExportJob');
 
         dispatch(new $jobClass(
@@ -324,6 +366,6 @@ class ModuleTable extends Component
 
     private function resolveModule(): Module
     {
-        return $this->moduleCache ??= Module::findByName($this->moduleName) ?? throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())->setModel(Module::class);
+        return $this->moduleCache ??= Module::findByName($this->moduleName) ?? throw (new ModelNotFoundException)->setModel(Module::class);
     }
 }

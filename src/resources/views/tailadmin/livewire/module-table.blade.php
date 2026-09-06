@@ -71,6 +71,28 @@
                         @lang('nexus::translate.Settings')
                     </a>
                 @endif
+                @if(!empty($tableData['allColumns']) && count($tableData['allColumns']) > 1)
+                    <div class="relative" x-data="{ open: false }">
+                        <button type="button" @click="open = !open" @click.outside="open = false"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/5">
+                            <i class="bx bx-columns"></i>
+                            @lang('nexus::translate.columns')
+                        </button>
+                        <div x-show="open" x-cloak x-transition
+                            class="absolute right-0 z-40 mt-2 w-56 rounded-2xl border border-gray-200 bg-white p-2 shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+                            @php $visibleColumnNames = collect($tableData['columns'])->map(fn ($c) => $c->name ?? $c['name'])->all(); @endphp
+                            @foreach($tableData['allColumns'] as $col)
+                                @php $colName = $col->name ?? $col['name']; @endphp
+                                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5">
+                                    <input type="checkbox" wire:click="toggleColumnVisibility('{{ $colName }}')"
+                                        @checked(in_array($colName, $visibleColumnNames, true))
+                                        class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-900">
+                                    @lang(Str::lcfirst($module->name) . '::translate.' . Str::lower($col->label ?? $colName))
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
                 @foreach($module->config->table->mainActions ?? [] as $mainAction)
                     @if($mainAction->isActive)
                         <a href="{{ route('nexus.module.action', ['module' => $module->name, 'action' => $mainAction->name]) }}"

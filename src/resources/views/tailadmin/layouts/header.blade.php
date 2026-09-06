@@ -254,7 +254,7 @@
                         <i class="{{ nexus_icon('profile') }} text-lg"></i>
                         @lang('nexus::translate.Profile')
                     </a>
-                    <a href="{{ route('nexus.module.action', ['module' => 'settings', 'action' => 'edit']) }}" class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5">
+                    <a href="{{ route('nexus.module.action', ['module' => 'settings', 'action' => 'settings']) }}" class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5">
                         <i class="{{ nexus_icon('tools') }} text-lg"></i>
                         @lang('nexus::translate.Settings')
                     </a>

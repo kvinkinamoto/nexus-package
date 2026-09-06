@@ -33,6 +33,9 @@ class ModuleSettingsForm extends Component
     {
         $this->moduleName = $moduleName;
 
+        // 'edit' rather than a separate 'settings' permission place — no
+        // module installs one of those, and "can edit this module" is a
+        // reasonable stand-in for "can manage its settings".
         abort_unless(ModuleManager::checkPermission('edit', $this->resolveModule()), 403);
 
         foreach ($this->settings() as $key => $setting) {
@@ -74,7 +77,7 @@ class ModuleSettingsForm extends Component
         session()->flash('alert_message', __('nexus::translate.alert.update_success'));
         session()->flash('alert_type', 'success');
 
-        $this->redirect(route('nexus.module.action', ['module' => $this->moduleName, 'action' => 'edit']));
+        $this->redirect(route('nexus.module.action', ['module' => $this->moduleName, 'action' => 'settings']));
     }
 
     private function resolveModule(): Module

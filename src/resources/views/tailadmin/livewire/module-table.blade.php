@@ -64,6 +64,13 @@
                         <span id="nexusExportStatus-{{ $module->name }}">@lang('nexus::translate.Export')</span>
                     </button>
                 @endif
+                @if(!empty($module->config->settings))
+                    <a href="{{ route('nexus.module.action', ['module' => $module->name, 'action' => 'settings']) }}"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/5">
+                        <i class="{{ nexus_icon('tools') }}"></i>
+                        @lang('nexus::translate.Settings')
+                    </a>
+                @endif
                 @foreach($module->config->table->mainActions ?? [] as $mainAction)
                     @if($mainAction->isActive)
                         <a href="{{ route('nexus.module.action', ['module' => $module->name, 'action' => $mainAction->name]) }}"

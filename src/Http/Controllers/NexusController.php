@@ -261,7 +261,7 @@ class NexusController extends Controller implements HasMiddleware
      * Actions that only render a view/form — never a state change — so they
      * are excluded from the generic ModuleActionExecuted audit event.
      */
-    private const READ_ONLY_ACTIONS = ['index', 'edit', 'create', 'view'];
+    private const READ_ONLY_ACTIONS = ['index', 'edit', 'create', 'view', 'settings'];
 
     public function action(FormRequest $request, Module $module, string $action, ?string $id = null)
     {
@@ -384,6 +384,26 @@ class NexusController extends Controller implements HasMiddleware
         return view('nexus::'.config('nexus.template').'.pages.editLivewire', [
             'module' => $module,
             'id' => $id,
+        ]);
+    }
+
+    /**
+     * Generic settings screen for any module that declares #[Setting(...)]
+     * (see Attributes\Setting, Livewire\ModuleSettingsForm) — available to
+     * every module automatically, unlike edit()/create() which need a bound
+     * model. Deliberately a distinct action name rather than reusing 'edit':
+     * a model-bound module's 'edit' already means "edit this one row" (id
+     * required), so a settings screen sharing that name would collide with
+     * — or with no id, be misread by ModuleForm::mount() as — the normal
+     * per-row form. Works identically whether or not the module has a bound
+     * model at all — App\Nexus\Modules\Settings has none (see its
+     * ModuleConfiguration) and relies on this same method; its
+     * AdminController only overrides index() to redirect here.
+     */
+    public function settings(FormRequest $request, Module $module, ?string $id = null)
+    {
+        return view('nexus::'.config('nexus.template').'.pages.moduleSettingsLivewire', [
+            'module' => $module,
         ]);
     }
 

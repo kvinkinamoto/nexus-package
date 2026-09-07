@@ -21,7 +21,13 @@ class CheckUserPermissionAction
      * single already-seeded permission. A permission check must degrade to
      * "denied", not a 500, when the permission itself doesn't exist yet.
      */
-    private static function hasPermission($user, string $permission): bool
+    /**
+     * Public so any raw-permission-name check outside the module/action/place
+     * shape above can reuse the same "degrade to denied, not a 500" guard —
+     * e.g. PluginManager's #[AttachField(permission:)]/#[AttachColumn(permission:)]
+     * gating (see Attributes/AttachField.php).
+     */
+    public static function hasPermission($user, string $permission): bool
     {
         try {
             return $user->hasPermissionTo($permission);
@@ -51,7 +57,7 @@ class CheckUserPermissionAction
 
         $modulePermissions = DefaultModuleConfigurationDto::normalize($module?->config?->permissions ?? []);
 
-        if (!isset($modulePermissions[$place][$action])) {
+        if (! isset($modulePermissions[$place][$action])) {
             return false;
         }
 

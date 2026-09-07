@@ -4,9 +4,12 @@ namespace Nodex\Nexus\Services;
 
 use Nodex\Nexus\Attributes\AttachColumn;
 use Nodex\Nexus\Attributes\AttachField;
+use Nodex\Nexus\Attributes\AttachFilter;
 use Nodex\Nexus\Attributes\Relation as RelationAttr;
 use Nodex\Nexus\Dto\ModuleDtos\ColumnConfigDto;
 use Nodex\Nexus\Dto\ModuleDtos\FieldConfigDto;
+use Nodex\Nexus\Dto\ModuleDtos\FilterConfigDto;
+use Nodex\Nexus\Http\Actions\CheckUserPermissionAction;
 use ReflectionClass;
 use ReflectionMethod;
 
@@ -14,14 +17,26 @@ class PluginManager
 {
     protected array $plugins = [];
 
-    /** @var array<string, array<string, FieldConfigDto>> Target module name => field name => config, from #[AttachField]. */
+    /**
+     * @var array<string, array<string, array{dto: FieldConfigDto, permission: ?string}>>
+     *   Target module name => field name => entry, from #[AttachField].
+     */
     protected array $fieldAttachments = [];
 
     /** @var array<string, array<string, \Nodex\Nexus\Dto\ModuleDtos\RelationConfigDto>> Target module name => relation name => config, from #[AttachField]+#[Relation]. */
     protected array $relationAttachments = [];
 
-    /** @var array<string, array<string, ColumnConfigDto>> Target module name => column name => config, from #[AttachColumn]. */
+    /**
+     * @var array<string, array<string, array{dto: ColumnConfigDto, permission: ?string}>>
+     *   Target module name => column name => entry, from #[AttachColumn].
+     */
     protected array $columnAttachments = [];
+
+    /**
+     * @var array<string, array<string, array{dto: FilterConfigDto, permission: ?string}>>
+     *   Target module name => filter name => entry, from #[AttachFilter].
+     */
+    protected array $filterAttachments = [];
 
     public function __construct(private ?HookManager $hookManager = null, private ?AttributeSchemaReader $schemaReader = null)
     {
@@ -59,19 +74,42 @@ class PluginManager
     {
         $targetModule = ucfirst($targetModule);
 
-        // Declarative #[AttachField]/#[AttachColumn] attachments first, so a
-        // plugin's own handle() (the escape hatch for anything they can't
-        // express) can still see and override/remove them afterward.
-        foreach ($this->fieldAttachments[$targetModule] ?? [] as $name => $field) {
-            $configuration->form->fields[$name] = $field;
+        // Declarative #[AttachField]/#[AttachColumn]/#[AttachFilter]
+        // attachments first, so a plugin's own handle() (the escape hatch
+        // for anything they can't express) can still see and override/
+        // remove them afterward. Each entry's own `permission` (if set)
+        // gates it independently of whatever the target module's own
+        // action already requires — an entry the current viewer can't see
+        // is simply never merged in, not hidden client-side.
+        foreach ($this->fieldAttachments[$targetModule] ?? [] as $name => $entry) {
+            if ($this->canSeeAttachment($entry['permission'])) {
+                $configuration->form->fields[$name] = $entry['dto'];
+            }
         }
 
         foreach ($this->relationAttachments[$targetModule] ?? [] as $name => $relation) {
-            $configuration->relations->is_available[$name] = $relation;
+            // Relation config only matters for a field that's actually
+            // visible — an #[AttachField] the viewer lacks permission for
+            // never entered $configuration->form->fields above, so its
+            // relation config shouldn't leak into $configuration->relations
+            // either (ManagesRelationPicker/AjaxController resolve relation
+            // data straight from this map, independent of the form fields
+            // loop above).
+            if (isset($configuration->form->fields[$name])) {
+                $configuration->relations->is_available[$name] = $relation;
+            }
         }
 
-        foreach ($this->columnAttachments[$targetModule] ?? [] as $name => $column) {
-            $configuration->table->columns[$name] = $column;
+        foreach ($this->columnAttachments[$targetModule] ?? [] as $name => $entry) {
+            if ($this->canSeeAttachment($entry['permission'])) {
+                $configuration->table->columns[$name] = $entry['dto'];
+            }
+        }
+
+        foreach ($this->filterAttachments[$targetModule] ?? [] as $name => $entry) {
+            if ($this->canSeeAttachment($entry['permission'])) {
+                $configuration->table->filters[$name] = $entry['dto'];
+            }
         }
 
         $plugins = $this->getPlugins($targetModule);
@@ -86,6 +124,30 @@ class PluginManager
         }
 
         return $configuration;
+    }
+
+    /**
+     * Gate for an #[AttachField]/#[AttachColumn]/#[AttachFilter]'s optional
+     * `permission`. Null means "no extra gate" — always visible (the
+     * pre-existing, backward-compatible behavior). A super-admin
+     * (AdminPanelPermissionEnum::ALL) always passes, matching
+     * CheckUserPermissionAction's own convention. Fails closed (hidden) for
+     * a guest or a permission name that doesn't exist yet, never a 500 —
+     * see CheckUserPermissionAction::hasPermission()'s own docblock for why.
+     */
+    private function canSeeAttachment(?string $permission): bool
+    {
+        if ($permission === null) {
+            return true;
+        }
+
+        $user = auth()->user();
+        if (!$user) {
+            return false;
+        }
+
+        return CheckUserPermissionAction::hasPermission($user, \Nodex\Nexus\Enums\AdminPanelPermissionEnum::ALL->value)
+            || CheckUserPermissionAction::hasPermission($user, $permission);
     }
 
     /**
@@ -209,11 +271,16 @@ class PluginManager
 
     /**
      * Scans a #[TargetModule]-carrying plugin class for #[AttachField]/
-     * #[AttachColumn] marker methods — declarative sugar over handle() for
-     * the common case of adding one field/column (optionally paired with
-     * #[Relation] for a relation-backed field) to the target module's admin
-     * schema without editing that module's own file. See
-     * Attributes/AttachField.php, Attributes/AttachColumn.php.
+     * #[AttachColumn]/#[AttachFilter] marker methods — declarative sugar
+     * over handle() for the common case of adding one field/column/filter
+     * (optionally paired with #[Relation] for a relation-backed field) to
+     * the target module's admin schema without editing that module's own
+     * file. See Attributes/AttachField.php, Attributes/AttachColumn.php,
+     * Attributes/AttachFilter.php. Each entry's `permission` is kept
+     * alongside its built DTO rather than merged into $configuration here —
+     * that only happens in apply(), which runs per-request with the actual
+     * viewer resolved, unlike this discovery pass (see canSeeAttachment()'s
+     * docblock).
      */
     private function discoverFieldAttachments(ReflectionClass $reflection, string $targetModule): void
     {
@@ -230,10 +297,11 @@ class PluginManager
                     section: $meta->section,
                     label: $meta->label,
                     isRequired: $meta->isRequired,
+                    apiExpose: $meta->apiExpose,
                 );
                 $field->order = $meta->order;
 
-                $this->fieldAttachments[$targetModule][$meta->name] = $field;
+                $this->fieldAttachments[$targetModule][$meta->name] = ['dto' => $field, 'permission' => $meta->permission];
 
                 $relationAttrs = $method->getAttributes(RelationAttr::class);
                 if (!empty($relationAttrs)) {
@@ -256,7 +324,16 @@ class PluginManager
                 );
                 $column->order = $meta->order;
 
-                $this->columnAttachments[$targetModule][$meta->name] = $column;
+                $this->columnAttachments[$targetModule][$meta->name] = ['dto' => $column, 'permission' => $meta->permission];
+            }
+
+            foreach ($method->getAttributes(AttachFilter::class) as $attr) {
+                /** @var AttachFilter $meta */
+                $meta = $attr->newInstance();
+
+                $filter = new FilterConfigDto($meta->name, $meta->label, $meta->type);
+
+                $this->filterAttachments[$targetModule][$meta->name] = ['dto' => $filter, 'permission' => $meta->permission];
             }
         }
     }

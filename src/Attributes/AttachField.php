@@ -33,6 +33,15 @@ use Attribute;
  * or removing the declaring plugin/module makes the field disappear on the
  * next request, the same fail-quiet posture as every other Nexus extension
  * point (nothing crashes, it's simply not there).
+ *
+ * `permission`, when set, gates the field per-viewer independently of
+ * whatever permission the target module's own edit/view action already
+ * requires — e.g. a paid Review module attaching onto a free Product module
+ * shouldn't leak to a Product editor without a Review license. Checked via
+ * spatie/laravel-permission (degrades to "denied", never a 500, for an
+ * unseeded permission name — see Http/Actions/CheckUserPermissionAction).
+ * Leave null to inherit Product's own gate unchanged (the pre-existing
+ * behavior).
  */
 #[Attribute(Attribute::TARGET_METHOD)]
 class AttachField
@@ -53,5 +62,11 @@ class AttachField
 
         /** Render order relative to the target module's own fields. */
         public readonly int $order = 0,
+
+        /** Mirrors #[Field(apiExpose:)] — exposes this attached field through REST/GraphQL the same way a module's own field would be. */
+        public readonly bool $apiExpose = false,
+
+        /** Spatie permission name required to see this field at all. Null = inherit the target module's own gate. */
+        public readonly ?string $permission = null,
     ) {}
 }

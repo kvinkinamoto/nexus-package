@@ -26,6 +26,10 @@ use Attribute;
  * The column's value still has to resolve on the target model like any
  * other column (a real attribute or accessor) — this attribute only makes
  * an entry appear in the table config, it doesn't manufacture data.
+ *
+ * `permission`, when set, gates the column per-viewer — see
+ * Attributes/AttachField.php's docblock for the full rationale and gating
+ * mechanics this mirrors.
  */
 #[Attribute(Attribute::TARGET_METHOD)]
 class AttachColumn
@@ -42,5 +46,8 @@ class AttachColumn
 
         /** Render order relative to the target module's own columns. */
         public readonly int $order = 0,
+
+        /** Spatie permission name required to see this column at all. Null = inherit the target module's own gate. */
+        public readonly ?string $permission = null,
     ) {}
 }

@@ -630,6 +630,25 @@ class AttributeSchemaReader
         /** @var RelationAttr $relMeta */
         $relMeta = $relationAttrs[0]->newInstance();
 
+        $config->relations->is_available[$name] = $this->buildRelationConfigDto($relMeta, $name, $method);
+    }
+
+    /**
+     * Builds a RelationConfigDto from a #[Relation] attribute instance —
+     * shared by processRelationAttr() above (a relation declared on the
+     * model itself) and PluginManager's #[AttachField]+#[Relation] handling
+     * (a relation attached to a module from the outside, see
+     * Attributes/AttachField.php), so both paths produce identically-shaped
+     * config from the same attribute.
+     *
+     * @param  ?ReflectionMethod  $method  Used only to auto-detect the relation
+     *   type from a return-type hint when the attribute doesn't specify one
+     *   explicitly. Pass null when there's no real relation method to detect
+     *   from (e.g. an #[AttachField] marker method) — $relMeta->type is then
+     *   required.
+     */
+    public function buildRelationConfigDto(RelationAttr $relMeta, string $name, ?ReflectionMethod $method = null): RelationConfigDto
+    {
         // Auto-detect type from return type hint if not explicitly set
         $relType = $relMeta->type
             ? $this->normalizeRelationType($relMeta->type)
@@ -653,7 +672,7 @@ class AttributeSchemaReader
             }
         }
 
-        $config->relations->is_available[$name] = new RelationConfigDto(
+        return new RelationConfigDto(
             type: $relType,
             relationName: $name,
             isRequired: $relMeta->required,

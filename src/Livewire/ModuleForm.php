@@ -132,6 +132,21 @@ class ModuleForm extends Component
         foreach ($moduleConfig->form->fields as $field) {
             $relationConfig = $moduleConfig->relations->is_available[$field->name] ?? null;
 
+            if ($field->type === 'relationManager') {
+                // Read-only, model-driven directly by the blade partial
+                // (livewire/field_types/relationManager.blade.php fetches
+                // $model and calls $model->{$field->name}() itself) — never
+                // has editable $data/$relationLabels state to seed, so it
+                // must never fall into the generic belongsTo/multi-relation
+                // seeding below. That matters especially for a relation
+                // attached via #[AttachRelation]/#[AttachField] (see
+                // Attributes/AttachField.php): Model::resolveRelationUsing()
+                // only supports method-call syntax, so the multi-relation
+                // branch's $model->{$field->name} (property access) would
+                // throw when strict attribute access is enabled.
+                continue;
+            }
+
             if ($relationConfig && ! empty($field->repeaterColumns)) {
                 $this->relationRows[$field->name] = $model
                     ? $this->hydrateRepeaterRows($model, $field)

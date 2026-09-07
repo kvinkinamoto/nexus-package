@@ -13,8 +13,22 @@
     $rows = collect();
     $foreignKey = null;
 
-    if ($model && method_exists($model, $field->name)) {
-        $relation = $model->{$field->name}();
+    // A relation attached dynamically via #[AttachRelation]/Model::resolveRelationUsing()
+    // (see Attributes/AttachRelation.php, Attributes/AttachField.php) is never a real
+    // declared method, so method_exists() would always miss it — attempt the call and
+    // fail quiet instead, the same posture as @position/@nexusForm/@nexusBlocks. This
+    // also covers a disabled/removed module that owns the relation: the resolver was
+    // simply never registered, so the call throws and is swallowed like any other miss.
+    $relation = null;
+    if ($model) {
+        try {
+            $relation = $model->{$field->name}();
+        } catch (\Throwable $e) {
+            $relation = null;
+        }
+    }
+
+    if ($relation instanceof \Illuminate\Database\Eloquent\Relations\Relation) {
         if (method_exists($relation, 'getForeignKeyName')) {
             $foreignKey = $relation->getForeignKeyName();
         }

@@ -15,8 +15,20 @@
     $__nexusForeignKey = null;
     $__nexusParentId = (isset($model) && $model) ? $model->getKey() : null;
 
-    if ($__nexusParentId && method_exists($model, $field->name)) {
-        $__nexusRelation = $model->{$field->name}();
+    // See the Livewire twin of this partial (livewire/field_types/relationManager.blade.php)
+    // for why method_exists() can't be used here: a relation attached dynamically via
+    // #[AttachRelation]/#[AttachField] is never a real declared method. Attempt the call
+    // and fail quiet instead — also covers a disabled/removed module gracefully.
+    $__nexusRelation = null;
+    if ($__nexusParentId) {
+        try {
+            $__nexusRelation = $model->{$field->name}();
+        } catch (\Throwable $e) {
+            $__nexusRelation = null;
+        }
+    }
+
+    if ($__nexusRelation instanceof \Illuminate\Database\Eloquent\Relations\Relation) {
         if (method_exists($__nexusRelation, 'getForeignKeyName')) {
             $__nexusForeignKey = $__nexusRelation->getForeignKeyName();
         }

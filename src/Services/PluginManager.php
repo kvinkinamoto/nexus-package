@@ -2,11 +2,28 @@
 
 namespace Nodex\Nexus\Services;
 
+use Nodex\Nexus\Attributes\AttachColumn;
+use Nodex\Nexus\Attributes\AttachField;
+use Nodex\Nexus\Attributes\Relation as RelationAttr;
+use Nodex\Nexus\Dto\ModuleDtos\ColumnConfigDto;
+use Nodex\Nexus\Dto\ModuleDtos\FieldConfigDto;
+use ReflectionClass;
+use ReflectionMethod;
+
 class PluginManager
 {
     protected array $plugins = [];
 
-    public function __construct(private ?HookManager $hookManager = null)
+    /** @var array<string, array<string, FieldConfigDto>> Target module name => field name => config, from #[AttachField]. */
+    protected array $fieldAttachments = [];
+
+    /** @var array<string, array<string, \Nodex\Nexus\Dto\ModuleDtos\RelationConfigDto>> Target module name => relation name => config, from #[AttachField]+#[Relation]. */
+    protected array $relationAttachments = [];
+
+    /** @var array<string, array<string, ColumnConfigDto>> Target module name => column name => config, from #[AttachColumn]. */
+    protected array $columnAttachments = [];
+
+    public function __construct(private ?HookManager $hookManager = null, private ?AttributeSchemaReader $schemaReader = null)
     {
     }
 
@@ -40,6 +57,23 @@ class PluginManager
      */
     public function apply(string $targetModule, object $configuration): object
     {
+        $targetModule = ucfirst($targetModule);
+
+        // Declarative #[AttachField]/#[AttachColumn] attachments first, so a
+        // plugin's own handle() (the escape hatch for anything they can't
+        // express) can still see and override/remove them afterward.
+        foreach ($this->fieldAttachments[$targetModule] ?? [] as $name => $field) {
+            $configuration->form->fields[$name] = $field;
+        }
+
+        foreach ($this->relationAttachments[$targetModule] ?? [] as $name => $relation) {
+            $configuration->relations->is_available[$name] = $relation;
+        }
+
+        foreach ($this->columnAttachments[$targetModule] ?? [] as $name => $column) {
+            $configuration->table->columns[$name] = $column;
+        }
+
         $plugins = $this->getPlugins($targetModule);
 
         foreach ($plugins as $pluginClass) {
@@ -151,6 +185,7 @@ class PluginManager
         if (!empty($targetModuleAttrs)) {
             $targetModule = $targetModuleAttrs[0]->newInstance()->name;
             $this->register($targetModule, $className);
+            $this->discoverFieldAttachments($reflection, $targetModule);
         }
 
         if (!$this->hookManager) {
@@ -168,6 +203,60 @@ class PluginManager
                 /** @var \Nodex\Nexus\Attributes\Action $meta */
                 $meta = $attr->newInstance();
                 $this->hookManager->addAction($meta->hook, [$className, $method->getName()], $meta->priority);
+            }
+        }
+    }
+
+    /**
+     * Scans a #[TargetModule]-carrying plugin class for #[AttachField]/
+     * #[AttachColumn] marker methods — declarative sugar over handle() for
+     * the common case of adding one field/column (optionally paired with
+     * #[Relation] for a relation-backed field) to the target module's admin
+     * schema without editing that module's own file. See
+     * Attributes/AttachField.php, Attributes/AttachColumn.php.
+     */
+    private function discoverFieldAttachments(ReflectionClass $reflection, string $targetModule): void
+    {
+        $targetModule = ucfirst($targetModule);
+
+        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            foreach ($method->getAttributes(AttachField::class) as $attr) {
+                /** @var AttachField $meta */
+                $meta = $attr->newInstance();
+
+                $field = new FieldConfigDto(
+                    name: $meta->name,
+                    type: $meta->type,
+                    section: $meta->section,
+                    label: $meta->label,
+                    isRequired: $meta->isRequired,
+                );
+                $field->order = $meta->order;
+
+                $this->fieldAttachments[$targetModule][$meta->name] = $field;
+
+                $relationAttrs = $method->getAttributes(RelationAttr::class);
+                if (!empty($relationAttrs)) {
+                    /** @var RelationAttr $relMeta */
+                    $relMeta = $relationAttrs[0]->newInstance();
+                    $schemaReader = $this->schemaReader ?? app(AttributeSchemaReader::class);
+                    $this->relationAttachments[$targetModule][$meta->name] = $schemaReader->buildRelationConfigDto($relMeta, $meta->name);
+                }
+            }
+
+            foreach ($method->getAttributes(AttachColumn::class) as $attr) {
+                /** @var AttachColumn $meta */
+                $meta = $attr->newInstance();
+
+                $column = new ColumnConfigDto(
+                    name: $meta->name,
+                    label: $meta->label,
+                    sortable: $meta->sortable,
+                    tableDefault: $meta->tableDefault,
+                );
+                $column->order = $meta->order;
+
+                $this->columnAttachments[$targetModule][$meta->name] = $column;
             }
         }
     }

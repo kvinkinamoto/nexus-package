@@ -24,7 +24,8 @@ class ModuleManager
         private PathManager $pathManager,
         private ModuleRegistry $moduleRegistry,
         private ModuleManifestCache $manifestCache,
-        private WidgetRegistry $widgetRegistry
+        private WidgetRegistry $widgetRegistry,
+        private RelationRegistrar $relationRegistrar
     ) {
     }
 
@@ -264,6 +265,8 @@ class ModuleManager
         }
 
         $this->registerModuleWidgetsImmediately($regModule);
+        $this->registerModuleRelationsImmediately($regModule);
+        $this->registerModuleTranslationsImmediately($regModule);
 
         event(new \Nodex\Nexus\Events\ModuleInstalled($name));
         nexus_action('nexus.module.installed', $name);
@@ -284,6 +287,47 @@ class ModuleManager
 
         foreach ($this->manifestCache->discoverWidgets($widgetsDir, $regModule['namespace']) as $widget) {
             $this->widgetRegistry->registerFromDiscovery($widget);
+        }
+    }
+
+    /**
+     * Same gap as registerModuleWidgetsImmediately() above, for
+     * #[AttachRelation]/#[AttachScope] (see Attributes/AttachRelation.php):
+     * NexusServiceProvider::loadRelations() only scans an enabled module's
+     * Relations/ folder at boot time, so a module installed mid-request
+     * would otherwise leave the relations/scopes it attaches onto another
+     * module's model unregistered until the next fresh boot — the attached
+     * model would raise "Call to undefined method" for a relation that, per
+     * the freshly-installed module's own DB row, should already be active.
+     */
+    private function registerModuleRelationsImmediately(array $regModule): void
+    {
+        $relationsDir = $this->pathManager->getModulePath($regModule['name'], $regModule['is_user_module']) . DIRECTORY_SEPARATOR . 'Relations';
+
+        foreach ($this->manifestCache->discoverRelations($relationsDir, $regModule['namespace']) as $relation) {
+            $this->relationRegistrar->attachRelation($relation['model'], $relation['name'], $relation['class'], $relation['method']);
+        }
+
+        foreach ($this->manifestCache->discoverScopes($relationsDir, $regModule['namespace']) as $scope) {
+            $this->relationRegistrar->attachScope($scope['model'], $scope['name'], $scope['class'], $scope['method']);
+        }
+    }
+
+    /**
+     * Same gap as registerModuleWidgetsImmediately()/registerModuleRelationsImmediately()
+     * above, for NexusServiceProvider::loadTranslation(): a module installed
+     * mid-request would otherwise have its own translate.php invisible under
+     * its own '{module}::' namespace until the next fresh boot — most
+     * visibly for a label an #[AttachField]/#[AttachColumn] on another
+     * module points at via that namespace (see Attributes/AttachField.php),
+     * since that label is read on every render, not just at install time.
+     */
+    private function registerModuleTranslationsImmediately(array $regModule): void
+    {
+        $dir = $this->pathManager->getTranslationPath($regModule['name'], $regModule['is_user_module']);
+
+        if (is_dir($dir)) {
+            app('translator')->addNamespace(Str::lcfirst($regModule['name']), $dir);
         }
     }
 

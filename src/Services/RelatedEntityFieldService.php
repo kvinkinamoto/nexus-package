@@ -17,14 +17,14 @@ class RelatedEntityFieldService
     /**
      * Повертає список опцій для <select> вибору типу посилання.
      *
-     * @param  array       $allowedModules  Якщо не пустий — показувати лише ці модулі (назви у camelCase).
-     * @param  array       $excludedModules Модулі, які завжди виключаються.
-     * @param  string|null $urlLabel        Мітка для опції "Пряме посилання / URL". null — відключає опцію URL.
+     * @param  array  $allowedModules  Якщо не пустий — показувати лише ці модулі (назви у camelCase).
+     * @param  array  $excludedModules  Модулі, які завжди виключаються.
+     * @param  string|null  $urlLabel  Мітка для опції "Пряме посилання / URL". null — відключає опцію URL.
      */
     public function getLinkOptions(
-        array $allowedModules = [],
-        array $excludedModules = [],
-        ?string $morphId = null,
+        array $allowedModules,
+        array $excludedModules,
+        ?string $morphId,
         string $customFieldName,
         ?string $urlLabel = null,
     ): array {
@@ -49,25 +49,25 @@ class RelatedEntityFieldService
 
         $options = [];
 
-//        if ($urlLabel !== null) {
-//            $options[] = new RelatedEntityOptionDto('url', self::URL_TYPE, $urlLabel);
-//        }
+        //        if ($urlLabel !== null) {
+        //            $options[] = new RelatedEntityOptionDto('url', self::URL_TYPE, $urlLabel);
+        //        }
 
         foreach (ModuleManager::getEnabledModules() as $module) {
-//            $moduleName = Str::lower($module->name);
+            //            $moduleName = Str::lower($module->name);
 
             if (in_array($module->name, $excluded, true)) {
                 continue;
             }
 
-            if (!empty($allowedModules) && !in_array($module->name, $allowedModules, true)) {
+            if (! empty($allowedModules) && ! in_array($module->name, $allowedModules, true)) {
                 continue;
             }
 
-            $config     = ModuleManager::getModuleConfig($module->name);
+            $config = ModuleManager::getModuleConfig($module->name);
             $modelClass = $config->model ?? null;
 
-            if (!$modelClass || !class_exists($modelClass) || !is_subclass_of($modelClass, Model::class)) {
+            if (! $modelClass || ! class_exists($modelClass) || ! is_subclass_of($modelClass, Model::class)) {
                 continue;
             }
 
@@ -93,7 +93,7 @@ class RelatedEntityFieldService
      */
     public function getEntities(string $modelClass, ?string $labelField = null): array
     {
-        if ($modelClass === self::URL_TYPE || !class_exists($modelClass)) {
+        if ($modelClass === self::URL_TYPE || ! class_exists($modelClass)) {
             return [];
         }
 
@@ -107,7 +107,7 @@ class RelatedEntityFieldService
             $query->where('is_published', 1);
         }
 
-        if (!$labelField) {
+        if (! $labelField) {
             if (property_exists($model, 'translatable') && in_array('title', $model->translatable ?? [], true)) {
                 $labelField = 'title';
             } elseif (in_array('name', $model->getFillable(), true)) {
@@ -126,4 +126,34 @@ class RelatedEntityFieldService
             ->toArray();
     }
 
+    /**
+     * The missing other half of this service: given a model instance, find
+     * the enabled module it belongs to and, if that module declared
+     * #[Module(menuResolver: SomeResolver::class)] (mapped by
+     * AttributeSchemaReader into config->resolvers['menu'] — see
+     * UrlResolverInterface's docblock), instantiate the resolver and ask it
+     * to build the URL. Returns null rather than throwing for a model whose
+     * module has no resolver, isn't enabled, or was deleted out from under
+     * a stale reference — a broken link target shouldn't 500 the page it's
+     * rendered on.
+     */
+    public function resolveUrl(Model $model): ?string
+    {
+        foreach (ModuleManager::getEnabledModules() as $module) {
+            $config = ModuleManager::getModuleConfig($module->name);
+
+            if (($config->model ?? null) !== get_class($model)) {
+                continue;
+            }
+
+            $resolverClass = $config->resolvers['menu'] ?? null;
+            if (! $resolverClass || ! class_exists($resolverClass)) {
+                return null;
+            }
+
+            return app($resolverClass)->resolve($model);
+        }
+
+        return null;
+    }
 }

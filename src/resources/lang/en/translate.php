@@ -171,4 +171,13 @@ return [
     'move_down' => 'Move down',
     'no_widgets_on_dashboard' => 'No widgets on your dashboard yet.',
     'error_saving_dashboard' => 'Error saving dashboard layout.',
+    'Content' => 'Content',
+    'generate' => 'generate',
+    'fields' => 'fields',
+    'submissions' => 'submissions',
+    'success message' => 'success message',
+    'notify email' => 'notify email',
+    'is active' => 'is active',
+    '' => '',
+    '' => '',
 ];

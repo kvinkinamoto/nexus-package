@@ -14,8 +14,9 @@ class FilterHandler
             case AdminAvailableFilterEnum::FILTER_SEARCH->value:
                 $query->where(function ($query) use ($value) {
                     $columns = SchemaColumnsCache::get($query->getModel()->getTable());
+                    $grammar = $query->getQuery()->getGrammar();
                     foreach ($columns as $column) {
-                        $query->orWhereRaw('LOWER('.$column.') LIKE ?', ['%'.strtolower($value).'%']);
+                        $query->orWhereRaw('LOWER('.$grammar->wrap($column).') LIKE ?', ['%'.strtolower($value).'%']);
                     }
                 });
                 break;

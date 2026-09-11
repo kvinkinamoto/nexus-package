@@ -62,7 +62,7 @@
                         <div class="border-b border-gray-100 px-5 py-4 dark:border-white/5">
                             <h3 class="flex items-center gap-2 text-base font-semibold text-gray-800 dark:text-white/90">
                                 @if($section->icon)
-                                    <i class="{{ nexus_icon($section->icon) }} text-brand-500"></i>
+                                    {!! nexus_icon_html($section->icon, null, 'default_icon', 'text-brand-500') !!}
                                 @endif
                                 {{ nexus_trans_label($module->name, $section->name, $section->name) }}
                             </h3>

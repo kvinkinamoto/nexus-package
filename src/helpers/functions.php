@@ -111,3 +111,40 @@ if (!function_exists('nexus_enum_display')) {
         return \Illuminate\Support\Facades\Lang::has($key) ? __($key) : $raw;
     }
 }
+
+if (!function_exists('nexus_icon_html')) {
+
+    /**
+     * Render a #[Module]/#[Section] icon as HTML, picking the right markup
+     * for whichever icon library the key belongs to. Most #[Module]/
+     * #[Section] icon: values (e.g. "solar:cart-large-bold") are Iconify
+     * "icon-set:name" identifiers and need the <iconify-icon> web component
+     * (see the iconify-icon script tag in layouts/adminpanel.blade.php and
+     * layouts/blank.blade.php) — a bare CSS class has no way to render them.
+     * Everything else (a bare key like "edit", resolved via nexus_icon()
+     * against the theme's own Boxicons map into e.g. "bx bx-pencil") wants a
+     * plain <i class="...">.
+     *
+     * The Iconify check runs on the RAW key first, before nexus_icon() ever
+     * sees it: IconManager::getIcon() falls back to $default for any key
+     * it doesn't recognize (its Boxicons map never has "solar:..." entries),
+     * which would otherwise silently replace a perfectly valid Iconify id
+     * with the generic default icon instead of rendering it.
+     */
+    function nexus_icon_html(?string $key, ?string $module, string $default, string $classes = ''): string
+    {
+        $iconifyPattern = '/^[a-z0-9-]+:[a-z0-9-]+$/i';
+
+        if ($key && preg_match($iconifyPattern, $key)) {
+            return '<iconify-icon icon="'.e($key).'" class="'.e($classes).'"></iconify-icon>';
+        }
+
+        $resolved = nexus_icon($key, $module, $default);
+
+        if ($resolved && preg_match($iconifyPattern, $resolved)) {
+            return '<iconify-icon icon="'.e($resolved).'" class="'.e($classes).'"></iconify-icon>';
+        }
+
+        return '<i class="'.e(trim($resolved.' '.$classes)).'"></i>';
+    }
+}

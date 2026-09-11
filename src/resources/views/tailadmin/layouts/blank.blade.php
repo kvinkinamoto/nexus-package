@@ -29,6 +29,8 @@
     </script>
 
     <link rel="stylesheet" href="{{ asset('nexus/css/icons.min.css') }}" type="text/css">
+    {{-- Renders "solar:xxx-bold" section icons — see adminpanel.blade.php's comment. --}}
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@2.1.0/dist/iconify-icon.min.js"></script>
     {{-- app.css must load AFTER choices.min.css — see layouts/adminpanel.blade.php's comment. --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@11.2.4/public/assets/styles/choices.min.css" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -99,6 +101,16 @@
             document.querySelectorAll('[data-choices]').forEach(function (item) {
                 new Choices(item, {});
             });
+
+            // Workaround for a stuck-render quirk — see adminpanel.blade.php's
+            // matching comment for the full explanation.
+            if (window.customElements?.get('iconify-icon')) {
+                document.querySelectorAll('iconify-icon[icon]').forEach(function (el) {
+                    var icon = el.getAttribute('icon');
+                    el.removeAttribute('icon');
+                    requestAnimationFrame(function () { el.setAttribute('icon', icon); });
+                });
+            }
         });
     </script>
 

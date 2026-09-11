@@ -18,6 +18,12 @@
 
     <link rel="stylesheet" href="{{ asset('nexus/css/icons.min.css') }}" type="text/css">
     {{--
+        Renders every #[Module]/#[Section] "solar:xxx-bold" icon (an Iconify
+        icon-set:name identifier, not a CSS class — see nexus_icon_html()) via
+        the <iconify-icon> custom element it defines.
+    --}}
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@2.1.0/dist/iconify-icon.min.js"></script>
+    {{--
         Choices.js's own CSS is a light-only theme with no dark-mode
         awareness; app.css carries dark-theme overrides for its classes
         (see the "Choices.js dark-theme overrides" section), so it must load
@@ -148,6 +154,21 @@
                     document.getElementById('logoutForm')?.submit();
                 });
             });
+
+            // iconify-icon@2.1.0 never renders elements already present in
+            // the server-rendered HTML at DOMContentLoaded time — only ones
+            // created/attribute-changed afterwards actually trigger its
+            // internal fetch (reproduced directly: a fresh element resolves
+            // immediately, but toggling icon="" off/on on a "stuck" one also
+            // makes it resolve, while just waiting never does). Kicking
+            // every one once here is the workaround.
+            if (window.customElements?.get('iconify-icon')) {
+                document.querySelectorAll('iconify-icon[icon]').forEach(function (el) {
+                    var icon = el.getAttribute('icon');
+                    el.removeAttribute('icon');
+                    requestAnimationFrame(function () { el.setAttribute('icon', icon); });
+                });
+            }
         });
     </script>
     <form method="POST" id="logoutForm" action="{{ route('logout') }}" class="hidden">

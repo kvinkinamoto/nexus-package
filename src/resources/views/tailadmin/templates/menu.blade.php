@@ -6,9 +6,7 @@
     <li>
         <a href="{{ $itemUrl }}"
             class="menu-item {{ $isActive ? 'menu-item-active' : 'menu-item-inactive' }} {{ $is_child ? 'pl-9' : '' }}">
-            @if(!$is_child)
-                <i class="{{ nexus_icon($menu->icon, $menu->module, 'default_icon') }} menu-item-icon {{ $isActive ? 'menu-item-icon-active' : 'menu-item-icon-inactive' }} text-lg"></i>
-            @endif
+            {!! nexus_icon_html($menu->icon, $menu->module, 'default_icon', 'menu-item-icon ' . ($isActive ? 'menu-item-icon-active' : 'menu-item-icon-inactive') . ' text-lg') !!}
 
             <span class="menu-item-text" :class="$store.sidebar.collapsed ? 'lg:hidden' : ''">
                 @if(!empty($menu->label))

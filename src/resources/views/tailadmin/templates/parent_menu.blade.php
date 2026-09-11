@@ -1,7 +1,7 @@
 <li x-data="{ open: false }">
     <button type="button" @click="open = !open"
         class="menu-item menu-item-inactive w-full">
-        <i class="{{ nexus_icon($menu->icon ?? 'parent_menu') }} menu-item-icon menu-item-icon-inactive text-lg"></i>
+        {!! nexus_icon_html($menu->icon ?? null, null, 'parent_menu', 'menu-item-icon menu-item-icon-inactive text-lg') !!}
 
         <span class="menu-item-text flex-1 text-left" :class="$store.sidebar.collapsed ? 'lg:hidden' : ''">
             @if(str_contains($menu->parent, '::'))

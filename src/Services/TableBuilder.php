@@ -130,6 +130,25 @@ class TableBuilder
                 ->values()->all();
         }
 
+        // Eager-load every visible column that is actually a declared
+        // relation (e.g. Order's "status"/"user"/"promoCode", Cart's "user",
+        // ProductReview's "product") — module-table.blade.php's default
+        // column cell (`$item->{$column->name}`) triggers Eloquent's magic
+        // relation resolution for these, which throws
+        // LazyLoadingViolationException once NexusServiceProvider's
+        // Model::shouldBeStrict(true) is active (any non-production env)
+        // unless the relation was already loaded on the query.
+        $relationNames = array_keys($config->relations->is_available ?? []);
+        $eagerLoadRelations = collect($tableColumns)
+            ->map(fn ($col) => $col->name ?? $col['name'])
+            ->filter(fn ($name) => in_array($name, $relationNames, true))
+            ->unique()
+            ->values()
+            ->all();
+        if (! empty($eagerLoadRelations)) {
+            $query->with($eagerLoadRelations);
+        }
+
         $filterableFields = $this->getFilterableFields($config, $modelClass);
 
         if ($sql) {

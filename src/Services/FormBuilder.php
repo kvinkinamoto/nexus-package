@@ -138,7 +138,7 @@ class FormBuilder
         $model = new ($languagesModule->config->model)();
 
         return $model::withoutTrashed()
-            ->where('is_published', true)
+            ->isPublished()
             ->pluck('code');
     }
 }

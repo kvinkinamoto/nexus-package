@@ -234,7 +234,14 @@
                                             @include('nexus::' . config('nexus.template') . '.templates.custom_index_fields.' . $column->customField, ['fieldName' => $column->fieldName ?? $column->name])
                                         @endif
                                     @else
-                                        {{ $item->{$column->name} ?? '' }}
+                                        @php
+                                            $__nexusColumnRelation = $module->config->relations->is_available[$column->name] ?? null;
+                                        @endphp
+                                        @if($__nexusColumnRelation && $item->{$column->name} instanceof \Illuminate\Database\Eloquent\Model)
+                                            {{ app(\Nodex\Nexus\Services\RelationService::class)->formatLabel($item->{$column->name}, $__nexusColumnRelation->showField, $__nexusColumnRelation->showFieldFallback) }}
+                                        @else
+                                            {{ $item->{$column->name} ?? '' }}
+                                        @endif
                                         @if(isset($item->depth) && $item->depth > 0 && $column->name == 'id')
                                             <span class="text-orange-500">|{{ str_repeat('_', (int) $item->depth) }} </span>
                                         @endif

@@ -6,6 +6,6 @@ class Filter
 {
     public static function search($value)
     {
-        return $value = is_array($value) ? implode(',', $value) : $value;;
+        return $value = is_array($value) ? implode(',', $value) : $value;
     }
 }

@@ -64,11 +64,7 @@
                                 @if($section->icon)
                                     <i class="{{ nexus_icon($section->icon) }} text-brand-500"></i>
                                 @endif
-                                @if(str_contains($section->name, '::'))
-                                    @lang($section->name)
-                                @else
-                                    @lang(\Illuminate\Support\Str::lcfirst($module->name) . '::translate.' . $section->name)
-                                @endif
+                                {{ nexus_trans_label($module->name, $section->name, $section->name) }}
                             </h3>
                         </div>
                         <div class="grid grid-cols-1 gap-4 p-5 {{ $section->type === 'columns_2' ? 'sm:grid-cols-2' : '' }}">

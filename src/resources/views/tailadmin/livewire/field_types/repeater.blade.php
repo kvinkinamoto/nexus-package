@@ -22,11 +22,7 @@
 @endphp
 <div class="mb-4" wire:key="repeater-{{ $field->name }}">
     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-        @if(str_contains($field->label ?? '', '::'))
-            @lang($field->label)
-        @else
-            @lang($moduleNamespace . '::translate.' . Str::lower($field->label ?? $field->name))
-        @endif
+        {{ nexus_trans_label($module->name, $field->label ?? null, $field->name) }}
     </label>
 
     <div class="custom-scrollbar mb-2 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">

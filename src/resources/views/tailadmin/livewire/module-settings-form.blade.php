@@ -29,12 +29,12 @@
                                 <span class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition peer-checked:translate-x-5"></span>
                             </span>
                             <span class="text-sm font-medium text-gray-700 dark:text-gray-400">
-                                @lang(Str::lcfirst($module->name) . '::translate.' . Str::lower($setting->label))
+                                {{ nexus_trans_label($module->name, $setting->label ?? null, $key) }}
                             </span>
                         </label>
                     @else
                         <label for="setting-{{ $key }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                            @lang(Str::lcfirst($module->name) . '::translate.' . Str::lower($setting->label))
+                            {{ nexus_trans_label($module->name, $setting->label ?? null, $key) }}
                             @if($setting->isRequired) <span class="text-error-500">*</span> @endif
                         </label>
 

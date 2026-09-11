@@ -91,7 +91,7 @@
                             <input type="text"
                                 wire:model.live.debounce.400ms="filter.{{ $filterCfg->name }}"
                                 wire:key="filter-{{ $filterCfg->name }}"
-                                placeholder="@lang(str_contains($filterCfg->label ?? '', '::') ? $filterCfg->label : Str::lcfirst($module->name) . '::translate.' . Str::lower($filterCfg->label ?? $filterCfg->name))"
+                                placeholder="{{ nexus_trans_label($module->name, $filterCfg->label ?? null, $filterCfg->name) }}"
                                 class="h-10 w-full rounded-lg border border-gray-200 bg-transparent py-2 pl-9 pr-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90">
                         </div>
                     @endif
@@ -137,7 +137,7 @@
                                     <input type="checkbox" wire:click="toggleColumnVisibility('{{ $colName }}')"
                                         @checked(in_array($colName, $visibleColumnNames, true))
                                         class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-900">
-                                    @lang(str_contains($col->label ?? '', '::') ? $col->label : Str::lcfirst($module->name) . '::translate.' . Str::lower($col->label ?? $colName))
+                                    {{ nexus_trans_label($module->name, $col->label ?? null, $colName) }}
                                 </label>
                             @endforeach
                         </div>
@@ -177,7 +177,7 @@
                         @foreach ($tableData['columns'] ?? [] as $column)
                             <th @if($column->sortable ?? false) wire:click="sortBy('{{ $column->name }}')" @endif
                                 class="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500 {{ ($column->sortable ?? false) ? 'cursor-pointer select-none' : '' }} dark:text-gray-400">
-                                @lang(str_contains($column->label ?? '', '::') ? $column->label : Str::lcfirst($module->name) . '::translate.' . Str::lower($column->label ?? $column->name))
+                                {{ nexus_trans_label($module->name, $column->label ?? null, $column->name) }}
                                 @if($column->sortable ?? false)
                                     @php
                                         $isActiveSort = $sort === $column->name || $sort === '-' . $column->name;

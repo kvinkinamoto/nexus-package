@@ -12,11 +12,7 @@
             <span class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition peer-checked:translate-x-5"></span>
         </span>
         <span class="text-sm font-medium text-gray-700 dark:text-gray-400">
-            @if(str_contains($field->label ?? '', '::'))
-                @lang($field->label)
-            @else
-                @lang(Str::lcfirst($module->name) . '::translate.' . Str::lower($field->label ?? $field->name))
-            @endif
+            {{ nexus_trans_label($module->name, $field->label ?? null, $field->name) }}
         </span>
     </label>
 

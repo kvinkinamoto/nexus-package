@@ -49,11 +49,7 @@ $uniqTypeSection = array_values($uniqTypeSection);
                 @if($section->icon ?? false)
                     <i class="{{ nexus_icon($section->icon) }} text-brand-500"></i>
                 @endif
-                @if(str_contains($section->name, '::'))
-                    @lang($section->name)
-                @else
-                    @lang(lcfirst($module->name) . '::translate.' . $section->name)
-                @endif
+                {{ nexus_trans_label($module->name, $section->name, $section->name) }}
             </h3>
         </div>
         <div class="grid grid-cols-1 gap-x-6 gap-y-3 p-5 sm:grid-cols-3">

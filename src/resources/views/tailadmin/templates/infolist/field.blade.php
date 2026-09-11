@@ -51,19 +51,7 @@
     @endphp
     <div>
         <dt class="text-xs font-medium uppercase tracking-wide text-gray-400">
-            @if(isset($field->label) && !empty($field->label))
-                @if(str_contains($field->label, '::'))
-                    @lang($field->label)
-                @else
-                    @lang(lcfirst($module->name) . '::translate.' . $field->label)
-                @endif
-            @else
-                @if(str_contains($field->name, '::'))
-                    @lang($field->name)
-                @else
-                    @lang(lcfirst($module->name) . '::translate.' . $field->name)
-                @endif
-            @endif
+            {{ nexus_trans_label($module->name, $field->label ?? null, $field->name) }}
             @if(isset($tab_lang))
                 <span class="ml-1 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 dark:bg-white/5 dark:text-gray-400">{{ strtoupper($tab_lang) }}</span>
             @endif

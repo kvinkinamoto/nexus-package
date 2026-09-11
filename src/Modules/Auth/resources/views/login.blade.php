@@ -117,7 +117,7 @@
 
         <footer class="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
             {{ date('Y') }} Made by
-            <a href="https://nodexsoft.com" class="font-medium text-gray-500 hover:text-brand-500 dark:text-gray-400" target="_blank">Nodex</a>
+            <a href="https://sitemaster.pp.ua/" class="font-medium text-gray-500 hover:text-brand-500 dark:text-gray-400" target="_blank">Nodex</a>
         </footer>
     </div>
 </div>

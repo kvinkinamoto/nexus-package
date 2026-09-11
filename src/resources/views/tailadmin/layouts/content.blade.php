@@ -9,7 +9,7 @@
         <span>&copy; {{ date('Y') }}</span>
         <span>
             Made by
-            <a href="https://nodexsoft.com" class="font-medium text-gray-700 hover:text-brand-500 dark:text-gray-300" target="_blank" rel="noopener">Nodex</a>
+            <a href="https://sitemaster.pp.ua/" class="font-medium text-gray-700 hover:text-brand-500 dark:text-gray-300" target="_blank" rel="noopener">Nodex</a>
         </span>
     </div>
 </footer>

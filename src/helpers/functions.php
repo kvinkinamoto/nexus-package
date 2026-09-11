@@ -76,3 +76,38 @@ if (!function_exists('nexus_trans_label')) {
         return $label;
     }
 }
+
+if (!function_exists('nexus_enum_display')) {
+
+    /**
+     * Format a #[Field(type: 'enum')]-cast attribute for display outside an
+     * edit form (table cell, infolist, CSV export) — none of which have a
+     * FieldConfigDto's enum section handy. An enum defining its own label()
+     * (see PaymentStatus, RedirectStatusCode) is trusted to already return a
+     * fully resolved, human string; anything else falls back to the flat
+     * "{module}::translate.{value}" key convention (DemoStatus::DRAFT->value
+     * === 'draft' matches translate.php's 'draft' key), and if even that's
+     * missing, the raw backing value/name — never the literal untranslated
+     * key string, and never the enum object itself (Blade's e() unwraps a
+     * BackedEnum to ->value for display, but a raw (string) cast — e.g. CSV
+     * export — throws on it outright).
+     *
+     * Non-enum values pass through unchanged, so call sites can run every
+     * column/field value through this without a type check of their own.
+     */
+    function nexus_enum_display(mixed $value, string $moduleName): mixed
+    {
+        if (!($value instanceof UnitEnum)) {
+            return $value;
+        }
+
+        if (method_exists($value, 'label')) {
+            return $value->label();
+        }
+
+        $raw = $value instanceof BackedEnum ? $value->value : $value->name;
+        $key = \Illuminate\Support\Str::lcfirst($moduleName).'::translate.'.$raw;
+
+        return \Illuminate\Support\Facades\Lang::has($key) ? __($key) : $raw;
+    }
+}

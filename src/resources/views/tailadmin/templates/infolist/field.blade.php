@@ -122,15 +122,16 @@
 
                 @case('enum')
                     @php
-                        $__nexusEnumLabel = null;
+                        $__nexusEnumCase = null;
                         foreach (($field->enum ? $field->enum::cases() : []) as $__nexusCase) {
                             if ($__nexusCase->value == $value) {
-                                $__nexusEnumLabel = $__nexusCase->value;
+                                $__nexusEnumCase = $__nexusCase;
                                 break;
                             }
                         }
+                        $__nexusEnumLabel = $__nexusEnumCase ? nexus_enum_display($__nexusEnumCase, $module->name ?? 'nexus') : null;
                     @endphp
-                    <span>{{ $__nexusEnumLabel ? __(($module->name ?? 'nexus') . '::translate.' . $__nexusEnumLabel) : ($value ?: __('nexus::translate.no_value')) }}</span>
+                    <span>{{ $__nexusEnumLabel ?: ($value !== null && $value !== '' ? $value : __('nexus::translate.no_value')) }}</span>
                     @break
 
                 @case('select')

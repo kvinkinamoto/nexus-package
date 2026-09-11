@@ -75,7 +75,10 @@ class MasterExportJob implements ShouldQueue
         $query->chunk($chunkSize, function ($rows) use ($stream, $columns, &$processed, $total) {
             foreach ($rows as $row) {
                 $line = array_map(
-                    fn (ColumnConfigDto $column) => (string) ($row->{$column->fieldName ?? $column->name} ?? ''),
+                    // A raw (string) cast throws on an enum-cast attribute (see
+                    // PaymentStatus) — nexus_enum_display() resolves it to its
+                    // label first and passes any other value through untouched.
+                    fn (ColumnConfigDto $column) => (string) (nexus_enum_display($row->{$column->fieldName ?? $column->name} ?? '', $this->moduleName)),
                     $columns,
                 );
 

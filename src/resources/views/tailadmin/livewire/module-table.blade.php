@@ -236,11 +236,13 @@
                                     @else
                                         @php
                                             $__nexusColumnRelation = $module->config->relations->is_available[$column->name] ?? null;
+                                            $__nexusColumnValue = $item->{$column->name} ?? null;
+                                            $__nexusColumnDisplay = nexus_enum_display($__nexusColumnValue, $module->name);
                                         @endphp
-                                        @if($__nexusColumnRelation && $item->{$column->name} instanceof \Illuminate\Database\Eloquent\Model)
-                                            {{ app(\Nodex\Nexus\Services\RelationService::class)->formatLabel($item->{$column->name}, $__nexusColumnRelation->showField, $__nexusColumnRelation->showFieldFallback) }}
+                                        @if($__nexusColumnRelation && $__nexusColumnValue instanceof \Illuminate\Database\Eloquent\Model)
+                                            {{ app(\Nodex\Nexus\Services\RelationService::class)->formatLabel($__nexusColumnValue, $__nexusColumnRelation->showField, $__nexusColumnRelation->showFieldFallback) }}
                                         @else
-                                            {{ $item->{$column->name} ?? '' }}
+                                            {{ $__nexusColumnDisplay }}
                                         @endif
                                         @if(isset($item->depth) && $item->depth > 0 && $column->name == 'id')
                                             <span class="text-orange-500">|{{ str_repeat('_', (int) $item->depth) }} </span>

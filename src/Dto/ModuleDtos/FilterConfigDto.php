@@ -9,12 +9,24 @@ class FilterConfigDto extends \stdClass
     public string $name;
     public string $label;
     public string $type;
+    public ?string $optionsModel;
+    public string $optionsValue;
+    public string $optionsLabel;
 
-    public function __construct(string $name, ?string $label = null, string $type = AdminAvailableFilterEnum::FILTER_SEARCH->value)
-    {
+    public function __construct(
+        string $name,
+        ?string $label = null,
+        string $type = AdminAvailableFilterEnum::FILTER_SEARCH->value,
+        ?string $optionsModel = null,
+        string $optionsValue = 'id',
+        string $optionsLabel = 'name',
+    ) {
         $this->name = $name;
         $this->label = $label ?? $this->name;
         $this->type = $type;
+        $this->optionsModel = $optionsModel;
+        $this->optionsValue = $optionsValue;
+        $this->optionsLabel = $optionsLabel;
     }
 
     public function label(string $label): self
@@ -36,6 +48,9 @@ class FilterConfigDto extends \stdClass
             name: $filter->name,
             label: $filter->label ?? null,
             type: $filter->type ?? AdminAvailableFilterEnum::FILTER_SEARCH->value,
+            optionsModel: $filter->optionsModel ?? null,
+            optionsValue: $filter->optionsValue ?? 'id',
+            optionsLabel: $filter->optionsLabel ?? 'name',
         );
     }
 
@@ -60,6 +75,9 @@ class FilterConfigDto extends \stdClass
             'name' => $this->name,
             'label' => $this->label,
             'type' => $this->type,
+            'optionsModel' => $this->optionsModel,
+            'optionsValue' => $this->optionsValue,
+            'optionsLabel' => $this->optionsLabel,
         ];
     }
 }

@@ -94,6 +94,18 @@
                                 placeholder="{{ nexus_trans_label($module->name, $filterCfg->label ?? null, $filterCfg->name) }}"
                                 class="h-10 w-full rounded-lg border border-gray-200 bg-transparent py-2 pl-9 pr-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90">
                         </div>
+                    @elseif(($filterCfg->type ?? null) === 'select' && $filterCfg->optionsModel)
+                        {{-- Options queried fresh on every render (see TableFilter::$optionsModel) — cheap lookup tables like categories, no caching needed. --}}
+                        @php $filterOptions = ($filterCfg->optionsModel)::query()->orderBy($filterCfg->optionsLabel)->get([$filterCfg->optionsValue, $filterCfg->optionsLabel]); @endphp
+                        <select
+                            wire:model.live="filter.{{ $filterCfg->name }}"
+                            wire:key="filter-{{ $filterCfg->name }}"
+                            class="h-10 w-full max-w-70 rounded-lg border border-gray-200 bg-transparent px-3 text-sm text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90">
+                            <option value="">{{ nexus_trans_label($module->name, $filterCfg->label ?? null, $filterCfg->name) }}</option>
+                            @foreach($filterOptions as $filterOption)
+                                <option value="{{ $filterOption->{$filterCfg->optionsValue} }}">{{ $filterOption->{$filterCfg->optionsLabel} }}</option>
+                            @endforeach
+                        </select>
                     @endif
                 @endforeach
             </div>

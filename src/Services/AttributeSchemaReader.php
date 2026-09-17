@@ -176,7 +176,7 @@ class AttributeSchemaReader
         foreach ($tableFilterAttrs as $filterAttrRef) {
             /** @var TableFilterAttr $filterMeta */
             $filterMeta = $filterAttrRef->newInstance();
-            $config->table->filter($filterMeta->name, $filterMeta->label, $filterMeta->type);
+            $config->table->filter($filterMeta->name, $filterMeta->label, $filterMeta->type, $filterMeta->optionsModel, $filterMeta->optionsValue, $filterMeta->optionsLabel);
         }
 
         $tableLensAttrs = $reflection->getAttributes(TableLensAttr::class);

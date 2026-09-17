@@ -43,9 +43,15 @@ class TableConfigDto extends \stdClass
         return $column;
     }
 
-    public function filter(string $name, ?string $label = null, ?string $type = null): FilterConfigDto
-    {
-        $filter = new FilterConfigDto($name, $label, $type ?? AdminAvailableFilterEnum::FILTER_SEARCH->value);
+    public function filter(
+        string $name,
+        ?string $label = null,
+        ?string $type = null,
+        ?string $optionsModel = null,
+        string $optionsValue = 'id',
+        string $optionsLabel = 'name',
+    ): FilterConfigDto {
+        $filter = new FilterConfigDto($name, $label, $type ?? AdminAvailableFilterEnum::FILTER_SEARCH->value, $optionsModel, $optionsValue, $optionsLabel);
         $this->filters[$name] = $filter;
         return $filter;
     }

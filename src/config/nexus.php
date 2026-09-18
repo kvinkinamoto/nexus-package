@@ -5,7 +5,14 @@ use Nodex\Nexus\Http\Middleware\NexusAdminMiddleware;
 return [
     'template' => env('ZENTARA_TEMPLATE', 'tailadmin'), // tailadmin (nexus theme archived, see resources/views/nexus/ removed in Stage 2)
     'admin_prefix' => env('ADMIN_PREFIX', 'admin'),
-    'admin_middleware' => ['web', 'auth', NexusAdminMiddleware::class],
+    'admin_middleware' => [
+        'web',
+        'auth',
+        NexusAdminMiddleware::class,
+        // Add your own app-level middleware here if needed, e.g. a locale
+        // resolver — this project's app/config/nexus.php adds:
+        // \App\Nexus\Modules\Language\Http\Middleware\SetAdminLocale::class,
+    ],
 
     'api_prefix' => env('API_PREFIX', 'api'),
     // Kept plain — /widgets under this group must stay reachable
@@ -60,6 +67,40 @@ return [
     | Services/Widgets/DashboardLayoutResolver.php.
     */
     'dashboard' => [
-        'default' => ['helloWorld'],
+        'default' => ['usersCount', 'demoRecordsCount'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Media Library
+    |--------------------------------------------------------------------------
+    | #[Field(type: 'gallery')] is backed by Nodex\Nexus\Contracts\MediaLibrary\MediaLibraryInterface,
+    | bound by default to a spatie/laravel-medialibrary-backed implementation
+    | (Services/MediaLibrary/SpatieMediaLibraryService) — swap it for your own
+    | by rebinding the interface in your own service provider (standard
+    | Laravel container override, no Nexus-specific plumbing needed). Set
+    | 'enabled' to false to disable the 'gallery' field type entirely (it
+    | renders a plain notice instead) without touching any module — the
+    | existing elFinder-backed image/images/video/videos types are
+    | completely unaffected either way.
+    */
+    'media_library' => [
+        'enabled' => env('NEXUS_MEDIA_LIBRARY_ENABLED', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Plugins
+    |--------------------------------------------------------------------------
+    | PluginManager::autoDiscover() scans app/Nexus/Plugins/** for classes
+    | carrying #[TargetModule]/#[Filter]/#[Action] (see Services/PluginManager.php,
+    | commands/MakePluginCommand.php) and registers every one it finds — list
+    | a plugin's fully-qualified class name here to skip it without deleting
+    | the file (e.g. while debugging one plugin among several).
+    */
+    'plugins' => [
+        'disabled' => [
+            // App\Nexus\Plugins\Example\ExamplePlugin::class,
+        ],
     ],
 ];

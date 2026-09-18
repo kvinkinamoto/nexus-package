@@ -90,7 +90,7 @@
     </script>
 
     <script src="{{ asset('packages/ckeditor/ckeditor.js') }}"></script>
-    <script src="{{ asset('adminlte/plugins/dropzone/dropzone.js') }}"></script>
+    <script src="{{ asset('packages/dropzone/dropzone.js') }}"></script>
 
     @yield('js')
     @stack('js')

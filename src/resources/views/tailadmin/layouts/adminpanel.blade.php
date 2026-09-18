@@ -117,7 +117,7 @@
     {{-- CKEditor core (no jQuery adapter) — only invoked from field types with isEditor => true --}}
     <script src="{{ asset('packages/ckeditor/ckeditor.js') }}"></script>
     {{-- Dropzone (vanilla JS, no jQuery) — used by the image field type's drag-and-drop upload --}}
-    <script src="{{ asset('adminlte/plugins/dropzone/dropzone.js') }}"></script>
+    <script src="{{ asset('packages/dropzone/dropzone.js') }}"></script>
 
     @yield('js')
     @stack('js')

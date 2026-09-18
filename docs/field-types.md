@@ -34,5 +34,21 @@
 | `custom_delivery_type` | built-in | Hardcoded to this app's delivery model — not usable on an arbitrary module. |
 | `custom_delivery_method` | built-in | Hardcoded to this app's delivery model — not usable on an arbitrary module. |
 | `custom_payment_method` | built-in | Hardcoded to this app's payment model — not usable on an arbitrary module. |
+| `color` | built-in | Color picker with a synced hex text input. |
+| `currency` | built-in | Numeric input with a currency symbol prefix — symbol configurable via `customData['symbol']` (default `$`). |
+| `file` | built-in | Single-file elFinder picker for any document type — same mechanism as `image`, showing a filename/link instead of a preview. |
+| `gallery` | built-in | Media-library-backed image collection (dedup, thumbnails, reordering) via `MediaLibraryInterface` — unlike `images`' plain JSON array of paths. Requires the model to already be persisted. |
+| `icon` | built-in | Free-text icon key (e.g. `solar:widget-bold`) resolved by `nexus_icon()`/`IconManager`, with a live preview — no browsable icon gallery. |
+| `location` | built-in | Plain labeled text input with a location icon — not an interactive map/coordinate picker. |
+| `markdown` | built-in | Plain monospace textarea storing raw Markdown — no live preview or rendering; rendering is left to the consuming app. |
+| `multiple_string` | built-in | Tag/chip list input backed by an array column — type a value and press Enter to add a chip. |
+| `radio` | built-in | Radio-button group — options come from a backed enum (`#[Field(enum:)]`) or `customData`, the same sources `select`/`enum` use. |
+| `range` | built-in | Slider input — bounds configurable via `customData['min'|'max'|'step']` (defaults 0/100/1). |
+| `rating` | built-in | Star-rating control — max stars configurable via `customData['max']` (default 5). |
+| `slug` | built-in | Text input with a "generate" button that runs Laravel's `Str::slug()` server-side against `slugSource`. Still directly editable. |
+| `time` | built-in | HTML5 time-only input — the counterpart to `datetime`, which combines date and time. |
+| `url` | built-in | URL input with a link icon and a built-in URL validation rule. |
+| `blockEditor` | built-in | Ordered list of heterogeneous content-block rows (Hero/Text/Image/CTA-style), each rendered by its own `BlockTypeRegistry` entry — a visual page/block editor, not a repeater over one fixed column set. |
 | `editor` | alias of `text` | Multi-line textarea. Add `editor: true` to swap it for a CKEditor instance instead. |
 | `date` | alias of `birthday` | Date input. `type: 'date'` is an alias for this same partial. |
+| `examplePluginAlias` | alias of `string` | Single-line text input. |

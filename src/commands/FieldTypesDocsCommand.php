@@ -56,13 +56,28 @@ class FieldTypesDocsCommand extends Command
         'custom_delivery_type' => 'Hardcoded to this app\'s delivery model — not usable on an arbitrary module.',
         'custom_delivery_method' => 'Hardcoded to this app\'s delivery model — not usable on an arbitrary module.',
         'custom_payment_method' => 'Hardcoded to this app\'s payment model — not usable on an arbitrary module.',
+        'color' => 'Color picker with a synced hex text input.',
+        'currency' => "Numeric input with a currency symbol prefix — symbol configurable via `customData['symbol']` (default `\$`).",
+        'file' => 'Single-file elFinder picker for any document type — same mechanism as `image`, showing a filename/link instead of a preview.',
+        'gallery' => "Media-library-backed image collection (dedup, thumbnails, reordering) via `MediaLibraryInterface` — unlike `images`' plain JSON array of paths. Requires the model to already be persisted.",
+        'icon' => "Free-text icon key (e.g. `solar:widget-bold`) resolved by `nexus_icon()`/`IconManager`, with a live preview — no browsable icon gallery.",
+        'location' => 'Plain labeled text input with a location icon — not an interactive map/coordinate picker.',
+        'markdown' => 'Plain monospace textarea storing raw Markdown — no live preview or rendering; rendering is left to the consuming app.',
+        'multiple_string' => 'Tag/chip list input backed by an array column — type a value and press Enter to add a chip.',
+        'radio' => 'Radio-button group — options come from a backed enum (`#[Field(enum:)]`) or `customData`, the same sources `select`/`enum` use.',
+        'range' => "Slider input — bounds configurable via `customData['min'|'max'|'step']` (defaults 0/100/1).",
+        'rating' => "Star-rating control — max stars configurable via `customData['max']` (default 5).",
+        'slug' => "Text input with a \"generate\" button that runs Laravel's `Str::slug()` server-side against `slugSource`. Still directly editable.",
+        'time' => 'HTML5 time-only input — the counterpart to `datetime`, which combines date and time.',
+        'url' => 'URL input with a link icon and a built-in URL validation rule.',
+        'blockEditor' => 'Ordered list of heterogeneous content-block rows (Hero/Text/Image/CTA-style), each rendered by its own `BlockTypeRegistry` entry — a visual page/block editor, not a repeater over one fixed column set.',
     ];
 
     /**
      * Partial files that exist for internal reasons and aren't themselves a
      * #[Field(type: ...)] value — excluded from the disk/curated-list diff.
      */
-    protected array $notATypeItself = ['_label', '_native_select', 'dispatch', 'unsupported'];
+    protected array $notATypeItself = ['_label', '_native_select', '_native_radio', 'dispatch', 'unsupported'];
 
     /**
      * Documented types matched by a structural check in dispatch.blade.php

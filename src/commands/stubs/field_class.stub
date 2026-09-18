@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Nexus\Modules\{{module}}\FieldTypes;
+
+use Illuminate\Contracts\View\View;
+use Nodex\Nexus\Contracts\FieldTypeRenderer;
+use Nodex\Nexus\Dto\FieldRenderContext;
+
+/**
+ * Auto-discovered from this file's location — app/Nexus/Modules/{{module}}/FieldTypes/{{name}}.php
+ * registers as field type '{{lowerName}}' (see Services/FieldTypeRegistry.php
+ * and Services/ModuleManifestCache::discoverFieldTypes()) — no manual
+ * registration needed. Use it on a model property with
+ * #[Field(type: '{{lowerName}}', ...)].
+ *
+ * $context carries everything this needs since a class-registered field
+ * type has no surrounding Blade scope to inherit from (see
+ * FieldRenderContext's own docblock): $context->field, $context->model,
+ * $context->module, $context->action, $context->tabLang, $context->formData,
+ * $context->modelSchema.
+ */
+class {{name}} implements FieldTypeRenderer
+{
+    public function render(FieldRenderContext $context): View|string
+    {
+        return view()->file(__DIR__.'/{{lowerName}}.blade.php', [
+            'field' => $context->field,
+            'formData' => $context->formData,
+        ]);
+    }
+}

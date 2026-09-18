@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Nexus\Modules\{{module}}\Filters;
+
+use Illuminate\Database\Eloquent\Builder;
+use Nodex\Nexus\Filters\FilterHandler;
+
+/**
+ * Auto-resolved by name — no manual registration needed.
+ * Services/Actions/Admin/AddFilterActionMethod.php looks this exact class
+ * up via ModuleManager::getClassFromModule('{{module}}\\Filters\\ModuleFilterHandler')
+ * whenever {{module}}'s admin listing applies filters, and calls filter()
+ * once per active filter declared in the module's TableConfigDto->filters
+ * (see Dto/ModuleDtos/FilterConfigDto).
+ *
+ * $filterName is a FilterConfigDto's `name` — an arbitrary string, not
+ * necessarily one of AdminAvailableFilterEnum's cases (that enum only names
+ * the built-ins FilterHandler::filter() already handles: 'search' and
+ * 'trashed'). Add a case below for any custom filter name this module
+ * declares, and fall back to parent::filter() for the built-ins.
+ */
+class ModuleFilterHandler extends FilterHandler
+{
+    public function filter(Builder $query, string $filterName, string $value): Builder
+    {
+        return match ($filterName) {
+            // 'category' => $query->where('category_id', $value),
+            default => parent::filter($query, $filterName, $value),
+        };
+    }
+}

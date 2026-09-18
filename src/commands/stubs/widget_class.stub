@@ -1,0 +1,72 @@
+<?php
+
+namespace App\Nexus\Widgets\{{name}};
+
+use Nodex\Nexus\Attributes\Widget;
+use Nodex\Nexus\Contracts\Widgets\RendersHtml;
+use Nodex\Nexus\Contracts\Widgets\WidgetInterface;
+use Nodex\Nexus\Dto\Widgets\WidgetContext;
+use Nodex\Nexus\Enums\WidgetSurface;
+
+/**
+ * Auto-discovered from this file's location — app/Nexus/Widgets/{{name}}/{{name}}.php,
+ * matching the same folder-per-widget convention as this file's own path —
+ * no manual registration needed. Add '{{lowerName}}' to
+ * config('nexus.dashboard.default') to show it on every fresh admin
+ * dashboard, or leave it out and let users add it themselves through the
+ * dashboard's "Customize" picker.
+ *
+ * implements RendersHtml (real, working Blade output) here as the default;
+ * implement Nodex\Nexus\Contracts\Widgets\ProvidesMetric instead for a
+ * single-number stat card with no view of your own — see
+ * templates/widgets/metric_card.blade.php for the built-in fallback that
+ * renders for you in that case, and App\Nexus\Widgets\UsersCount for a
+ * real example. A widget may implement both.
+ */
+#[Widget(
+    name: '{{lowerName}}',
+    label: '{{humanName}}',
+    surfaces: [WidgetSurface::Admin],
+    icon: 'solar:widget-bold',
+    group: 'general',
+)]
+class {{name}} implements WidgetInterface, RendersHtml
+{
+    public function getData(array $config, WidgetContext $context): array
+    {
+        return [];
+    }
+
+    public static function configFields(): array
+    {
+        return [];
+    }
+
+    /**
+     * @return array<string, string> Blade file name (relative to this
+     *                                class's own folder) => display name
+     */
+    public function availableViews(): array
+    {
+        return ['{{lowerName}}.blade.php' => 'Default'];
+    }
+
+    public function viewFor(?string $name): ?string
+    {
+        $views = $this->availableViews();
+
+        return $name && isset($views[$name]) ? $name : array_key_first($views);
+    }
+
+    public function render(array $config, WidgetContext $context): string
+    {
+        $view = $this->viewFor($context->params['view'] ?? null);
+        $path = $view ? __DIR__ . DIRECTORY_SEPARATOR . $view : null;
+
+        if (! $path || ! is_file($path)) {
+            return '';
+        }
+
+        return view()->file($path, $this->getData($config, $context))->render();
+    }
+}

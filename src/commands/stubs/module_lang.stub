@@ -1,0 +1,16 @@
+<?php
+
+return [
+    '{{lowerName}}' => '{{lowerName}}',
+    '{{name}}' => '{{name}}',
+    'index_title' => '{{pluralName}}',
+    'name' => 'name',
+    'Name' => 'Name',
+    'module_name' => '{{name}}',
+    'edit' => 'Edit',
+    'delete' => 'Delete',
+    'docs' => [
+        'title' => '{{name}} module',
+        'subtitle' => 'Describe what this module manages.',
+    ],
+];

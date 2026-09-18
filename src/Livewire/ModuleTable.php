@@ -1,0 +1,371 @@
+<?php
+
+namespace Nodex\Nexus\Livewire;
+
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Livewire\Attributes\On;
+use Livewire\Component;
+use Nodex\Nexus\Events\BulkActionExecuting;
+use Nodex\Nexus\Events\ModuleActionExecuted;
+use Nodex\Nexus\Livewire\Concerns\CallsLegacyActionMethods;
+use Nodex\Nexus\Models\Module;
+use Nodex\Nexus\Services\Actions\Admin\BoolToggleActionMethod;
+use Nodex\Nexus\Services\Actions\Admin\CallGroupActionMethod;
+use Nodex\Nexus\Services\Actions\Admin\DeleteActionGroupMethod;
+use Nodex\Nexus\Services\Actions\Admin\DeleteActionMethod;
+use Nodex\Nexus\Services\Actions\Admin\DeletePermanentActionMethod;
+use Nodex\Nexus\Services\Actions\Admin\DuplicateActionGroupMethod;
+use Nodex\Nexus\Services\Actions\Admin\DuplicateActionMethod;
+use Nodex\Nexus\Services\Actions\Admin\PublishActionGroupMethod;
+use Nodex\Nexus\Services\Actions\Admin\RestoreActionGroupMethod;
+use Nodex\Nexus\Services\Actions\Admin\RestoreActionMethod;
+use Nodex\Nexus\Services\Actions\Admin\UnpublishActionGroupMethod;
+use Nodex\Nexus\Services\ModuleManager;
+use Nodex\Nexus\Services\TableBuilder;
+
+/**
+ * Generic reactive replacement for pages/index.blade.php's sort/paginate/
+ * filter/bulk-action full-page-reload cycle. Parameterized by module name so
+ * one component serves every #[Module(livewire: true)] module. Reuses
+ * TableBuilder and the same *ActionGroupMethod/BoolToggleActionMethod
+ * services the legacy NexusController::action() dispatches to — Livewire
+ * replaces only the transport and rendering, not the business logic.
+ *
+ * Mirrors NexusController::action()'s branch order for group actions: a few
+ * names (deleteGroup, restoreGroup, ...) have a dedicated method on the
+ * controller rather than falling through to the generic actionGroup config,
+ * so this component keeps the same lookup table rather than treating every
+ * group action identically.
+ */
+class ModuleTable extends Component
+{
+    use CallsLegacyActionMethods;
+
+    public string $moduleName;
+
+    public ?string $sort = null;
+
+    public array $filter = [];
+
+    public int $page = 1;
+
+    public ?int $perPage = null;
+
+    public array $selected = [];
+
+    /** Active #[TableLens] name, or null for "all records" — see selectLens(). */
+    public ?string $lens = null;
+
+    /** Whether the slide-over panel (#[Module(slideOver: true)]) is open. */
+    public bool $slideOverOpen = false;
+
+    /** Id of the record being edited in the slide-over panel, if open. */
+    public ?string $slideOverId = null;
+
+    private ?Module $moduleCache = null;
+
+    private const BUILT_IN_GROUP_ACTIONS = [
+        'deleteGroup' => DeleteActionGroupMethod::class,
+        'restoreGroup' => RestoreActionGroupMethod::class,
+        'publishGroup' => PublishActionGroupMethod::class,
+        'unpublishGroup' => UnpublishActionGroupMethod::class,
+        'duplicateGroup' => DuplicateActionGroupMethod::class,
+    ];
+
+    /**
+     * Single-record row actions (see pages/tableRow.blade.php's
+     * $tableData['actions'] loop) that this component can run directly.
+     * 'edit' isn't here — it either opens the slide-over (openSlideOver())
+     * or is a plain link to editLivewire.blade.php, never a Livewire call.
+     */
+    private const SINGLE_RECORD_ACTIONS = [
+        'delete' => DeleteActionMethod::class,
+        'restore' => RestoreActionMethod::class,
+        'deletePermanent' => DeletePermanentActionMethod::class,
+        'duplicate' => DuplicateActionMethod::class,
+    ];
+
+    public function mount(string $moduleName): void
+    {
+        $this->moduleName = $moduleName;
+
+        abort_unless(ModuleManager::checkPermission('index', $this->resolveModule()), 403);
+    }
+
+    /**
+     * Any change under `filter.*` should reset pagination, same as the
+     * legacy full-reload filter form always landing back on page 1.
+     */
+    public function updated(string $name): void
+    {
+        if ($name === 'filter' || str_starts_with($name, 'filter.')) {
+            $this->page = 1;
+        }
+    }
+
+    public function sortBy(string $column): void
+    {
+        // Descending first: for id-like columns the natural (unsorted) row
+        // order already matches ascending, so an asc-first cycle made the
+        // first click look like a no-op.
+        $this->sort = match ($this->sort) {
+            '-'.$column => $column,
+            $column => null,
+            default => '-'.$column,
+        };
+        $this->page = 1;
+    }
+
+    public function gotoPage(int $page): void
+    {
+        $this->page = max(1, $page);
+    }
+
+    /**
+     * Livewire equivalent of pages/index.blade.php's lens tabs, which are
+     * plain links carrying '?lens={name}' — TableBuilder::build() reads that
+     * same key regardless of whether it arrives via a real query string or
+     * (as here) a plain array, see tableData() below.
+     */
+    public function selectLens(?string $lensName): void
+    {
+        $this->lens = $lensName;
+        $this->page = 1;
+    }
+
+    /**
+     * Backs the "Columns" picker in module-table.blade.php. The read side of
+     * this (nexus_user_table_preferences.visible_columns, filtered against
+     * per user+module in TableBuilder::build()) already existed and worked —
+     * only a way to actually write a preference was ever missing, the same
+     * "backend ready, no UI ever called it" gap as the #[Setting] registry
+     * (see project-nexus-settings-registry memory). Mirrors
+     * NexusController::saveTableColumns()'s persistence exactly; that HTTP
+     * route stays for any non-Livewire caller, this is the reactive path.
+     *
+     * $tableData['columns'] already reflects the current preference-or-
+     * default visible set, so toggling one entry against it (rather than
+     * re-deriving "preference or default" here too) keeps this the single
+     * source of truth for "what's visible right now".
+     */
+    public function toggleColumnVisibility(string $columnName): void
+    {
+        $data = $this->tableData();
+
+        $allNames = collect($data['allColumns'])->map(fn ($c) => $c->name ?? $c['name'])->all();
+        if (! in_array($columnName, $allNames, true)) {
+            return;
+        }
+
+        $visible = collect($data['columns'])->map(fn ($c) => $c->name ?? $c['name'])->all();
+        $visible = in_array($columnName, $visible, true)
+            ? array_values(array_diff($visible, [$columnName]))
+            : array_merge($visible, [$columnName]);
+
+        if (empty($visible)) {
+            return;
+        }
+
+        DB::table('nexus_user_table_preferences')->updateOrInsert(
+            ['user_id' => auth()->id(), 'module' => $this->resolveModule()->name],
+            ['visible_columns' => json_encode(array_values($visible)), 'updated_at' => now()]
+        );
+    }
+
+    public function toggleSelectAll(bool $checked): void
+    {
+        $this->selected = $checked
+            ? collect($this->tableData()['data']->items())->map(fn ($item) => (string) $item->id)->all()
+            : [];
+    }
+
+    public function toggleBool(string $id, string $fieldName): void
+    {
+        $module = $this->resolveModule();
+        abort_unless(ModuleManager::checkPermission('boolToggle', $module), 403);
+
+        $this->withRealRedirector(fn () => BoolToggleActionMethod::handle(
+            $this->makeFormRequest(['fieldName' => $fieldName]),
+            $module->config,
+            $id
+        ));
+
+        event(new ModuleActionExecuted($module->name, 'boolToggle', id: $id));
+        nexus_action('nexus.module.action_executed', $module->name, 'boolToggle', $id, null);
+    }
+
+    /**
+     * Mirrors tableRow.blade.php's $isSlideOverEdit branch: instead of a
+     * js-slideover-trigger button opening an <iframe> onto editLivewire's
+     * full page, this mounts ModuleForm directly inside the panel (see
+     * module-table.blade.php's offcanvas markup) — no iframe, no separate
+     * HTTP round trip for the panel's own content.
+     */
+    public function openSlideOver(string $id): void
+    {
+        abort_unless(ModuleManager::checkPermission('edit', $this->resolveModule()), 403);
+
+        $this->slideOverId = $id;
+        $this->slideOverOpen = true;
+    }
+
+    public function closeSlideOver(): void
+    {
+        $this->slideOverOpen = false;
+        $this->slideOverId = null;
+    }
+
+    /**
+     * The embedded ModuleForm dispatches this on both a successful save and
+     * a cancel (see ModuleForm::save()/cancel()) — either way the panel
+     * should close and the table should reflect current data.
+     */
+    #[On('nexus-module-form-saved')]
+    public function onFormSaved(): void
+    {
+        $this->closeSlideOver();
+    }
+
+    /**
+     * Runs a single-record action (delete/restore/duplicate/deletePermanent)
+     * from a table row — the Livewire equivalent of tableRow.blade.php's
+     * per-row <form method="POST" action="...action/{name}/{id}">. 'edit' is
+     * handled separately (openSlideOver() or a plain link), never through here.
+     */
+    public function runAction(string $actionName, string $id): void
+    {
+        $module = $this->resolveModule();
+        abort_unless(ModuleManager::checkPermission($actionName, $module), 403);
+
+        $handlerClass = self::SINGLE_RECORD_ACTIONS[$actionName] ?? null;
+        abort_if($handlerClass === null, 404);
+
+        $this->withRealRedirector(fn () => $handlerClass::handle(
+            $this->makeFormRequest([]),
+            $module->config,
+            $id
+        ));
+
+        event(new ModuleActionExecuted($module->name, $actionName, id: $id));
+        nexus_action('nexus.module.action_executed', $module->name, $actionName, $id, null);
+    }
+
+    /**
+     * Above this many selected rows, runGroupAction() dispatches
+     * Nodex\Nexus\Modules\BulkAction\Jobs\BulkActionJob (queued, with a
+     * polled progress bar) instead of running synchronously in the request —
+     * a handful of rows is instant either way and doesn't need the extra
+     * queue round-trip/polling UI, but hundreds of rows each firing their
+     * own before/after hooks and events genuinely can't finish inside one
+     * HTTP request. Not user-configurable (yet) — a fixed, conservative cutoff.
+     */
+    private const ASYNC_BULK_ACTION_THRESHOLD = 50;
+
+    public function runGroupAction(string $actionName): void
+    {
+        $module = $this->resolveModule();
+        abort_unless(ModuleManager::checkPermission($actionName, $module), 403);
+
+        $moduleConfig = $module->config;
+
+        // Fires before the sync/async threshold split below, so it applies
+        // uniformly either way — a listener can drop specific ids from the
+        // batch (partial veto) or throw to abort the whole action.
+        event(new BulkActionExecuting($module->name, $actionName, $this->selected));
+        $this->selected = nexus_filter('nexus.bulk_action.executing', $this->selected, $module->name, $actionName);
+
+        if (count($this->selected) > self::ASYNC_BULK_ACTION_THRESHOLD) {
+            $this->dispatchAsyncBulkAction($module, $actionName);
+
+            return;
+        }
+
+        $request = $this->makeFormRequest(['items' => $this->selected]);
+
+        $this->withRealRedirector(function () use ($actionName, $request, $moduleConfig) {
+            if (isset(self::BUILT_IN_GROUP_ACTIONS[$actionName])) {
+                $handlerClass = self::BUILT_IN_GROUP_ACTIONS[$actionName];
+                $handlerClass::handle($request, $moduleConfig);
+            } else {
+                $actionGroupConfig = $moduleConfig->table->actionGroup[$actionName] ?? null;
+                abort_if($actionGroupConfig === null, 404);
+                CallGroupActionMethod::handle($request, $moduleConfig, $actionGroupConfig);
+            }
+        });
+
+        event(new ModuleActionExecuted($module->name, $actionName, ids: $this->selected));
+        nexus_action('nexus.module.action_executed', $module->name, $actionName, null, $this->selected);
+        $this->selected = [];
+    }
+
+    private function dispatchAsyncBulkAction(Module $module, string $actionName): void
+    {
+        $cacheKey = 'bulk_'.Str::random(10);
+        $jobClass = ModuleManager::nexus_module_class('BulkAction', 'Jobs\\BulkActionJob');
+
+        dispatch(new $jobClass($module->name, $actionName, $this->selected, $cacheKey, auth()->id()));
+
+        $this->dispatch('nexus-bulk-action-started', cacheKey: $cacheKey, moduleName: $module->name);
+        $this->selected = [];
+    }
+
+    /**
+     * Same filter/sort/lens state this component is already showing (not a
+     * fresh, independent read of the request) — "export" means "export the
+     * table as I currently have it filtered", so the job needs exactly what
+     * TableBuilder::build() would use to render the current page, minus
+     * pagination itself.
+     *
+     * Dispatches Nodex\Nexus\Modules\Export\Jobs\MasterExportJob (queued —
+     * QUEUE_CONNECTION must be a real driver with a worker running, not
+     * 'sync' pretending to be one, for the progress bar to mean anything)
+     * and hands the cache key to the browser via a dispatched event; the
+     * page's own JS polls nexus.module.export.progress and redirects to
+     * nexus.module.export.download once status is 'completed' — mirrors
+     * ImportActionMethod's existing synchronous JSON-response pattern for
+     * the small-file case, but export needs to survive a full table scan.
+     */
+    public function exportTable(): void
+    {
+        $module = $this->resolveModule();
+        abort_unless(ModuleManager::checkPermission('index', $module), 403);
+
+        $cacheKey = 'export_'.Str::random(10);
+        $jobClass = ModuleManager::nexus_module_class('Export', 'Jobs\\MasterExportJob');
+
+        dispatch(new $jobClass(
+            $module->name,
+            $cacheKey,
+            ['filter' => $this->filter, 'sort' => $this->sort, 'lens' => $this->lens],
+            auth()->id(),
+        ));
+
+        $this->dispatch('nexus-export-started', cacheKey: $cacheKey, moduleName: $module->name);
+    }
+
+    public function render()
+    {
+        return view('nexus::'.config('nexus.template').'.livewire.module-table', [
+            'module' => $this->resolveModule(),
+            'tableData' => $this->tableData(),
+        ]);
+    }
+
+    private function tableData(): array
+    {
+        return app(TableBuilder::class)->build($this->resolveModule(), [
+            'sort' => $this->sort,
+            'filter' => $this->filter,
+            'page' => $this->page,
+            'per_page' => $this->perPage,
+            'lens' => $this->lens,
+        ], false, auth()->id());
+    }
+
+    private function resolveModule(): Module
+    {
+        return $this->moduleCache ??= Module::findByName($this->moduleName) ?? throw (new ModelNotFoundException)->setModel(Module::class);
+    }
+}

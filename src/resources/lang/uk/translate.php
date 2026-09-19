@@ -111,6 +111,7 @@ return [
     'columns' => 'Стовпці',
     'Export' => 'Експорт',
     'Import' => 'Імпорт',
+    'Install from archive' => 'Встановити з архіву',
     'start' => 'Почати',
     'are_u_sure' => 'Ви впевнені?',
     'start_export' => 'Почати екпорт?',

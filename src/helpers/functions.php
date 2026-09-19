@@ -1,9 +1,11 @@
 <?php
 
+use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Str;
 use Nodex\Nexus\Services\HookManager;
 use Nodex\Nexus\Services\IconManager;
 
-if (!function_exists('nexus_icon')) {
+if (! function_exists('nexus_icon')) {
 
     function nexus_icon(?string $key, ?string $module = null, ?string $default = null): string
     {
@@ -11,7 +13,7 @@ if (!function_exists('nexus_icon')) {
     }
 }
 
-if (!function_exists('nexus_filter')) {
+if (! function_exists('nexus_filter')) {
 
     /**
      * Run a named filter hook, transforming and returning $value.
@@ -23,7 +25,7 @@ if (!function_exists('nexus_filter')) {
     }
 }
 
-if (!function_exists('nexus_action')) {
+if (! function_exists('nexus_action')) {
 
     /**
      * Run a named action hook (side effects, no return value).
@@ -34,7 +36,7 @@ if (!function_exists('nexus_action')) {
     }
 }
 
-if (!function_exists('nexus_trans_label')) {
+if (! function_exists('nexus_trans_label')) {
 
     /**
      * Resolve the display text for a module's own column/field/section/
@@ -61,15 +63,15 @@ if (!function_exists('nexus_trans_label')) {
             return __($label);
         }
 
-        $key = \Illuminate\Support\Str::lower($label);
-        $moduleKey = \Illuminate\Support\Str::lcfirst($moduleName).'::translate.'.$key;
+        $key = Str::lower($label);
+        $moduleKey = Str::lcfirst($moduleName).'::translate.'.$key;
 
-        if (\Illuminate\Support\Facades\Lang::has($moduleKey)) {
+        if (Lang::has($moduleKey)) {
             return __($moduleKey);
         }
 
         $sharedKey = 'nexus::translate.'.$key;
-        if (\Illuminate\Support\Facades\Lang::has($sharedKey)) {
+        if (Lang::has($sharedKey)) {
             return __($sharedKey);
         }
 
@@ -77,7 +79,51 @@ if (!function_exists('nexus_trans_label')) {
     }
 }
 
-if (!function_exists('nexus_enum_display')) {
+if (! function_exists('nexus_trans_action')) {
+
+    /**
+     * Resolve a #[TableAction]/#[TableGroupAction]'s display text.
+     * module-table.blade.php used to hand $mainAction->label/$groupAction->name
+     * straight to @lang('nexus::translate.' . $label) — only ever the
+     * package's own shared dictionary, keyed by the label/name verbatim
+     * ("Create", "deleteGroup", ...). That's fine for the framework's own
+     * built-in actions (already in nexus::translate), but gave a
+     * module-specific custom action (Restore's "Scan backups", this
+     * package's own "Install from archive") nowhere to put its translation
+     * except that same shared file — and a missing key there rendered the
+     * raw "nexus::translate.Scan backups" string, not even the readable
+     * label.
+     *
+     * This tries the module's own namespace first (so a module can add a new
+     * action label or override a shared one), then the shared nexus::translate
+     * exactly as before, and finally the raw label/name itself — each scope
+     * checked both verbatim and lowercased, since several modules (Restore,
+     * Backup) already ship lowercase keys ('scan backups', 'run now') that
+     * this makes live for the first time rather than adding yet another
+     * naming convention.
+     */
+    function nexus_trans_action(string $moduleName, string $label): string
+    {
+        if (str_contains($label, '::')) {
+            return __($label);
+        }
+
+        $moduleNamespace = Str::lcfirst($moduleName);
+
+        foreach ([$moduleNamespace, 'nexus'] as $namespace) {
+            foreach ([$label, Str::lower($label)] as $key) {
+                $fullKey = $namespace.'::translate.'.$key;
+                if (Lang::has($fullKey)) {
+                    return __($fullKey);
+                }
+            }
+        }
+
+        return $label;
+    }
+}
+
+if (! function_exists('nexus_enum_display')) {
 
     /**
      * Format a #[Field(type: 'enum')]-cast attribute for display outside an
@@ -97,7 +143,7 @@ if (!function_exists('nexus_enum_display')) {
      */
     function nexus_enum_display(mixed $value, string $moduleName): mixed
     {
-        if (!($value instanceof UnitEnum)) {
+        if (! ($value instanceof UnitEnum)) {
             return $value;
         }
 
@@ -106,13 +152,13 @@ if (!function_exists('nexus_enum_display')) {
         }
 
         $raw = $value instanceof BackedEnum ? $value->value : $value->name;
-        $key = \Illuminate\Support\Str::lcfirst($moduleName).'::translate.'.$raw;
+        $key = Str::lcfirst($moduleName).'::translate.'.$raw;
 
-        return \Illuminate\Support\Facades\Lang::has($key) ? __($key) : $raw;
+        return Lang::has($key) ? __($key) : $raw;
     }
 }
 
-if (!function_exists('nexus_icon_html')) {
+if (! function_exists('nexus_icon_html')) {
 
     /**
      * Render a #[Module]/#[Section] icon as HTML, picking the right markup

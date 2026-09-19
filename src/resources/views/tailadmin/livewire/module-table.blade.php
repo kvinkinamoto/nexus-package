@@ -51,9 +51,9 @@
                     @foreach($activeGroupActions as $groupAction)
                         <button type="button"
                             wire:click="runGroupAction('{{ $groupAction->name }}')"
-                            @if($groupAction->confirm) wire:confirm="@lang('nexus::translate.' . $groupAction->name)?" @endif
+                            @if($groupAction->confirm) wire:confirm="{{ nexus_trans_action($module->name, $groupAction->name) }}?" @endif
                             class="flex items-center rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5">
-                            @lang('nexus::translate.' . $groupAction->name)
+                            {{ nexus_trans_action($module->name, $groupAction->name) }}
                         </button>
                     @endforeach
                 </div>
@@ -158,10 +158,10 @@
                 @foreach($module->config->table->mainActions ?? [] as $mainAction)
                     @if($mainAction->isActive)
                         <a href="{{ route('nexus.module.action', ['module' => $module->name, 'action' => $mainAction->name]) }}"
-                            title="@lang('nexus::translate.' . $mainAction->label)"
+                            title="{{ nexus_trans_action($module->name, $mainAction->label) }}"
                             class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600">
                             <i class="{{ nexus_icon('plus') }}"></i>
-                            @lang('nexus::translate.' . $mainAction->label)
+                            {{ nexus_trans_action($module->name, $mainAction->label) }}
                         </a>
                     @endif
                 @endforeach

@@ -111,6 +111,7 @@ return [
     'columns' => 'Columns',
     'Export' => 'Export',
     'Import' => 'Import',
+    'Install from archive' => 'Install from archive',
     'start' => 'Start',
     'are_u_sure' => 'Are you sure?',
     'start_export' => 'Start export?',

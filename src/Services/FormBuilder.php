@@ -126,12 +126,18 @@ class FormBuilder
 
     public static function getLanguages()
     {
-        $languagesModule = Module::query()
-            ->where('name', 'language')
-            ->where('is_enabled', true)
-            ->first();
+        /**
+         * Module::$name is stored as whatever module-folder name
+         * nexus:module:install was given (Str::studly, e.g. "Language" —
+         * see ModuleManager::instanceInstall()), not the #[Module(name:)]
+         * attribute's lowercase registry key. An exact-match where('name',
+         * 'language') therefore never matches a really-installed Language
+         * module — use the same case-insensitive lookup Module::findByName()
+         * already provides for this exact reason (see its own docblock).
+         */
+        $languagesModule = Module::findByName('language');
 
-        if (!$languagesModule) {
+        if (!$languagesModule || !$languagesModule->is_enabled) {
             return [config('app.locale')];
         }
 

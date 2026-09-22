@@ -17,5 +17,13 @@ final class BlockFieldDefinition
         public readonly string $type,
         public readonly string $label,
         public readonly bool $required = false,
+        /**
+         * When true, this field's value in PageBlock::$data is stored as a
+         * locale-keyed map (['uk' => '...', 'en' => '...']) instead of a
+         * plain scalar — see BlockDataLocalizer (public rendering) and
+         * ManagesBlockFields (admin editing). Only 'string'/'text' block
+         * cell types render a translatable row per active locale today.
+         */
+        public readonly bool $translatable = false,
     ) {}
 }

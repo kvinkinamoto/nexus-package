@@ -25,18 +25,55 @@ trait ManagesBlockFields
      */
     private function hydrateBlockRows(Model $model, FieldConfigDto $field): array
     {
+        $registry = app(BlockTypeRegistry::class);
         $rows = [];
 
         foreach ($model->{$field->name} as $related) {
+            $data = $related->data ?? [];
+            $type = $registry->find($related->type);
+
+            if ($type) {
+                foreach ($type->fields() as $blockField) {
+                    if ($blockField->translatable) {
+                        $data[$blockField->name] = $this->normalizeTranslatedBlockValue($data[$blockField->name] ?? null);
+                    }
+                }
+            }
+
             $rows[] = [
                 'id' => $related->getKey(),
                 '_rowKey' => 'db-'.$related->getKey(),
                 'type' => $related->type,
-                'data' => $related->data ?? [],
+                'data' => $data,
             ];
         }
 
         return $rows;
+    }
+
+    /**
+     * A translatable block field's stored value is either already a
+     * locale-keyed map (a row saved since this field became translatable)
+     * or a legacy plain scalar (saved before). Either way the admin form
+     * needs one bound value per active locale — a legacy scalar's value is
+     * kept under the current app locale rather than dropped, and every
+     * other active locale gets an empty row to fill in.
+     *
+     * @return array<string, string>
+     */
+    private function normalizeTranslatedBlockValue(mixed $value): array
+    {
+        $translations = array_fill_keys($this->activeLocales(), '');
+
+        if (is_array($value)) {
+            return array_merge($translations, array_intersect_key($value, $translations));
+        }
+
+        if ($value !== null && $value !== '') {
+            $translations[app()->getLocale()] = (string) $value;
+        }
+
+        return $translations;
     }
 
     public function addBlock(string $fieldName, string $blockType): void
@@ -48,7 +85,9 @@ trait ManagesBlockFields
 
         $data = [];
         foreach ($type->fields() as $blockField) {
-            $data[$blockField->name] = null;
+            $data[$blockField->name] = $blockField->translatable
+                ? array_fill_keys($this->activeLocales(), '')
+                : null;
         }
 
         $this->relationRows[$fieldName][] = [

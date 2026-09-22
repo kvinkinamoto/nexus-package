@@ -209,7 +209,7 @@ class NexusServiceProvider extends ServiceProvider
         // than erroring, since a page must keep rendering its other blocks
         // even if one type was since removed from BlockTypeRegistry.
         Blade::directive('nexusBlocks', function (string $expression) {
-            return "<?php foreach (({$expression}) as \$__nexusBlock) { \$__nexusBlockView = 'nexus::public.block_types.' . \$__nexusBlock->type; if (\Illuminate\Support\Facades\View::exists(\$__nexusBlockView)) { echo view(\$__nexusBlockView, ['block' => \$__nexusBlock, 'data' => (object) (\$__nexusBlock->data ?? [])])->render(); } } ?>";
+            return "<?php foreach (({$expression}) as \$__nexusBlock) { \$__nexusBlockView = 'nexus::public.block_types.' . \$__nexusBlock->type; if (\Illuminate\Support\Facades\View::exists(\$__nexusBlockView)) { echo view(\$__nexusBlockView, ['block' => \$__nexusBlock, 'data' => (object) \Nodex\Nexus\Services\Blocks\BlockDataLocalizer::resolve(\$__nexusBlock->data ?? [])])->render(); } } ?>";
         });
 
         $this->registerValidationRulesFilter();

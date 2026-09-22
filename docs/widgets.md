@@ -1,46 +1,46 @@
 ## <h2 style="color:#ba363f">Dashboard Widgets</h2>
 
-Widжет — це клас, що описує одну картку контенту чи метрики: картка з
-числом на адмін-дашборді (`Total Users`), список останніх записів модуля,
-або блок, вставлений на фронт через `@position()`. Один widget = одна папка
-(`{Name}/{Name}.php` + за потреби co-located Blade-вʼю) — та сама конвенція
-самодостатньої папки, що й у типів полів і плагінів. Реєстрація повністю
-декларативна: клас позначається атрибутом `#[Widget(...)]`, реалізує
-`WidgetInterface`, і система підхоплює його автоматично при наступному
-запиті — жодного ручного `register()`.
+A widget is a class that describes a single piece of content or a metric card: a card with
+a number on the admin dashboard (`Total Users`), a list of a module's most recent records,
+or a block inserted on the front end via `@position()`. One widget = one folder
+(`{Name}/{Name}.php` plus, if needed, a co-located Blade view) — the same self-contained
+folder convention used for field types and plugins. Registration is fully
+declarative: the class is marked with the `#[Widget(...)]` attribute, implements
+`WidgetInterface`, and the system picks it up automatically on the next
+request — no manual `register()` call needed.
 
-Клас `Nodex\Nexus\Attributes\Widget` — авторитетне джерело метаданих
-(`name`, `label`, `surfaces`, ...). Контракти в `Nodex\Nexus\Contracts\Widgets\*`
-— авторитетне джерело того, що widget реально **вміє робити**.
-`WidgetRegistry` звіряє одне з іншим і у разі розбіжності (наприклад,
-`surfaces` включає `Front`, а `RendersHtml` не реалізований) не падає, а
-лише пише попередження в лог і на цій поверхні widget просто не
-відмальовується.
-
----
-
-### Де живе widget
-
-- Загальний, не привʼязаний до модуля: `app/Nexus/Widgets/{Name}/{Name}.php`
-  під неймспейсом `App\Nexus\Widgets\{Name}`.
-- Власний widget модуля: `app/Nexus/Modules/{Module}/Widgets/{Name}/{Name}.php`
-  під неймспейсом `App\Nexus\Modules\{Module}\Widgets\{Name}` — виявляється
-  окремо, у межах маніфесту саме цього модуля (приклад: `DemoRecordsCount`
-  у модулі `Demo`).
-- Вбудовані widget-и самого пакета лежать у `src/Widgets` під неймспейсом
-  `Nodex\Nexus\Widgets`.
-
-Скан відбувається по кожній підпапці `Widgets/`: папка `{FolderName}`
-резолвиться у клас `{namespace}\Widgets\{FolderName}\{FolderName}` — назва
-папки й назва класу повинні збігатися.
-
-⚠️ **Маніфест-кеш.** Так само, як і модулі, widget-и виявляються через
-скомпільований `bootstrap/cache/nexus-modules.php`. Якщо щойно доданий
-widget не зʼявляється — виконайте `php artisan nexus:module:clear`.
+The `Nodex\Nexus\Attributes\Widget` class is the authoritative source of metadata
+(`name`, `label`, `surfaces`, ...). The contracts in `Nodex\Nexus\Contracts\Widgets\*`
+are the authoritative source of what a widget can actually **do**.
+`WidgetRegistry` cross-checks the two, and in case of a mismatch (for example,
+`surfaces` includes `Front` but `RendersHtml` is not implemented) it does not fail — it
+just logs a warning, and on that surface the widget simply doesn't
+render.
 
 ---
 
-### Атрибут `#[Widget(...)]`
+### Where a widget lives
+
+- A general-purpose widget, not tied to a module: `app/Nexus/Widgets/{Name}/{Name}.php`
+  under the `App\Nexus\Widgets\{Name}` namespace.
+- A module's own widget: `app/Nexus/Modules/{Module}/Widgets/{Name}/{Name}.php`
+  under the `App\Nexus\Modules\{Module}\Widgets\{Name}` namespace — discovered
+  separately, within that module's own manifest (example: `DemoRecordsCount`
+  in the `Demo` module).
+- The package's built-in widgets live under `src/Widgets`, under the
+  `Nodex\Nexus\Widgets` namespace.
+
+Scanning happens per `Widgets/` subfolder: a folder `{FolderName}`
+resolves to the class `{namespace}\Widgets\{FolderName}\{FolderName}` — the folder
+name and the class name must match.
+
+⚠️ **Manifest cache.** Just like modules, widgets are discovered via the
+compiled `bootstrap/cache/nexus-modules.php`. If a newly added
+widget doesn't show up, run `php artisan nexus:module:clear`.
+
+---
+
+### The `#[Widget(...)]` attribute
 
 ```php
 #[Widget(
@@ -57,29 +57,29 @@ class UsersCount implements ApiSerializable, ProvidesMetric, WidgetInterface
 }
 ```
 
-| Параметр | Тип | За замовчуванням | Призначення |
+| Parameter | Type | Default | Purpose |
 | --- | --- | --- | --- |
-| `name` | `string` | — (обовʼязковий) | Стабільний slug, що зберігається у розміщеннях widget-а (dashboard layout / widget instance) замість FQCN. **Ніколи не перейменовуйте** після того, як widget вже десь розміщено — інакше існуючі розміщення "осиротіють". |
-| `label` | `string` | — (обовʼязковий) | Людська назва в UI (пікер, картка). |
-| `surfaces` | `WidgetSurface[]` | `[WidgetSurface::Admin]` | На яких поверхнях widget може зʼявитись: `Admin`, `Front`, `Api`. |
-| `icon` | `?string` | `null` | Іконка для картки/пікера. |
-| `group` | `?string` | `null` | Ключ групування у widget-пікері. |
-| `module` | `?string` | `null` | Модуль-власник — лише косметика для пікера, **не** функціональна залежність (на відміну від `requires`). |
-| `cacheTtl` | `?int` | `null` | Секунди кешування результату `getData()`/`render()`. `null`/`0` — без кешування, перерахунок при кожному виклику. |
-| `requires` | `string[]` | `[]` | Модулі, які мають бути увімкнені, щоб widget взагалі зареєструвався. |
-| `apiPublic` | `bool` | `false` | Чи може `Api`-поверхня віддавати widget анонімному запиту. |
-| `defaultSize` | `?string` | `null` | Підказка розміру сітки дашборду, напр. `'1x1'`, `'2x1'`. |
-| `permission` | `?string` | `null` | Дозвіл (permission), потрібний для перегляду/розміщення widget-а в адмін-дашборді (`WidgetPermissionChecker`). |
-| `lazy` | `bool` | `false` | Замість інлайн-обчислення на сторінці дашборду рендериться плейсхолдер, а реальний HTML довантажується через AJAX. |
+| `name` | `string` | — (required) | Stable slug stored in the widget's placements (dashboard layout / widget instance) instead of an FQCN. **Never rename it** once the widget has been placed somewhere — otherwise existing placements become "orphaned". |
+| `label` | `string` | — (required) | Human-readable name in the UI (picker, card). |
+| `surfaces` | `WidgetSurface[]` | `[WidgetSurface::Admin]` | Which surfaces the widget can appear on: `Admin`, `Front`, `Api`. |
+| `icon` | `?string` | `null` | Icon for the card/picker. |
+| `group` | `?string` | `null` | Grouping key in the widget picker. |
+| `module` | `?string` | `null` | Owning module — cosmetic only for the picker, **not** a functional dependency (unlike `requires`). |
+| `cacheTtl` | `?int` | `null` | Seconds to cache the result of `getData()`/`render()`. `null`/`0` — no caching, recomputed on every call. |
+| `requires` | `string[]` | `[]` | Modules that must be enabled for the widget to register at all. |
+| `apiPublic` | `bool` | `false` | Whether the `Api` surface can serve the widget to an anonymous request. |
+| `defaultSize` | `?string` | `null` | Dashboard grid size hint, e.g. `'1x1'`, `'2x1'`. |
+| `permission` | `?string` | `null` | The permission required to view/place the widget on the admin dashboard (`WidgetPermissionChecker`). |
+| `lazy` | `bool` | `false` | Instead of computing inline on the dashboard page, a placeholder is rendered and the real HTML is loaded via AJAX. |
 
-`WidgetSurface` (`Nodex\Nexus\Enums\WidgetSurface`) — enum з трьома
-значеннями: `Front`, `Admin`, `Api`.
+`WidgetSurface` (`Nodex\Nexus\Enums\WidgetSurface`) is an enum with three
+values: `Front`, `Admin`, `Api`.
 
 ---
 
-### Контракти
+### Contracts
 
-`WidgetInterface` — єдиний обовʼязковий контракт:
+`WidgetInterface` is the only required contract:
 
 ```php
 interface WidgetInterface
@@ -89,41 +89,41 @@ interface WidgetInterface
 }
 ```
 
-- `getData()` — єдина точка отримання даних; саме її викликає й `Api`-поверхня
-  (json-кодує результат "як є", якщо немає `ApiSerializable`).
-- `configFields()` — поля конфігурації, що показуються адміну при
-  розміщенні/налаштуванні widget-а (`FieldConfigDto[]`, той самий формат,
-  що й у полів модуля — `Dto/ModuleDtos/FieldConfigDto`). У всіх прикладах
-  у проєкті наразі повертається `[]`.
+- `getData()` — the single point for fetching data; it's also what the `Api`
+  surface calls (JSON-encodes the result "as is" if there's no `ApiSerializable`).
+- `configFields()` — configuration fields shown to the admin when
+  placing/configuring the widget (`FieldConfigDto[]`, the same format
+  used for module fields — `Dto/ModuleDtos/FieldConfigDto`). In every example
+  in this project it currently returns `[]`.
 
-Опційні можливості (можна реалізувати одну, кілька або жодну — залежно
-від `surfaces`):
+Optional capabilities (you can implement one, several, or none — depending
+on `surfaces`):
 
-| Контракт | Коли потрібен | Методи |
+| Contract | When needed | Methods |
 | --- | --- | --- |
-| `ProvidesMetric` | Одне число-метрика (картка без власного вʼю) — падає назад на вбудований `metric_card.blade.php`. | `toMetric(array $config, WidgetContext $context): MetricDto` |
-| `RendersHtml` | Власна Blade-розмітка (для `Admin`/`Front`). | `availableViews(): array`, `viewFor(?string $name): ?string`, `render(array $config, WidgetContext $context): string` |
-| `ApiSerializable` | Коли форма відповіді для `Api` має відрізнятись від `getData()` (приховати внутрішнє поле, змінити форму). За відсутності `Api`-поверхня бере `getData()` як є. | `toApiPayload(array $config, WidgetContext $context): array` |
+| `ProvidesMetric` | A single-number metric (a card with no view of its own) — falls back to the built-in `metric_card.blade.php`. | `toMetric(array $config, WidgetContext $context): MetricDto` |
+| `RendersHtml` | Custom Blade markup (for `Admin`/`Front`). | `availableViews(): array`, `viewFor(?string $name): ?string`, `render(array $config, WidgetContext $context): string` |
+| `ApiSerializable` | When the `Api` response shape needs to differ from `getData()` (hide an internal field, reshape it). Without it, the `Api` surface takes `getData()` as is. | `toApiPayload(array $config, WidgetContext $context): array` |
 
-**Правило узгодження `surfaces` ↔ контрактів** (перевіряє
+**The `surfaces` ↔ contracts consistency rule** (checked by
 `WidgetRegistry::hasCapabilityFor()`):
 
-- `Admin` або `Front` у `surfaces` вимагає `RendersHtml` **або**
-  `ProvidesMetric`. Реєстратор цього **не примушує** — лише логує
-  попередження `Nexus: widget [...] declares surface [...] but implements
-  neither RendersHtml nor ProvidesMetric.`, а на практиці widget мовчки
-  нічого не рендерить на цій поверхні.
-- `Api` не вимагає нічого понад `WidgetInterface::getData()`.
+- `Admin` or `Front` in `surfaces` requires **either** `RendersHtml`
+  **or** `ProvidesMetric`. The registrar does **not** enforce this — it only
+  logs the warning `Nexus: widget [...] declares surface [...] but implements
+  neither RendersHtml nor ProvidesMetric.`, and in practice the widget silently
+  renders nothing on that surface.
+- `Api` requires nothing beyond `WidgetInterface::getData()`.
 
-`RendersHtml::render()` очікує, що імʼя вʼю з `availableViews()`
-резолвиться відносно **власної папки класу** (`__DIR__ . '/' . $view`) і
-передається у `View::file()` — а не як dot-нотація `resources/views`. Це
-навмисно: весь widget (клас + шаблон) лишається самодостатнім в одній
-папці, а не розсипається по `resources/views/widgets/`.
+`RendersHtml::render()` expects the view name from `availableViews()` to
+resolve relative to **the class's own folder** (`__DIR__ . '/' . $view`) and
+be passed to `View::file()` — not as `resources/views` dot notation. This is
+intentional: the whole widget (class + template) stays self-contained in one
+folder instead of being scattered across `resources/views/widgets/`.
 
 ---
 
-### `WidgetContext` і `MetricDto`
+### `WidgetContext` and `MetricDto`
 
 ```php
 final class WidgetContext
@@ -140,11 +140,11 @@ final class WidgetContext
 }
 ```
 
-Все, що `getData()`/`render()` можуть захотіти знати про те, де й як їх
-викликають, зібрано тут в одному місці — нова можливість додається як
-нове поле в `WidgetContext`, а не як новий параметр у сигнатурі кожного
-методу widget-а. `$context->params['view']` — приклад використання:
-`RecentDemoRecords::render()` бере звідти імʼя вʼю-варіанта.
+Everything `getData()`/`render()` might want to know about where and how they
+are being called is gathered here in one place — a new capability is added as
+a new field on `WidgetContext`, rather than as a new parameter in every
+widget method's signature. `$context->params['view']` is an example of this:
+`RecentDemoRecords::render()` reads the view-variant name from there.
 
 ```php
 class MetricDto extends \stdClass
@@ -165,45 +165,45 @@ class MetricDto extends \stdClass
 }
 ```
 
-`MetricDto` успадковує `\stdClass` — та сама конвенція, що й
-`FieldConfigDto` в іншому місці пакета. Повернений з `toMetric()`, він
-рендериться вбудованим `metric_card.blade.php` (`$metric->label`,
+`MetricDto` extends `\stdClass` — the same convention used by
+`FieldConfigDto` elsewhere in the package. Returned from `toMetric()`, it is
+rendered by the built-in `metric_card.blade.php` (`$metric->label`,
 `$metric->value`, `$metric->unit`, `$metric->deltaPercent`,
-`$metric->direction`, `$metric->icon`) — заповнювати можна лише потрібні
-поля, решта підуть з дефолтами.
+`$metric->direction`, `$metric->icon`) — you only need to fill in the fields
+you need, the rest fall back to defaults.
 
 ---
 
-### Скаффолдинг: `php artisan nexus:make:widget`
+### Scaffolding: `php artisan nexus:make:widget`
 
 ```
 php artisan nexus:make:widget {Name}
 ```
 
-Створює:
+Creates:
 
-- `app/Nexus/Widgets/{Name}/{Name}.php` — клас з `#[Widget(name: '{lowerName}', ...)]`,
-  який за замовчуванням реалізує `WidgetInterface, RendersHtml` (не
+- `app/Nexus/Widgets/{Name}/{Name}.php` — a class with `#[Widget(name: '{lowerName}', ...)]`,
+  which by default implements `WidgetInterface, RendersHtml` (not
   `ProvidesMetric`).
-- `app/Nexus/Widgets/{Name}/{lowerName}.blade.php` — co-located заглушка вʼю.
+- `app/Nexus/Widgets/{Name}/{lowerName}.blade.php` — a co-located view stub.
 
-Команда нічого не реєструє вручну — widget підхоплюється автоматично на
-наступному запиті. Якщо потрібен widget, привʼязаний саме до модуля,
-перенесіть згенеровану папку (і поправте неймспейс) у
-`app/Nexus/Modules/{Module}/Widgets/{Name}/` вручну — окремого прапорця
-для цього в команди немає.
+The command doesn't register anything manually — the widget is picked up automatically on
+the next request. If you need a widget tied specifically to a module,
+move the generated folder (and fix the namespace) to
+`app/Nexus/Modules/{Module}/Widgets/{Name}/` manually — there's no dedicated flag
+for this in the command.
 
-Після генерації:
+After generation:
 
-- Щоб widget показувався на кожному свіжому дашборді за замовчуванням —
-  додайте `'{lowerName}'` у `config('nexus.dashboard.default')`.
-- Інакше користувач додає його сам через пікер "Customize" на дашборді.
+- For the widget to show up on every fresh dashboard by default,
+  add `'{lowerName}'` to `config('nexus.dashboard.default')`.
+- Otherwise the user adds it themselves via the "Customize" picker on the dashboard.
 
 ---
 
-### Робочий приклад (ProvidesMetric + ApiSerializable)
+### Working example (ProvidesMetric + ApiSerializable)
 
-Реальний widget з пакета, `app/Nexus/Widgets/UsersCount/UsersCount.php`:
+A real widget from the package, `app/Nexus/Widgets/UsersCount/UsersCount.php`:
 
 ```php
 namespace App\Nexus\Widgets\UsersCount;
@@ -246,8 +246,8 @@ class UsersCount implements ApiSerializable, ProvidesMetric, WidgetInterface
         );
     }
 
-    // Форма для API навмисно вужча за getData() — саме той кейс,
-    // що описує докблок ApiSerializable.
+    // The API shape is intentionally narrower than getData() — exactly the
+    // case the ApiSerializable docblock describes.
     public function toApiPayload(array $config, WidgetContext $context): array
     {
         return ['totalUsers' => User::count()];
@@ -255,16 +255,16 @@ class UsersCount implements ApiSerializable, ProvidesMetric, WidgetInterface
 }
 ```
 
-Тут немає жодного власного Blade-файлу — на `Admin`-поверхні картку малює
-вбудований `metric_card.blade.php` через `toMetric()`. `apiPublic`
-лишений `false` (дефолт), бо кількість користувачів не має бути доступна
-анонімному запиту.
+There's no Blade file of its own here — on the `Admin` surface the card is drawn by
+the built-in `metric_card.blade.php` via `toMetric()`. `apiPublic`
+is left `false` (the default), because the user count shouldn't be available to
+an anonymous request.
 
-### Робочий приклад (RendersHtml, дві поверхні)
+### Working example (RendersHtml, two surfaces)
 
-`app/Nexus/Widgets/RecentDemoRecords/RecentDemoRecords.php` — перший у
-проєкті widget із власною Blade-розміткою, одночасно на `Admin` і
-`Front`:
+`app/Nexus/Widgets/RecentDemoRecords/RecentDemoRecords.php` — the first
+widget in the project with its own Blade markup, on both `Admin` and
+`Front` at once:
 
 ```php
 #[Widget(
@@ -317,16 +317,16 @@ class RecentDemoRecords implements RendersHtml, WidgetInterface
 }
 ```
 
-Ту саму розмітку показує і адмін-дашборд, і `@position('some-slot')` на
-фронті — конкретне розміщення на позиції налаштовує адмін через
+The same markup is shown both on the admin dashboard and via `@position('some-slot')` on
+the front end — the specific placement on a position is configured by the admin through
 `WidgetInstance`/`WidgetAssignment` (`App\Nexus\Modules\WidgetPlacement`),
-а не сам клас widget-а.
+not by the widget class itself.
 
-### Модульний widget
+### A module-scoped widget
 
 `app/Nexus/Modules/Demo/Widgets/DemoRecordsCount/DemoRecordsCount.php` —
-приклад widget-а, привʼязаного до власного модуля (лежить у
-`{Module}/Widgets/`, а не в глобальному `app/Nexus/Widgets/`):
+an example of a widget tied to its own module (it lives under
+`{Module}/Widgets/`, rather than in the global `app/Nexus/Widgets/`):
 
 ```php
 namespace App\Nexus\Modules\Demo\Widgets\DemoRecordsCount;
@@ -372,11 +372,11 @@ class DemoRecordsCount implements ProvidesMetric, WidgetInterface
 
 ---
 
-### Дефолтний дашборд
+### Default dashboard
 
-`config('nexus.dashboard.default')` — впорядкований список
-`#[Widget(name:)]`-слагів, що показується на порожньому дашборді (0 рядків
-у `nexus_dashboard_layouts`). У цьому проєкті наразі:
+`config('nexus.dashboard.default')` is an ordered list of
+`#[Widget(name:)]` slugs shown on an empty dashboard (0 rows
+in `nexus_dashboard_layouts`). In this project it currently is:
 
 ```php
 'dashboard' => [
@@ -384,101 +384,101 @@ class DemoRecordsCount implements ProvidesMetric, WidgetInterface
 ],
 ```
 
-Пріоритет вибору лейауту (`DashboardLayoutResolver::resolveFor()`):
-власний рядок користувача в `nexus_dashboard_layouts` → єдиний рядок з
-`is_default = true` → `config('nexus.dashboard.default')` → `[]`. Колонка
-`role` у таблиці зарезервована під майбутній рівень "лейаут за роллю", але
-поки що не використовується — фолбек одразу йде на `is_default`/`config`.
+Layout selection priority (`DashboardLayoutResolver::resolveFor()`):
+the user's own row in `nexus_dashboard_layouts` → the single row with
+`is_default = true` → `config('nexus.dashboard.default')` → `[]`. The
+`role` column in the table is reserved for a future "layout by role" level, but
+it isn't used yet — the fallback goes straight to `is_default`/`config`.
 
 ---
 
-### Кешування виводу (`cacheTtl`)
+### Output caching (`cacheTtl`)
 
-`WidgetOutputCache::remember()` — єдина точка, через яку проходить кожен
-споживач widget-виводу (`WidgetApiController`, `AdminDashboardRenderer`,
-`WidgetInstance::render()`). Послідовність важлива:
+`WidgetOutputCache::remember()` is the single point every
+consumer of widget output goes through (`WidgetApiController`, `AdminDashboardRenderer`,
+`WidgetInstance::render()`). The order matters:
 
-1. Обчислюється `$output` (виклик `getData()`/`render()`/`toApiPayload()`).
-2. Кидається подія `WidgetOutputResolving` ($kind — `'data'` для масиву або
-   `'html'` для рядка).
-3. Застосовується plugin-фільтр `widget.{kind}.{key}` (`nexus_filter()`).
-4. **Тільки після цього**, якщо `cacheTtl` задано — результат кладеться в
-   кеш під ключем `nexus:widget:{name}:{variantKey}`.
+1. `$output` is computed (calling `getData()`/`render()`/`toApiPayload()`).
+2. The `WidgetOutputResolving` event fires (`$kind` — `'data'` for an array or
+   `'html'` for a string).
+3. The `widget.{kind}.{key}` plugin filter is applied (`nexus_filter()`).
+4. **Only after that**, if `cacheTtl` is set, the result is stored in the
+   cache under the key `nexus:widget:{name}:{variantKey}`.
 
-Тобто фільтр/listener бачить кожен виклик і сам потрапляє в кеш — якщо
-плагін змінює вивід widget-а і зміна має лишатись актуальною, не
-"воюйте" з кешем у фільтрі, а знижуйте/скидайте `cacheTtl` в
-`#[Widget(...)]`. Без `cacheTtl` (`null`/`0`) кеш взагалі не чіпається —
-`getData()`/`render()` виконується при кожному виклику.
+In other words, the filter/listener sees every call and ends up in the cache itself — if
+a plugin changes a widget's output and the change needs to stay current, don't
+"fight" the cache from inside the filter; instead, lower/reset `cacheTtl` in
+`#[Widget(...)]`. Without `cacheTtl` (`null`/`0`) the cache isn't touched at all —
+`getData()`/`render()` runs on every call.
 
-### Події
+### Events
 
 - `WidgetOutputResolving` (`Nodex\Nexus\Events\WidgetOutputResolving`) —
-  ланцюговий з фільтром `widget.{kind}.{key}`, `$output` передається по
-  референсу.
+  chainable with the `widget.{kind}.{key}` filter, `$output` is passed by
+  reference.
 - `DashboardLayoutResolving` (`Nodex\Nexus\Events\DashboardLayoutResolving`) —
-  ланцюговий з фільтром `nexus.dashboard.layout`, `$layout` по референсу;
-  дозволяє модулю перевизначити резолв дашборду (наприклад, за роллю) без
-  окремого плагін-класу.
+  chainable with the `nexus.dashboard.layout` filter, `$layout` by reference;
+  allows a module to override dashboard resolution (e.g. by role) without
+  a separate plugin class.
 
-### Права доступу (`permission`)
+### Permissions (`permission`)
 
-`WidgetPermissionChecker::check()` — якщо `#[Widget(permission:)]` не
-задано, доступ дозволено всім. Якщо задано — перевіряється
-`$user->hasPermissionTo(...)`, з обходом для власника permission `ALL`
-(`AdminPanelPermissionEnum::ALL`). Якщо названий permission взагалі не
-засіяний (наприклад, `nexus:permission:init` ще не запускали) —
-`hasPermissionTo()` кидає `PermissionDoesNotExist`, і перевірка деградує
-до "відмовлено", а не до 500-ї помилки.
+`WidgetPermissionChecker::check()` — if `#[Widget(permission:)]` isn't
+set, access is allowed for everyone. If it is set, `$user->hasPermissionTo(...)`
+is checked, with a bypass for holders of the `ALL` permission
+(`AdminPanelPermissionEnum::ALL`). If the named permission hasn't been
+seeded at all (e.g. `nexus:permission:init` hasn't been run yet), then
+`hasPermissionTo()` throws `PermissionDoesNotExist`, and the check degrades
+to "denied" rather than a 500 error.
 
-### Lazy-рендеринг (`lazy: true`)
+### Lazy rendering (`lazy: true`)
 
-Якщо `lazy: true`, дашборд одразу рендерить плейсхолдер
-(`lazy_placeholder.blade.php`, спінер із `data-nexus-widget-lazy="{name}"`),
-а реальний HTML довантажується AJAX-запитом до
-`NexusController::widgetCard()` і підміняється в DOM після
-`DOMContentLoaded`. Використовуйте для widget-ів, чий `getData()` занадто
-повільний, щоб тримати відповідь дашборду.
+If `lazy: true`, the dashboard immediately renders a placeholder
+(`lazy_placeholder.blade.php`, a spinner with `data-nexus-widget-lazy="{name}"`),
+and the real HTML is loaded via an AJAX request to
+`NexusController::widgetCard()` and swapped into the DOM after
+`DOMContentLoaded`. Use this for widgets whose `getData()` is too
+slow to keep in the dashboard's response.
 
-### `@position()` на фронті
+### `@position()` on the front end
 
 ```blade
 @position('sidebar-top')
 @position('sidebar-top', 'landing')
 ```
 
-Директива рендерить усі активні `WidgetAssignment`-рядки для вказаної
-позиції (через `FrontWidgetRenderer`), впорядковані по `sort_order`. Другий
-аргумент (`$templateType`) опціональний — без нього тип шаблону
-резолвиться через `TemplateTypeResolver`. Розміщення widget-а на позиції —
-окрема адмін-дія (`WidgetInstance`/`WidgetAssignment`), не частина самого
-класу widget-а.
+The directive renders all active `WidgetAssignment` rows for the given
+position (via `FrontWidgetRenderer`), ordered by `sort_order`. The second
+argument (`$templateType`) is optional — without it, the template type
+is resolved via `TemplateTypeResolver`. Placing a widget on a position is a
+separate admin action (`WidgetInstance`/`WidgetAssignment`), not part of the
+widget class itself.
 
 ---
 
-### Типові пастки
+### Common pitfalls
 
-- **`surfaces` не збігається з реалізованими контрактами.** `Admin`/`Front`
-  без `RendersHtml`/`ProvidesMetric` — не помилка реєстрації, а тихе
-  попередження в лог + порожній рендер на цій поверхні. Перевіряйте лог,
-  якщо widget "не показується".
-- **`requires` не задоволено — тиша.** Якщо перелічений модуль не
-  увімкнений, widget просто не реєструється: без помилки, без запису в
-  лог (`WidgetRegistry::hasUnmetRequirements()` — рання `return`, без
-  `Log::warning`). "Зниклий" widget у пікері часто означає саме це, а не
-  баг.
-- **Маніфест-кеш.** Новий файл widget-а (глобальний чи модульний) виявляється
-  через той самий скомпільований `bootstrap/cache/nexus-modules.php`, що
-  й модулі. Не зʼявляється — `php artisan nexus:module:clear`.
-- **`name` — persisted identity.** Це слаг, не імʼя класу, саме тому, що
-  перейменування PHP-класу не повинно "осиротити" наявні
-  розміщення на дашборді/фронті. Змінювати `name` у widget-а, що вже
-  десь розміщений, — тільки з планом міграції існуючих розміщень.
-- **Кешування діє вже після фільтрів.** `WidgetOutputCache::remember()`
-  кешує результат **після** події `WidgetOutputResolving` і фільтра
-  `widget.{kind}.{key}` — щоб змінити щойно закешований вивід, керуйте
-  `cacheTtl`, а не намагайтесь перехопити виклик усередині кешу.
-- **Папка ≠ вʼю з `resources/views`.** `RendersHtml::render()` очікує
-  імена файлів відносно `__DIR__` самого класу widget-а (`View::file()`),
-  а не dot-нотацію `resources/views/...` — Blade-файл обовʼязково
-  лежить поруч із класом в одній папці.
+- **`surfaces` doesn't match the implemented contracts.** `Admin`/`Front`
+  without `RendersHtml`/`ProvidesMetric` isn't a registration error — it's a silent
+  log warning plus an empty render on that surface. Check the log
+  if a widget "isn't showing up".
+- **`requires` unmet — silence.** If a listed module is not
+  enabled, the widget simply doesn't register: no error, no log entry
+  (`WidgetRegistry::hasUnmetRequirements()` — an early `return`, no
+  `Log::warning`). A "missing" widget in the picker often means exactly this, not a
+  bug.
+- **Manifest cache.** A new widget file (global or module-scoped) is discovered
+  through the same compiled `bootstrap/cache/nexus-modules.php` as
+  modules. If it doesn't show up — `php artisan nexus:module:clear`.
+- **`name` is a persisted identity.** It's a slug, not the class name, precisely so that
+  renaming the PHP class doesn't "orphan" existing
+  placements on the dashboard/front end. Changing the `name` of a widget that is already
+  placed somewhere should only be done with a migration plan for the existing placements.
+- **Caching happens after filters.** `WidgetOutputCache::remember()`
+  caches the result **after** the `WidgetOutputResolving` event and the
+  `widget.{kind}.{key}` filter — to change output that's just been cached, manage
+  `cacheTtl`, rather than trying to intercept the call from inside the cache.
+- **A folder ≠ a view from `resources/views`.** `RendersHtml::render()` expects
+  file names relative to the widget class's own `__DIR__` (`View::file()`),
+  not `resources/views/...` dot notation — the Blade file must
+  live next to the class, in the same folder.

@@ -1,75 +1,75 @@
-# Admin Table: дії, фільтри, lens'и, import/export, пошук, колонки
+# Admin Table: actions, filters, lenses, import/export, search, columns
 
-Документ описує можливості реактивної admin-таблиці Nexus (`Nodex\Nexus\Livewire\ModuleTable` + `resources/views/tailadmin/livewire/module-table.blade.php`), яка рендериться для будь-якого модуля з `#[Module(livewire: true)]`. Усі твердження нижче перевірені по коду пакета (`packages/nodex/nexus/src`), а не вигадані — де в коді чогось не знайдено, це прямо зазначено.
+This document describes the capabilities of the Nexus reactive admin table (`Nodex\Nexus\Livewire\ModuleTable` + `resources/views/tailadmin/livewire/module-table.blade.php`), which is rendered for any module with `#[Module(livewire: true)]`. Every statement below has been verified against the package code (`packages/nodex/nexus/src`), not invented — where something could not be found in the code, that is stated explicitly.
 
-## 1. `#[TableAction]` і `#[TableGroupAction]` — дії над рядками
+## 1. `#[TableAction]` and `#[TableGroupAction]` — row actions
 
-### 1.1 `#[TableAction]` — дія над одним рядком (або "головна" дія таблиці)
+### 1.1 `#[TableAction]` — an action on a single row (or the table's "main" action)
 
-Клас: `Nodex\Nexus\Attributes\TableAction` (`Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE` — вішається на модель модуля багато разів).
+Class: `Nodex\Nexus\Attributes\TableAction` (`Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE` — attached to the module's model multiple times).
 
-| Параметр | Тип | За замовчуванням | Призначення |
+| Parameter | Type | Default | Purpose |
 | --- | --- | --- | --- |
-| `name` | `string` | — | Ім'я дії (`edit`, `delete`, `duplicate`, довільне власне) |
-| `label` | `string` | — | Ключ перекладу під `nexus::translate.{label}` |
-| `icon` | `string` | — | Ключ іконки для `nexus_icon()` |
-| `isConfirm` | `bool` | `false` | Чи показувати `wire:confirm` / JS-підтвердження перед виконанням |
-| `isMain` | `bool` | `false` | `true` реєструє дію як таблично-рівневу "головну" дію (наприклад, "Створити") замість дії рядка |
-| `isActive` | `bool` | `true` | `false` реєструє дію, але приховує/деактивує її (наприклад, вимкнути "Створити" для read-only даних) |
+| `name` | `string` | — | Action name (`edit`, `delete`, `duplicate`, or any custom name) |
+| `label` | `string` | — | Translation key under `nexus::translate.{label}` |
+| `icon` | `string` | — | Icon key for `nexus_icon()` |
+| `isConfirm` | `bool` | `false` | Whether to show a `wire:confirm` / JS confirmation before execution |
+| `isMain` | `bool` | `false` | `true` registers the action as a table-level "main" action (e.g. "Create") instead of a row action |
+| `isActive` | `bool` | `true` | `false` registers the action but hides/deactivates it (e.g. disable "Create" for read-only data) |
 
-Ці атрибути читає `Nodex\Nexus\Services\AttributeSchemaReader::processTableAttrs()`: `isMain: true` кладеться в `$config->table->mainActions`, інакше — в `$config->table->actions`.
+These attributes are read by `Nodex\Nexus\Services\AttributeSchemaReader::processTableAttrs()`: `isMain: true` is placed into `$config->table->mainActions`, otherwise into `$config->table->actions`.
 
-Рендеринг у `module-table.blade.php`:
-- `mainActions` малюються кнопками з брендовим фоном у шапці таблиці (поряд з Import/Export/Settings/Columns);
-- дії рядка виводяться в циклі `$tableData['actions']`. Невеликий білий список `SINGLE_RECORD_ACTIONS` (`delete`, `restore`, `deletePermanent`, `duplicate`) виконується реактивно через `wire:click="runAction('{name}', '{id}')"` → `ModuleTable::runAction()`. `edit` для модуля з `#[Module(slideOver: true)]` відкриває бічну панель (`openSlideOver()`), інакше — звичайне посилання. Будь-яка інша (кастомна) дія рендериться як `<a href="…route('nexus.module.action', …)…">` без Livewire-виклику — це full-page-запит у `NexusController::action()`; `isConfirm` при цьому підтверджується через `sendFormConfirm()` (JS у `indexLivewire.blade.php`), а не `wire:confirm`.
+Rendering in `module-table.blade.php`:
+- `mainActions` are drawn as buttons with a brand background in the table header (next to Import/Export/Settings/Columns);
+- row actions are output in the `$tableData['actions']` loop. A small whitelist, `SINGLE_RECORD_ACTIONS` (`delete`, `restore`, `deletePermanent`, `duplicate`), is executed reactively via `wire:click="runAction('{name}', '{id}')"` → `ModuleTable::runAction()`. `edit` for a module with `#[Module(slideOver: true)]` opens a side panel (`openSlideOver()`), otherwise it is a plain link. Any other (custom) action is rendered as `<a href="…route('nexus.module.action', …)…">` without a Livewire call — this is a full-page request to `NexusController::action()`; `isConfirm` in that case is confirmed via `sendFormConfirm()` (JS in `indexLivewire.blade.php`), not `wire:confirm`.
 
-### 1.2 `#[TableGroupAction]` — групова (bulk) дія над вибраними рядками
+### 1.2 `#[TableGroupAction]` — a group (bulk) action on selected rows
 
-Клас: `Nodex\Nexus\Attributes\TableGroupAction` (теж `TARGET_CLASS | IS_REPEATABLE`).
+Class: `Nodex\Nexus\Attributes\TableGroupAction` (also `TARGET_CLASS | IS_REPEATABLE`).
 
-| Параметр | Тип | Призначення |
+| Parameter | Type | Purpose |
 | --- | --- | --- |
-| `name` | `string` | Ім'я дії (`deleteGroup`, `publishGroup`, довільне власне) |
-| `fieldName` | `string` | Передається як `action` у `ActionGroupConfigDto`. Для 5 вбудованих імен (`deleteGroup`, `restoreGroup`, `publishGroup`, `unpublishGroup`, `duplicateGroup`) фактично ігнорується — `ModuleTable::BUILT_IN_GROUP_ACTIONS` і `BulkActionJob::BUILT_IN_GROUP_ACTIONS` виконують їх напряму через відповідні `*ActionGroupMethod`-класи. Для будь-якої іншої назви `fieldName` — це ім'я хука/методу, який шукає `CallGroupActionMethod`/`CallModuleHookAction` (before/after) |
+| `name` | `string` | Action name (`deleteGroup`, `publishGroup`, or any custom name) |
+| `fieldName` | `string` | Passed as `action` in `ActionGroupConfigDto`. For the 5 built-in names (`deleteGroup`, `restoreGroup`, `publishGroup`, `unpublishGroup`, `duplicateGroup`) it is effectively ignored — `ModuleTable::BUILT_IN_GROUP_ACTIONS` and `BulkActionJob::BUILT_IN_GROUP_ACTIONS` execute them directly via the corresponding `*ActionGroupMethod` classes. For any other name, `fieldName` is the name of the hook/method looked up by `CallGroupActionMethod`/`CallModuleHookAction` (before/after) |
 
-**UI: лівий докований сайдбар, а не toolbar/dropdown.** Якщо у модуля є хоч одна активна `#[TableGroupAction]`, `module-table.blade.php` рендерить `<div x-data x-show="$wire.selected.length > 0" x-transition:… class="fixed inset-y-0 left-0 z-50 … w-72 …">` — фіксовану панель на всю висоту вʼюпорта, прикріплену до **лівого** краю екрана, яка виїжджає (`-translate-x-full` → `translate-x-0`) одразу після позначення хоч одного чекбокса рядка (`x-show` читає `$wire.selected.length` напряму, реактивний Alpine-проксі поверх Livewire-властивості). Усередині — лічильник `{{ count($selected) }} selected`, кнопка очищення вибору (`$set('selected', [])`) і список **усіх** активних `actionGroup` одразу (`wire:click="runGroupAction('{name}')"`, з `wire:confirm` коли `confirm: true`) — це не toolbar-кнопки і не dropdown-меню, тож додавання нових bulk-дій не потребує змін розмітки.
+**UI: a docked left sidebar, not a toolbar/dropdown.** If a module has at least one active `#[TableGroupAction]`, `module-table.blade.php` renders `<div x-data x-show="$wire.selected.length > 0" x-transition:… class="fixed inset-y-0 left-0 z-50 … w-72 …">` — a fixed panel spanning the full viewport height, attached to the **left** edge of the screen, which slides out (`-translate-x-full` → `translate-x-0`) as soon as at least one row checkbox is checked (`x-show` reads `$wire.selected.length` directly, a reactive Alpine proxy over the Livewire property). Inside it there is a `{{ count($selected) }} selected` counter, a button to clear the selection (`$set('selected', [])`), and a list of **all** active `actionGroup`s at once (`wire:click="runGroupAction('{name}')"`, with `wire:confirm` when `confirm: true`) — this is not toolbar buttons or a dropdown menu, so adding new bulk actions requires no markup changes.
 
-Виконання: `ModuleTable::runGroupAction()`:
-1. Стріляє `Nodex\Nexus\Events\BulkActionExecuting` (Laravel-подія) і фільтр `nexus.bulk_action.executing` — `$ids` передається по референсу, слухач може частково "ветувати" вибірку (прибрати частину id) або кинути виняток, щоб скасувати всю дію.
-2. Якщо `count($selected) > 50` (`ModuleTable::ASYNC_BULK_ACTION_THRESHOLD`) — диспатчиться `Nodex\Nexus\Modules\BulkAction\Jobs\BulkActionJob` (чергова джоба, обробляє вибірку чанками по 100, прогрес пишеться в `Cache` і опитується браузером через той самий ендпоінт `nexus.module.export.progress`, що й export — назва роута не специфічна для export, він просто читає значення за `cacheKey`).
-3. Інакше дія виконується синхронно в тому ж запиті через `CallGroupActionMethod` (для власних `actionGroup`) або напряму через відповідний `*ActionGroupMethod` (для 5 вбудованих імен).
+Execution: `ModuleTable::runGroupAction()`:
+1. Fires `Nodex\Nexus\Events\BulkActionExecuting` (a Laravel event) and the `nexus.bulk_action.executing` filter — `$ids` is passed by reference, and the listener can partially "veto" the selection (remove some ids) or throw an exception to cancel the whole action.
+2. If `count($selected) > 50` (`ModuleTable::ASYNC_BULK_ACTION_THRESHOLD`) — `Nodex\Nexus\Modules\BulkAction\Jobs\BulkActionJob` is dispatched (a queued job that processes the selection in chunks of 100, writes progress to `Cache`, and is polled by the browser through the same `nexus.module.export.progress` endpoint as export — the route name isn't export-specific, it just reads the value by `cacheKey`).
+3. Otherwise the action is executed synchronously within the same request via `CallGroupActionMethod` (for custom `actionGroup`s) or directly via the corresponding `*ActionGroupMethod` (for the 5 built-in names).
 
-## 2. `#[TableFilter]` і `#[TableLens]` — фільтрація та збережені подання
+## 2. `#[TableFilter]` and `#[TableLens]` — filtering and saved views
 
 ### 2.1 `#[TableFilter]`
 
-Клас: `Nodex\Nexus\Attributes\TableFilter` (`TARGET_CLASS | IS_REPEATABLE`).
+Class: `Nodex\Nexus\Attributes\TableFilter` (`TARGET_CLASS | IS_REPEATABLE`).
 
-| Параметр | Тип | За замовчуванням | Призначення |
+| Parameter | Type | Default | Purpose |
 | --- | --- | --- | --- |
-| `name` | `string` | — | Ключ фільтра (`filter.{name}` у Livewire-стані) |
-| `label` | `string` | — | Ключ перекладу |
-| `type` | `string` | — | У `module-table.blade.php` реально обробляються лише `'search'` (текстове поле з `wire:model.live.debounce.400ms`) і `'select'` з непорожнім `optionsModel` (`<select>`). Інші значення з `AdminAvailableFilterEnum` (`trashed`, `is_published`, `relation`, `depth`, `date`) у цій вʼюсі власного UI-блоку не мають — власного `@elseif` для них у `module-table.blade.php` не знайдено |
-| `optionsModel` | `?string` | `null` | Тільки для `type: 'select'` — клас Eloquent-моделі, чиї рядки наповнюють `<option>`, запитується заново на кожен рендер |
-| `optionsValue` | `string` | `'id'` | Колонка — значення `<option>` (і значення, яке йде у `FilterHandler`) |
-| `optionsLabel` | `string` | `'name'` | Колонка — підпис `<option>`, за нею ж іде `orderBy` |
+| `name` | `string` | — | Filter key (`filter.{name}` in Livewire state) |
+| `label` | `string` | — | Translation key |
+| `type` | `string` | — | In `module-table.blade.php` only `'search'` (a text field with `wire:model.live.debounce.400ms`) and `'select'` with a non-empty `optionsModel` (`<select>`) are actually handled. Other values from `AdminAvailableFilterEnum` (`trashed`, `is_published`, `relation`, `depth`, `date`) have no dedicated UI block in this view — no matching `@elseif` for them was found in `module-table.blade.php` |
+| `optionsModel` | `?string` | `null` | Only for `type: 'select'` — the Eloquent model class whose rows populate the `<option>`s; re-queried on every render |
+| `optionsValue` | `string` | `'id'` | Column — the `<option>` value (and the value passed to `FilterHandler`) |
+| `optionsLabel` | `string` | `'name'` | Column — the `<option>` label, also used for `orderBy` |
 
-Обробка: `AttributeSchemaReader::processTableAttrs()` кладе фільтр у `$config->table->filters` через `TableConfigDto::filter()`. Застосування значення до запиту — `AddFilterActionMethod::handle()` (детальніше в розділі 4 — саме тут прихована логіка "generic search fallback").
+Processing: `AttributeSchemaReader::processTableAttrs()` places the filter into `$config->table->filters` via `TableConfigDto::filter()`. Applying the value to the query — `AddFilterActionMethod::handle()` (more details in section 4 — this is where the "generic search fallback" logic is hidden).
 
 ### 2.2 `#[TableLens]`
 
-Клас: `Nodex\Nexus\Attributes\TableLens` (`TARGET_CLASS | IS_REPEATABLE`). За власним докблоком атрибута — це "Nova-style Lens без кастомного query" — перевикористовує той самий формат умов, що й `UniversalFilterBuilder`.
+Class: `Nodex\Nexus\Attributes\TableLens` (`TARGET_CLASS | IS_REPEATABLE`). Per the attribute's own docblock, this is a "Nova-style Lens without a custom query" — it reuses the same condition format as `UniversalFilterBuilder`.
 
-| Параметр | Тип | За замовчуванням | Призначення |
+| Parameter | Type | Default | Purpose |
 | --- | --- | --- | --- |
-| `name` | `string` | — | Унікальний ключ, читається з `?lens=` (або з Livewire-стану `lens`) |
-| `label` | `string` | — | Ключ перекладу під `{module}::translate`, показується на вкладці |
-| `conditions` | `array` | `[]` | Масив умов у форматі `UniversalFilterBuilder::apply()`: `['column' => …, 'operator' => …, 'value' => …, 'logic' => 'AND'\|'OR']` |
-| `icon` | `?string` | `null` | Іконка вкладки (`nexus_icon()`) |
-| `columns` | `?array` | `null` | Імена колонок, які показувати, поки цей lens активний — перекриває звичайний default/user-saved набір видимих колонок |
-| `sort` | `?string` | `null` | Колонка сортування за замовчуванням, поки lens активний (явний `?sort=` користувача все одно має пріоритет) |
+| `name` | `string` | — | Unique key, read from `?lens=` (or from the Livewire `lens` state) |
+| `label` | `string` | — | Translation key under `{module}::translate`, shown on the tab |
+| `conditions` | `array` | `[]` | Array of conditions in `UniversalFilterBuilder::apply()` format: `['column' => …, 'operator' => …, 'value' => …, 'logic' => 'AND'\|'OR']` |
+| `icon` | `?string` | `null` | Tab icon (`nexus_icon()`) |
+| `columns` | `?array` | `null` | Column names to show while this lens is active — overrides the normal default/user-saved set of visible columns |
+| `sort` | `?string` | `null` | Default sort column while the lens is active (an explicit user `?sort=` still takes priority) |
 
-Приклад із докблоку атрибута:
+Example from the attribute's docblock:
 
 ```php
 #[TableLens(name: 'published', label: 'lens_published', conditions: [
@@ -80,74 +80,74 @@
 ])]
 ```
 
-Рендеринг: `module-table.blade.php` малює lens-и як вкладки над таблицею (`wire:click="selectLens('{name}')"`), кожна з бейджем-лічильником (`$tableData['lensCounts'][$lensName]`) — це окремий `COUNT()`-запит на кожен lens, незалежний від активних фільтрів/пошуку. `TableBuilder::build()`: якщо активний lens знайдено, його `conditions` мерджаться з довільними `dyn`-фільтрами (Universal Filters панель), а `columns`/`sort` lens'а перекривають звичайну логіку видимих колонок і дефолтного сортування.
+Rendering: `module-table.blade.php` draws lenses as tabs above the table (`wire:click="selectLens('{name}')"`), each with a count badge (`$tableData['lensCounts'][$lensName]`) — this is a separate `COUNT()` query for each lens, independent of active filters/search. `TableBuilder::build()`: if an active lens is found, its `conditions` are merged with any arbitrary `dyn` filters (the Universal Filters panel), and the lens's `columns`/`sort` override the normal visible-column and default-sort logic.
 
-## 3. `#[TableImport]` та модуль Export — CSV import/export
+## 3. `#[TableImport]` and the Export module — CSV import/export
 
-### 3.1 Export — увімкнений за замовчуванням, без атрибута
+### 3.1 Export — enabled by default, no attribute needed
 
-У пакеті немає атрибута `#[TableExport]` — папка `Attributes/Table*.php` містить лише `TableAction`, `TableGroupAction`, `TableFilter`, `TableLens`, `TableImport`. Export вмикається автоматично: `DefaultModuleConfigurationDto::__construct()` завжди реєструє `exports: ['export' => new ExportConfigDto('export', 'Export')]` — тобто кожен модуль отримує кнопку "Export" одразу, якщо явно не очистити `$table->exports`.
+The package has no `#[TableExport]` attribute — the `Attributes/Table*.php` folder contains only `TableAction`, `TableGroupAction`, `TableFilter`, `TableLens`, `TableImport`. Export is enabled automatically: `DefaultModuleConfigurationDto::__construct()` always registers `exports: ['export' => new ExportConfigDto('export', 'Export')]` — meaning every module gets an "Export" button right away unless `$table->exports` is explicitly cleared.
 
-Потік:
-1. `module-table.blade.php` — кнопка `wire:click="exportTable"` (видима, коли `$module->config->table->exports` не пустий).
-2. `ModuleTable::exportTable()` диспатчить `Nodex\Nexus\Modules\Export\Jobs\MasterExportJob` із поточним станом `filter`/`sort`/`lens` — тобто експортується таблиця "як зараз відфільтрована", а не незалежний повний зліпок.
-3. `MasterExportJob` перевикористовує `TableBuilder::build(..., sql: true)` — той самий запит, що й для звичайного рендеру таблиці — і чанками (`chunkSize`, дефолт 5000) пише CSV у `php://temp`, з прогресом у `Cache` (`{progress, processed, total, status}`).
-4. На кожен рядок стріляє `Nodex\Nexus\Events\ExportRowBuilding` (`$row` — впорядкований масив CSV-клітинок, по референсу) і фільтр `nexus.export.row` — дозволяє модулю/плагіну переформатувати або редагувати значення без окремого export-пайплайна.
-5. Готовий файл кладеться на `Storage::disk('local')` в `exports/{module}_{Ymd_His}_{6 символів cacheKey}.csv`.
-6. Браузер опитує прогрес через `nexus.module.export.progress?cacheKey=…` (JS `pollNexusProgress()` у `indexLivewire.blade.php`) і при `status === 'completed'` переходить на `nexus.module.export.download`.
+Flow:
+1. `module-table.blade.php` — the `wire:click="exportTable"` button (visible when `$module->config->table->exports` is not empty).
+2. `ModuleTable::exportTable()` dispatches `Nodex\Nexus\Modules\Export\Jobs\MasterExportJob` with the current `filter`/`sort`/`lens` state — meaning the table is exported "as currently filtered," not as an independent full snapshot.
+3. `MasterExportJob` reuses `TableBuilder::build(..., sql: true)` — the same query used for the normal table render — and writes CSV to `php://temp` in chunks (`chunkSize`, default 5000), with progress in `Cache` (`{progress, processed, total, status}`).
+4. For each row, `Nodex\Nexus\Events\ExportRowBuilding` fires (`$row` — an ordered array of CSV cells, by reference) along with the `nexus.export.row` filter — allowing a module/plugin to reformat or edit values without a separate export pipeline.
+5. The finished file is placed on `Storage::disk('local')` at `exports/{module}_{Ymd_His}_{6-character cacheKey}.csv`.
+6. The browser polls progress via `nexus.module.export.progress?cacheKey=…` (JS `pollNexusProgress()` in `indexLivewire.blade.php`) and, when `status === 'completed'`, navigates to `nexus.module.export.download`.
 
-### 3.2 `#[TableImport]` — опційний, бо пише дані
+### 3.2 `#[TableImport]` — optional, because it writes data
 
-Клас: `Nodex\Nexus\Attributes\TableImport` (`TARGET_CLASS`, **не** repeatable). Із докблоку: на відміну від `TableAction`/`TableGroupAction`, import не має авто-реєстрованого дефолту — модуль повинен явно оголосити, що хоче цю можливість, бо вона записує дані.
+Class: `Nodex\Nexus\Attributes\TableImport` (`TARGET_CLASS`, **not** repeatable). Per the docblock: unlike `TableAction`/`TableGroupAction`, import has no auto-registered default — the module must explicitly declare that it wants this capability, because it writes data.
 
-| Параметр | Тип | За замовчуванням | Призначення |
+| Parameter | Type | Default | Purpose |
 | --- | --- | --- | --- |
-| `name` | `string` | — | Ім'я імпорту |
-| `label` | `?string` | `null` | Підпис кнопки |
-| `icon` | `string` | `''` | Іконка |
-| `confirm` | `bool` | `true` | Чи підтверджувати запуск |
-| `isActive` | `bool` | `true` | Вмикає/вимикає |
+| `name` | `string` | — | Import name |
+| `label` | `?string` | `null` | Button label |
+| `icon` | `string` | `''` | Icon |
+| `confirm` | `bool` | `true` | Whether to confirm before running |
+| `isActive` | `bool` | `true` | Enables/disables it |
 
-Приклад із докблоку атрибута:
+Example from the attribute's docblock:
 
 ```php
 #[TableImport(name: 'import', label: 'Import')]
 ```
 
-Потік (`Nodex\Nexus\Services\Actions\Admin\ImportActionMethod`, **синхронний**, без черги — на відміну від export):
-1. Кнопка Import (файловий `<input type="file" accept=".csv,text/csv">`) відправляє `fetch()`-запит на `{admin_prefix}/{module}/import` (делегований `change`-обробник у `indexLivewire.blade.php`, щоб пережити Livewire-морфінг DOM).
-2. Заголовок CSV зіставляється з колонками модуля по `label` **або** по `name` (`$columnsByLabel`/`$columnsByName`, побудовані з `$moduleConfig->table->columns`).
-3. Кожен рядок: якщо є колонка `id` — робиться `find()`+`update()`, інакше — `create()`. На кожен рядок стріляє `Nodex\Nexus\Events\ImportRowBuilding` (`$data` по референсу) і фільтр `nexus.import.row` — **до** перетину з `$fillable`, тож плагін може трансформувати значення, але не може підсунути поле, яке модель і так не дозволяє масово присвоювати.
-4. "Погані" рядки (виняток при `create`/`update`) пропускаються (`skipped++`), а не обривають увесь файл.
-5. Відповідь — JSON `{created, updated, skipped}`, який JS показує у `#nexusImportStatus-{module}` і після цього робить `$refresh` компонента Livewire.
+Flow (`Nodex\Nexus\Services\Actions\Admin\ImportActionMethod`, **synchronous**, no queue — unlike export):
+1. The Import button (a file `<input type="file" accept=".csv,text/csv">`) sends a `fetch()` request to `{admin_prefix}/{module}/import` (a delegated `change` handler in `indexLivewire.blade.php`, so it survives Livewire's DOM morphing).
+2. The CSV header is matched against the module's columns by `label` **or** by `name` (`$columnsByLabel`/`$columnsByName`, built from `$moduleConfig->table->columns`).
+3. For each row: if there is an `id` column, `find()`+`update()` is performed, otherwise `create()`. For each row, `Nodex\Nexus\Events\ImportRowBuilding` fires (`$data` by reference) along with the `nexus.import.row` filter — **before** intersecting with `$fillable`, so a plugin can transform values but cannot slip in a field the model doesn't allow mass assignment for anyway.
+4. "Bad" rows (an exception during `create`/`update`) are skipped (`skipped++`) rather than aborting the whole file.
+5. The response is JSON `{created, updated, skipped}`, which the JS displays in `#nexusImportStatus-{module}` and afterward triggers a `$refresh` on the Livewire component.
 
 ## 4. Generic search fallback
 
-У пакеті насправді **два незалежні** механізми пошуку — варто їх не плутати.
+The package actually has **two independent** search mechanisms — worth not confusing them.
 
-### 4.1 Пошук усередині таблиці модуля (`#[TableFilter(type: 'search')]`)
+### 4.1 Search inside a module's table (`#[TableFilter(type: 'search')]`)
 
-Значення текстового поля пошуку йде як `filter.search` і обробляється `Nodex\Nexus\Services\Actions\Admin\AddFilterActionMethod::handle()`:
+The value of the text search field is sent as `filter.search` and handled by `Nodex\Nexus\Services\Actions\Admin\AddFilterActionMethod::handle()`:
 
 ```php
 $filterModuleHandler = ModuleManager::getClassFromModule($module->name.'\\Filters\\ModuleFilterHandler')
     ?? new FilterHandler;
 ```
 
-Якщо модуль **не має власного** `{Module}/Filters/ModuleFilterHandler.php`, використовується базовий `Nodex\Nexus\Filters\FilterHandler`. Його метод `filter()` реалізує два "зарезервовані" імені фільтра генерично, для будь-якого модуля безкоштовно:
+If the module **does not have its own** `{Module}/Filters/ModuleFilterHandler.php`, the base `Nodex\Nexus\Filters\FilterHandler` is used. Its `filter()` method generically implements two "reserved" filter names for free, for any module:
 
-- **`search`** — `LOWER(column) LIKE '%term%'` (через `orWhereRaw`) по **всіх фізичних колонках таблиці моделі** (`SchemaColumnsCache::get($table)`), а не тільки по колонках, позначених `searchable` — тобто дефолтний пошук у таблиці модуля "сліпо" LIKE-ить кожну фізичну колонку БД, ігноруючи, чи є у неї `#[Column(searchable:)]` взагалі;
-- **`trashed`** — якщо модель використовує `SoftDeletes`, перемикає `withTrashed()`/`onlyTrashed()`/`withoutTrashed()`.
+- **`search`** — `LOWER(column) LIKE '%term%'` (via `orWhereRaw`) across **all physical columns of the model's table** (`SchemaColumnsCache::get($table)`), not only columns marked `searchable` — meaning the default table search "blindly" LIKEs every physical DB column, ignoring whether it even has `#[Column(searchable:)]`;
+- **`trashed`** — if the model uses `SoftDeletes`, toggles `withTrashed()`/`onlyTrashed()`/`withoutTrashed()`.
 
-Команда `php artisan nexus:make:filter {module}` (`Nodex\Nexus\commands\MakeFilterCommand`) генерує саме такий `Filters/ModuleFilterHandler.php` (наслідує `FilterHandler`, перевизначає `filter()`) — авто-резолвиться по імені, реєструвати вручну не треба; команда одразу нагадує, що будь-який доданий у ньому фільтр треба продублювати в `TableConfigDto->filters` (тобто оголосити `#[TableFilter]`/`$table->filter()`), інакше в адмінці не зʼявиться UI для нього.
+The `php artisan nexus:make:filter {module}` command (`Nodex\Nexus\commands\MakeFilterCommand`) generates exactly this kind of `Filters/ModuleFilterHandler.php` (extends `FilterHandler`, overrides `filter()`) — it auto-resolves by name, no manual registration needed; the command also reminds you that any filter added inside it must be duplicated in `TableConfigDto->filters` (i.e. declared via `#[TableFilter]`/`$table->filter()`), otherwise no UI will appear for it in the admin panel.
 
-### 4.2 Наскрізний (cross-module) пошук — `GlobalSearchService`
+### 4.2 Cross-module search — `GlobalSearchService`
 
-Це окремий сервіс (`Nodex\Nexus\Services\GlobalSearchService`), який шукає **одразу по всіх увімкнених модулях**, на відміну від "сліпого" LIKE в 4.1: він бере лише колонки, явно позначені `#[Column(searchable: true)]` (`ColumnConfigDto::$searchable`), щоб ніколи не показати внутрішні/чутливі колонки (хеші паролів, токени, FK). Для кожного модуля, де є хоч одна `searchable`-колонка й дозволений `index`-permission, робиться `orWhere(column, 'LIKE', "%term%")` по цих колонках, ліміт `$limitPerModule` (дефолт 5) рядків, підпис результату береться з першої `searchable`-колонки (`array_key_first`), посилання веде на `edit` через `route('nexus.module.action', …)`. Наприкінці стріляє `Nodex\Nexus\Events\GlobalSearchCompleted` (`$results` по референсу) і фільтр `nexus.search.results` — дозволяє плагіну додати свою групу результатів (зовнішнє API, не-модульне джерело) або переранжувати/обрізати вже зібране.
+This is a separate service (`Nodex\Nexus\Services\GlobalSearchService`) that searches **across all enabled modules at once**, unlike the "blind" LIKE in 4.1: it only uses columns explicitly marked `#[Column(searchable: true)]` (`ColumnConfigDto::$searchable`), so as to never expose internal/sensitive columns (password hashes, tokens, FKs). For every module that has at least one `searchable` column and an allowed `index` permission, an `orWhere(column, 'LIKE', "%term%")` is run over those columns, limited to `$limitPerModule` (default 5) rows; the result's label comes from the first `searchable` column (`array_key_first`), and the link goes to `edit` via `route('nexus.module.action', …)`. At the end, `Nodex\Nexus\Events\GlobalSearchCompleted` fires (`$results` by reference) along with the `nexus.search.results` filter — allowing a plugin to add its own result group (an external API, a non-module source) or to re-rank/trim what's already been collected.
 
-## 5. Per-user column visibility (picker колонок)
+## 5. Per-user column visibility (the column picker)
 
-Зберігання: таблиця `nexus_user_table_preferences` (міграція `2025_01_01_000000_create_nexus_tables.php`):
+Storage: the `nexus_user_table_preferences` table (migration `2025_01_01_000000_create_nexus_tables.php`):
 
 ```php
 Schema::create('nexus_user_table_preferences', function (Blueprint $table) {
@@ -161,17 +161,17 @@ Schema::create('nexus_user_table_preferences', function (Blueprint $table) {
 });
 ```
 
-Тобто на кожну пару `(user_id, module)` — один рядок; `visible_columns` — JSON-масив імен колонок. (Стовпець `filters` у тій же таблиці існує для збережених "Universal Filters" — `NexusController::saveDynamicFilters()` — до пікера колонок прямого відношення не має.)
+That is, one row per `(user_id, module)` pair; `visible_columns` is a JSON array of column names. (The `filters` column in the same table exists for saved "Universal Filters" — `NexusController::saveDynamicFilters()` — and has no direct relation to the column picker.)
 
-**Читання** — `TableBuilder::build()`: якщо переданий `$userId`, читається рядок `nexus_user_table_preferences` за `(user_id, module)`; якщо він є і `visible_columns` не порожній — видимі колонки фільтруються саме за цим списком; інакше — дефолт: усі колонки з `ColumnConfigDto::$tableDefault !== false`. Якщо активний lens з власним `columns`, він перекриває обидва варіанти (розділ 2.2).
+**Reading** — `TableBuilder::build()`: if `$userId` is passed, a `nexus_user_table_preferences` row is read by `(user_id, module)`; if it exists and `visible_columns` is not empty, visible columns are filtered by exactly that list; otherwise the default is: all columns with `ColumnConfigDto::$tableDefault !== false`. If there is an active lens with its own `columns`, it overrides both cases (section 2.2).
 
-**Запис** — два незалежні шляхи, які пишуть в один і той же рядок тим самим чином:
-- Livewire-шлях (реактивний, актуальний для `#[Module(livewire: true)]`): дропдаун "Columns" у `module-table.blade.php` (кнопка з іконкою `bx-columns`, видима тільки якщо колонок > 1) — чекбокс на кожну колонку з `wire:click="toggleColumnVisibility('{name}')"` → `ModuleTable::toggleColumnVisibility()`, який бере поточний видимий набір із вже порахованих `$tableData['columns']`, додає/прибирає колонку і робить `DB::table('nexus_user_table_preferences')->updateOrInsert(...)`. Порожній результуючий набір (спроба прибрати останню видиму колонку) ігнорується — метод повертається, нічого не змінюючи.
-- HTTP-шлях: `NexusController::saveTableColumns()` — той самий `updateOrInsert`, лишається для не-Livewire викликів (легасі-роут `PUT/POST {module}/columns` чи подібний — сам роут у цьому документі не звірявся).
+**Writing** — two independent paths that write to the same row in the same way:
+- The Livewire path (reactive, applicable for `#[Module(livewire: true)]`): the "Columns" dropdown in `module-table.blade.php` (a button with the `bx-columns` icon, visible only when there is more than 1 column) — a checkbox for each column with `wire:click="toggleColumnVisibility('{name}')"` → `ModuleTable::toggleColumnVisibility()`, which takes the currently visible set from the already-computed `$tableData['columns']`, adds/removes the column, and performs `DB::table('nexus_user_table_preferences')->updateOrInsert(...)`. An empty resulting set (an attempt to remove the last visible column) is ignored — the method returns without changing anything.
+- The HTTP path: `NexusController::saveTableColumns()` — the same `updateOrInsert`, kept for non-Livewire calls (a legacy route such as `PUT/POST {module}/columns` or similar — the route itself was not verified in this document).
 
-## 6. Приклад: комбінація атрибутів на гіпотетичному модулі
+## 6. Example: combining attributes on a hypothetical module
 
-Нижче — приклад у стилі реального `packages/nodex/nexus/src/Modules/Role/Models/Role.php` (структура `#[Module]` + `#[TableAction]`/`#[TableGroupAction]` + `#[Column]`/`#[Field]` підтверджена по цьому файлу), що комбінує пошук, select-фільтр, два lens'и, bulk-дію, import і власний `ModuleFilterHandler`:
+Below is an example in the style of the real `packages/nodex/nexus/src/Modules/Role/Models/Role.php` (the `#[Module]` + `#[TableAction]`/`#[TableGroupAction]` + `#[Column]`/`#[Field]` structure is confirmed against that file), combining search, a select filter, two lenses, a bulk action, import, and a custom `ModuleFilterHandler`:
 
 ```php
 namespace App\Nexus\Modules\ShopProduct\Models;
@@ -225,12 +225,12 @@ class ShopProduct extends \Illuminate\Database\Eloquent\Model
 }
 ```
 
-Разом з таким модулем варто згенерувати власний обробник пошуку (інакше пошук працюватиме через "сліпий" LIKE по всіх фізичних колонках, розділ 4.1):
+Along with such a module, it's worth generating a custom search handler (otherwise search will work via the "blind" LIKE over all physical columns, section 4.1):
 
 ```
 php artisan nexus:make:filter ShopProduct
 ```
 
-— це створить `App\Nexus\Modules\ShopProduct\Filters\ModuleFilterHandler`, де можна звузити `search` до конкретних колонок (наприклад, лише `name`/`sku`) замість LIKE по всій таблиці.
+— this creates `App\Nexus\Modules\ShopProduct\Filters\ModuleFilterHandler`, where you can narrow `search` down to specific columns (e.g. only `name`/`sku`) instead of a LIKE over the entire table.
 
-`publishGroup` тут — вбудоване ім'я (`ModuleTable::BUILT_IN_GROUP_ACTIONS`), тож `fieldName: 'is_published'` формально не використовується рушієм (виконання йде напряму через `PublishActionGroupMethod`), але задокументувати його варто так само, як роблять вбудовані значення за замовчуванням у `DefaultModuleConfigurationDto`.
+`publishGroup` here is a built-in name (`ModuleTable::BUILT_IN_GROUP_ACTIONS`), so `fieldName: 'is_published'` is formally unused by the engine (execution goes directly through `PublishActionGroupMethod`), but it's still worth documenting the same way the built-in default values are documented in `DefaultModuleConfigurationDto`.

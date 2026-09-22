@@ -17,15 +17,15 @@ Add repository to `composer.json`
 
 Run `composer install` - add library to project
 
-## Стартові модулі (Auth, User, Permission, Role)
+## Starter modules (Auth, User, Permission, Role)
 
-Пакет несе разом із собою 4 базові модулі — без них нема з чим зайти в адмінку
-(`Auth` — форма логіну, `Permission`/`Role` — обгортки над
-`spatie/laravel-permission`, `User` — Eloquent-модель, на яку авторизується
-Laravel). Живуть у `src/Modules/{Auth,User,Permission,Role}` пакета під
-неймспейсом `Nodex\Nexus\Modules\{Name}` і публікуються в проєкт командою:
+The package ships with 4 base modules — without them there's nothing to log into the admin panel with
+(`Auth` — the login form, `Permission`/`Role` — wrappers around
+`spatie/laravel-permission`, `User` — the Eloquent model that Laravel
+authenticates against). They live in `src/Modules/{Auth,User,Permission,Role}` of the package under
+the namespace `Nodex\Nexus\Modules\{Name}` and are published into the project with the command:
 
-1. Спочатку опублікувати й зміґрувати базові таблиці spatie:
+1. First publish and migrate the base spatie tables:
    ```
    php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider"
    ```
@@ -34,43 +34,43 @@ Laravel). Живуть у `src/Modules/{Auth,User,Permission,Role}` пакета
 php artisan nexus:default_module:publish --module=Auth,User,Permission,Role
 ```
 
-(без `--module` публікує всі стартові модулі одразу). Команда сама переписує
-неймспейс `Nodex\Nexus\Modules\{Name}` → `App\Nexus\Modules\{Name}` у
-скопійованих файлах. Якщо модуль з такою назвою вже існує в
-`app/Nexus/Modules`, публікація пропускається (не перезаписує) — додайте
-`--force`, щоб перезаписати свідомо.
+(without `--module` it publishes all starter modules at once). The command itself rewrites
+the namespace `Nodex\Nexus\Modules\{Name}` → `App\Nexus\Modules\{Name}` in
+the copied files. If a module with that name already exists in
+`app/Nexus/Modules`, publishing is skipped (it does not overwrite) — add
+`--force` to overwrite deliberately.
 
-**Модель `App\Models\User`** — окремий випадок: вона не лежить всередині
-жодного модуля (Laravel завжди чекає auth-модель саме за шляхом
-`app/Models/User.php`), тому та сама команда публікації додатково копіює
-`src/AppStubs/User.php.stub` → `app/Models/User.php`, коли серед модулів, що
-публікуються, є `User` (з тим самим правилом: не перезаписує наявний файл без
-`--force`). Це навмисно **мінімальний** stub — тільки те, що реально
-використовують ці 4 модулі (`UserModelTrait` → `HasRoles`, нотифікації
-скидання пароля/підтвердження email, зв'язок `addresses()` на `UserAddress` з
-цього ж модуля). Якщо в проєкті пізніше з'являються модулі `Cart`/`Wishlist`/
-`ActivityLog` — відповідні зв'язки/трейти дописуються в `app/Models/User.php`
-вручну, це вже не файл пакета, а звичайний файл застосунку.
+**The `App\Models\User` model** is a special case: it doesn't live inside
+any module (Laravel always expects the auth model specifically at the path
+`app/Models/User.php`), so the same publish command additionally copies
+`src/AppStubs/User.php.stub` → `app/Models/User.php` whenever `User` is among the modules
+being published (with the same rule: it doesn't overwrite an existing file without
+`--force`). This is intentionally a **minimal** stub — only what these 4 modules
+actually use (`UserModelTrait` → `HasRoles`, password-reset/email-confirmation
+notifications, the `addresses()` relation to `UserAddress` from
+this same module). If the project later gains `Cart`/`Wishlist`/
+`ActivityLog` modules — the corresponding relations/traits are added to `app/Models/User.php`
+manually; at that point it's no longer a package file, but a regular application file.
 
-⚠️ **Порядок для `Permission`/`Role`**: їхні власні міграції
-(`add_display_field`) роблять `Schema::table('permissions'/'roles', ...)` —
-тобто вимагають, щоб базові таблиці від `spatie/laravel-permission` вже
-існували. Laravel виконує pending-міграції за сортуванням імені файлу, а не
-за смисловою залежністю, тож `nexus:default_module:publish` **сам
-перештамповує** всі міграції модуля поточним часом публікації (той самий
-трюк, яким Laravel публікує власні package-міграції) — це гарантує, що вони
-відсортуються *після* всього, що вже лежить у `database/migrations`,
-включно зі щойно опублікованою spatie-міграцією. Working, але звідси
-випливає обов'язковий порядок дій:
+⚠️ **Order for `Permission`/`Role`**: their own migrations
+(`add_display_field`) run `Schema::table('permissions'/'roles', ...)` —
+meaning they require the base tables from `spatie/laravel-permission` to already
+exist. Laravel runs pending migrations sorted by filename, not
+by logical dependency, so `nexus:default_module:publish` **re-stamps**
+all of the module's migrations with the current publish timestamp itself (the same
+trick Laravel uses to publish its own package migrations) — this guarantees they
+sort *after* everything already sitting in `database/migrations`,
+including the just-published spatie migration. This works, but it implies a
+mandatory order of operations:
 
 
-2. **Тільки після цього** публікувати `Permission`/`Role` (`nexus:default_module:publish --module=Permission,Role`) — таймстемп модуля ставиться в момент публікації, тож якщо опублікувати модуль РАНІШЕ spatie-міграції, проблема повернеться.
+2. **Only after this** publish `Permission`/`Role` (`nexus:default_module:publish --module=Permission,Role`) — the module's timestamp is set at the moment of publishing, so if the module is published BEFORE the spatie migration, the problem returns.
 3. `php artisan migrate`.
 
-Якщо модуль уже був опублікований і його міграція вже виконалась —
-`--force` republish **перештампує файл заново**, і Laravel спробує
-виконати "нову" міграцію повторно (`Duplicate column`). Не робіть `--force`
-на модулі, чия міграція вже в статусі `Ran`.
+If a module has already been published and its migration has already run —
+a `--force` republish **re-stamps the file again**, and Laravel will attempt
+to run the "new" migration again (`Duplicate column`). Do not use `--force`
+on a module whose migration is already in the `Ran` status.
 
 Run `php artisan nexus:install` - install library
 
@@ -78,17 +78,17 @@ Run `php artisan nexus:update` - update library
 
 Run `php artisan nexus:module:install {name}` - install module (miss name - all modules)
 
-Установка токена доступу до приватного репозиторію
+Setting up an access token for the private repository
 composer config --global github-oauth.github.com YOUR_TOKEN
-Або введіть токен при запиті під час установки пакету.
+Or enter the token when prompted during package installation.
 
-Розробка добавлення тегу версійності
+Adding a version tag during development
 git tag -a v1.0.0 -m "Stable release 1.0.0"
 
-Перевірка якості коду має бути встановлений пакет https://github.com/larastan/larastan
+Code quality check requires the package https://github.com/larastan/larastan to be installed
 php vendor\bin\phpstan analyse
 
-Приклад налаштувань Vite
+Example Vite configuration
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 // import tailwindcss from '@tailwindcss/vite';
@@ -110,7 +110,7 @@ cors: true
 }
 });
 
-пакети для npm
+npm packages
 "devDependencies": {
 "@tailwindcss/vite": "^4.0.0",
 "@vitejs/plugin-vue": "^6.0.1",

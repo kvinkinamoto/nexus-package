@@ -1,11 +1,11 @@
-# Довідник Artisan-команд Nexus
+# Nexus Artisan Command Reference
 
-Повний перелік `artisan`-команд, які реєструє пакет `nodex/nexus`
-(`src/commands/`). Для загального опису встановлення й оновлення пакета
-дивіться `Instalation.md` — тут кожна команда описана окремо, з точним
-сигнатурою та поясненням того, що саме вона робить під капотом.
+The full list of `artisan` commands registered by the `nodex/nexus` package
+(`src/commands/`). For a general overview of installing and updating the package,
+see `Instalation.md` — here, each command is described individually, with its exact
+signature and an explanation of what it actually does under the hood.
 
-## Встановлення та оновлення
+## Installation and updates
 
 ### `nexus:install`
 
@@ -13,18 +13,18 @@
 php artisan nexus:install
 ```
 
-Первинне розгортання пакета в застосунку. Створює директорії
-`app/Nexus/Modules` та `app/Nexus/Plugins`, якщо їх ще немає, після чого
-послідовно викликає `nexus:resource:publish`, стандартну Laravel-команду
-`notifications:table` (шапка адмінки безумовно звертається до
-`unreadNotifications()`, тож таблиця сповіщень потрібна навіть без жодного
-власного модуля Nexus; `notifications:table` сама не публікує міграцію
-повторно, якщо вона вже є), `migrate`, `nexus:permission:init` та
-`nexus:module:install` (без аргументу — інсталює всі вже опубліковані
-модулі). Публікація стартових модулів (`nexus:default_module:publish`) в цей
-ланцюжок навмисно не входить — вона закоментована в коді команди, отже
-`Auth`/`User`/`Permission`/`Role` потрібно опублікувати окремо до або після
-`nexus:install`. Запускають цю команду один раз, одразу після
+Initial deployment of the package into the application. Creates the
+`app/Nexus/Modules` and `app/Nexus/Plugins` directories if they don't already exist, then
+sequentially calls `nexus:resource:publish`, the standard Laravel
+`notifications:table` command (the admin panel header unconditionally calls
+`unreadNotifications()`, so the notifications table is needed even without a single
+custom Nexus module; `notifications:table` itself won't re-publish the migration
+if it already exists), `migrate`, `nexus:permission:init`, and
+`nexus:module:install` (with no argument — installs all already-published
+modules). Publishing the starter modules (`nexus:default_module:publish`) is intentionally
+excluded from this chain — it's commented out in the command's code, so
+`Auth`/`User`/`Permission`/`Role` need to be published separately before or after
+`nexus:install`. This command is run once, right after
 `composer require nodex/nexus`.
 
 ### `nexus:update`
@@ -33,11 +33,11 @@ php artisan nexus:install
 php artisan nexus:update
 ```
 
-Оновлення вже встановленого пакета до нової версії: виконує
-`composer update nodex/nexus` через `exec()`, а тоді викликає
-`nexus:resource:publish`, щоб перепублікувати конфіг/ресурси/JS/переклади
-пакета поверх застосунку. Не чіпає модулі в `app/Nexus/Modules` — вони вже
-скопійовані у застосунок і оновлюються так само, як звичайний код проєкту.
+Updates an already-installed package to a new version: runs
+`composer update nodex/nexus` via `exec()`, then calls
+`nexus:resource:publish` to re-publish the package's config/resources/JS/translations
+over the application. It doesn't touch modules in `app/Nexus/Modules` — they've already
+been copied into the application and are updated just like regular project code.
 
 ### `nexus:resource:publish`
 
@@ -45,12 +45,12 @@ php artisan nexus:update
 php artisan nexus:resource:publish
 ```
 
-Обгортка над чотирма викликами `vendor:publish` (теги `nexus-config`,
-`nexus-resources-publish`, `nexus-js`, `nexus-lang`) — публікує конфіг,
-ресурси, фронтенд-скрипти та мовні файли пакета в застосунок. Викликається
-автоматично із `nexus:install` та `nexus:update`, але її можна запустити й
-вручну, якщо потрібно лише "перетягнути" свіжі ресурси пакета без повного
-циклу встановлення/оновлення.
+A wrapper around four `vendor:publish` calls (tags `nexus-config`,
+`nexus-resources-publish`, `nexus-js`, `nexus-lang`) — publishes the package's config,
+resources, frontend scripts, and language files into the application. It's called
+automatically from `nexus:install` and `nexus:update`, but can also be run
+manually if you just need to "pull in" fresh package resources without a full
+install/update cycle.
 
 ### `nexus:module:install`
 
@@ -58,14 +58,14 @@ php artisan nexus:resource:publish
 php artisan nexus:module:install {name?}
 ```
 
-Реєструє (інсталює) модуль через `ModuleManager`. З аргументом `{name}`
-інсталює конкретний модуль (ім'я автоматично приводиться до `Str::ucfirst`);
-без аргументу проходить по всіх модулях, які повертає
-`ModuleManager::getModules()`, і інсталює їх по черзі. Запускають після
-`nexus:make:module` (для нового модуля) або після
-`nexus:default_module:publish` (для стартових модулів), щоб модуль став
-видимим у системі — на відміну від публікації файлів, саме ця команда
-"вмикає" модуль.
+Registers (installs) a module via `ModuleManager`. With the `{name}` argument
+it installs a specific module (the name is automatically converted with `Str::ucfirst`);
+without an argument, it walks through all modules returned by
+`ModuleManager::getModules()` and installs them one by one. It's run after
+`nexus:make:module` (for a new module) or after
+`nexus:default_module:publish` (for starter modules), to make the module
+visible to the system — unlike publishing files, it's this command that actually
+"turns on" the module.
 
 ### `nexus:default_module:publish`
 
@@ -75,25 +75,25 @@ php artisan nexus:default_module:publish
                         {--force : Overwrite existing modules}
 ```
 
-Копіює стартові модулі пакета (`Auth`, `User`, `Permission`, `Role` —
-з `src/Modules`) у `app/Nexus/Modules`, переписуючи неймспейс
-`Nodex\Nexus\Modules\{Name}` на `App\Nexus\Modules\{Name}` у скопійованих
-файлах. `--module=Auth,User` обмежує список модулів, які публікуються; без
-опції публікуються всі. Якщо цільова директорія модуля вже існує, публікація
-пропускається з попередженням — `--force` примусово видаляє й перезаписує
-її (обережно: якщо міграція модуля вже виконана, повторний `--force`
-перештампує файл і Laravel спробує застосувати "нову" міграцію повторно —
-докладно про це в `Instalation.md`). Команда також переставляє часові мітки
-міграцій модуля на поточний момент публікації, щоб вони гарантовано
-відсортувались після вже наявних у `database/migrations` (включно з
-щойно опублікованими міграціями `spatie/laravel-permission`), і додає ім'я
-модуля в назву файлу міграції, щоб уникнути колізій між однаково названими
-міграціями різних модулів. Окремо, якщо серед модулів, що публікуються, є
-`User`, копіює `src/AppStubs/User.php.stub` у `app/Models/User.php` (та ж
-логіка "не перезаписувати без `--force`") — Laravel завжди очікує
-auth-модель саме за цим шляхом, тому вона не може жити всередині модуля.
+Copies the package's starter modules (`Auth`, `User`, `Permission`, `Role` —
+from `src/Modules`) into `app/Nexus/Modules`, rewriting the
+`Nodex\Nexus\Modules\{Name}` namespace to `App\Nexus\Modules\{Name}` in the
+copied files. `--module=Auth,User` restricts which modules get published; without the
+option, all of them are published. If a module's target directory already exists, publishing
+is skipped with a warning — `--force` forcibly deletes and overwrites
+it (careful: if the module's migration has already run, a repeated `--force`
+re-stamps the file and Laravel will attempt to apply the "new" migration again —
+more detail on this in `Instalation.md`). The command also shifts the module's
+migration timestamps to the current publish time, so they're guaranteed to
+sort after whatever is already in `database/migrations` (including
+the just-published `spatie/laravel-permission` migrations), and appends the
+module name to the migration file name to avoid collisions between identically named
+migrations from different modules. Separately, if `User` is among the modules being
+published, it copies `src/AppStubs/User.php.stub` into `app/Models/User.php` (the same
+"don't overwrite without `--force`" logic) — Laravel always expects the
+auth model to live at exactly that path, so it can't live inside a module.
 
-## Генерація коду / скаффолдинг
+## Code generation / scaffolding
 
 ### `nexus:make:module`
 
@@ -101,18 +101,18 @@ auth-модель саме за цим шляхом, тому вона не мо
 php artisan nexus:make:module {name}
 ```
 
-Створює каркас нового адмін-модуля в `app/Nexus/Modules/{Name}` за
-реальними конвенціями пакета: модель (`Models/{Name}.php`), реквести
-(`Requests/AdminStoreRequest.php`, `Requests/AdminUpdateRequest.php`),
-міграцію (`database/migrations/..._create_{pluralSnakeName}_table.php`),
-файли перекладів (`resources/lang/en|uk/translate.php`) і сторінку
-документації модуля (`resources/views/docs.blade.php`) — усе зі шаблонів
-у `src/commands/stubs`. Падає з помилкою, якщо модуль з такою назвою вже
-існує (перезапису немає, опції `--force` тут немає). Після генерації
-виводить підказку про наступні кроки: доповнити модель полями/зв'язками
-(дивись `nexus:docs:field-types`), виконати `migrate` і
-`nexus:module:install {name}`. Це стартова точка для будь-якого нового
-типу контенту в адмінці.
+Creates the scaffolding for a new admin module in `app/Nexus/Modules/{Name}`, following
+the package's actual conventions: a model (`Models/{Name}.php`), form requests
+(`Requests/AdminStoreRequest.php`, `Requests/AdminUpdateRequest.php`), a
+migration (`database/migrations/..._create_{pluralSnakeName}_table.php`),
+translation files (`resources/lang/en|uk/translate.php`), and a module
+documentation page (`resources/views/docs.blade.php`) — all generated from templates
+in `src/commands/stubs`. Fails with an error if a module with that name already
+exists (no overwriting, and there's no `--force` option for this command). After generation
+it prints a hint about the next steps: add fields/relations to the model
+(see `nexus:docs:field-types`), run `migrate`, and
+`nexus:module:install {name}`. This is the starting point for any new
+content type in the admin panel.
 
 ### `nexus:make:field`
 
@@ -120,16 +120,16 @@ php artisan nexus:make:module {name}
 php artisan nexus:make:field {name} {--module= : The module this field type belongs to}
 ```
 
-Створює клас-рендерер кастомного типу поля (`FieldTypeRenderer`) разом з
-Blade-партиалом у `{Module}/FieldTypes/`. Опція `--module` обов'язкова —
-без неї команда завершується помилкою; якщо вказаного модуля не існує в
-`app/Nexus/Modules`, виводить перелік доступних модулів і теж завершується
-помилкою. Якщо клас з такою назвою вже є — помилка без перезапису.
-Використовувати новий тип можна одразу через
-`#[Field(type: '{lowerName}', ...)]` на властивості моделі — команда
-попереджає, що виявлення автоматичне, але якщо в проєкті активний кеш
-модулів (`bootstrap/cache/nexus-modules.php` існує), потрібно ще виконати
-`nexus:module:cache`, щоб новий тип підхопився.
+Creates a custom field type renderer class (`FieldTypeRenderer`) along with a
+Blade partial, under `{Module}/FieldTypes/`. The `--module` option is required —
+without it the command exits with an error; if the specified module doesn't exist in
+`app/Nexus/Modules`, it prints a list of available modules and also exits with an
+error. If a class with that name already exists, it's an error with no overwriting.
+You can start using the new type right away via
+`#[Field(type: '{lowerName}', ...)]` on a model property — the command
+warns that discovery is automatic, but if the project has an active module
+cache (`bootstrap/cache/nexus-modules.php` exists), you also need to run
+`nexus:module:cache` for the new type to be picked up.
 
 ### `nexus:make:filter`
 
@@ -137,14 +137,14 @@ Blade-партиалом у `{Module}/FieldTypes/`. Опція `--module` обо
 php artisan nexus:make:filter {module}
 ```
 
-Створює обробник фільтрів модуля — клас `ModuleFilterHandler`, що
-перевизначає `FilterHandler::filter()`, у `{Module}/Filters/`. Аргумент
-`{module}` обов'язковий; якщо модуля не існує — виводить список доступних
-модулів і завершується помилкою, так само як і якщо обробник для цього
-модуля вже створено. Розпізнається автоматично за назвою (без ручної
-реєстрації), але кожен доданий у ньому фільтр треба окремо оголосити в
-`TableConfigDto` модуля (`FilterConfigDto`) — інакше він не з'явиться в
-UI списку адмінки.
+Creates a module's filter handler — a `ModuleFilterHandler` class that
+overrides `FilterHandler::filter()`, under `{Module}/Filters/`. The `{module}`
+argument is required; if the module doesn't exist, it prints a list of available
+modules and exits with an error, and the same happens if a handler for this
+module already exists. It's auto-resolved by name (no manual
+registration needed), but every filter added inside it must be separately declared in
+the module's `TableConfigDto` (`FilterConfigDto`) — otherwise it won't appear in
+the admin panel's list UI.
 
 ### `nexus:make:plugin`
 
@@ -152,13 +152,13 @@ UI списку адмінки.
 php artisan nexus:make:plugin {name} {--module= : The name of the module to target}
 ```
 
-Створює каркас плагіна (`{Name}Plugin.php` у `app/Nexus/Plugins/{Name}`) —
-клас з атрибутами `#[TargetModule]`/`#[Filter]`/`#[Action]`, що розширює
-поведінку існуючого модуля без власної таблиці в БД. `--module` задає
-цільовий модуль (за замовчуванням `User`); ім'я нормалізується через
-`Str::ucfirst`. Якщо файл плагіна вже існує — помилка без перезапису.
-Плагін виявляється автоматично при наступному запиті; команда нагадує
-прибрати непотрібні `#[Filter]`/`#[Action]`-методи й заповнити
+Creates a plugin scaffold (`{Name}Plugin.php` in `app/Nexus/Plugins/{Name}`) —
+a class with `#[TargetModule]`/`#[Filter]`/`#[Action]` attributes that extends
+the behavior of an existing module without its own database table. `--module` sets
+the target module (`User` by default); the name is normalized via
+`Str::ucfirst`. If the plugin file already exists, it's an error with no overwriting.
+The plugin is discovered automatically on the next request; the command reminds you
+to remove any unneeded `#[Filter]`/`#[Action]` methods and fill in
 `handle()`/`register()`/`boot()`.
 
 ### `nexus:make:widget`
@@ -167,17 +167,17 @@ php artisan nexus:make:plugin {name} {--module= : The name of the module to targ
 php artisan nexus:make:widget {name}
 ```
 
-Створює каркас дашборд-віджета: клас `{Name}.php` з атрибутом `#[Widget]`,
-що імплементує `WidgetInterface`, і Blade-шаблон, розміщені разом в одній
-папці `app/Nexus/Widgets/{Name}` (а не в `resources/views/widgets/`) —
-саме тому, що `RendersHtml::render()` резолвить шаблон через `View::file()`
-і `__DIR__`. Помилка без перезапису, якщо клас уже існує. Після генерації
-підказує: віджет виявляється автоматично, а щоб він показувався за
-замовчуванням на дашборді — додати його ключ у
-`config('nexus.dashboard.default')`, або підключити вручну через пікер
-"Customize" в самій адмінці.
+Creates a dashboard widget scaffold: a `{Name}.php` class with the `#[Widget]` attribute
+that implements `WidgetInterface`, and a Blade template, placed together in a single
+folder `app/Nexus/Widgets/{Name}` (rather than in `resources/views/widgets/`) —
+precisely because `RendersHtml::render()` resolves the template via `View::file()`
+and `__DIR__`. It's an error with no overwriting if the class already exists. After generation
+it hints: the widget is discovered automatically, and for it to show up by
+default on the dashboard, add its key to
+`config('nexus.dashboard.default')`, or attach it manually via the "Customize"
+picker in the admin panel itself.
 
-## Кеш модулів
+## Module cache
 
 ### `nexus:module:cache`
 
@@ -185,14 +185,14 @@ php artisan nexus:make:widget {name}
 php artisan nexus:module:cache
 ```
 
-Компілює файловий маніфест усіх модулів (views/routes/переклади/іконки/
-команди/listeners) у `bootstrap/cache/nexus-modules.php`, щоб кожен запит
-не сканував файлову систему наживо. Всередині оновлює `ModuleRegistry`
-(`refresh()`), будує маніфест через `ModuleManifestCache::build()` і
-записує його на диск. Виводить шлях до файлу кешу та кількість
-скомпільованих модулів. Використовується як продакшн-оптимізація (аналог
-`config:cache`/`route:cache`) — запускати після деплою або будь-якої зміни
-складу модулів/плагінів.
+Compiles a file manifest of all modules (views/routes/translations/icons/
+commands/listeners) into `bootstrap/cache/nexus-modules.php`, so that every request
+doesn't scan the filesystem live. Internally it refreshes the `ModuleRegistry`
+(`refresh()`), builds the manifest via `ModuleManifestCache::build()`, and
+writes it to disk. It prints the path to the cache file and the number of
+compiled modules. Used as a production optimization (analogous to
+`config:cache`/`route:cache`) — run it after a deploy or any change to the
+set of modules/plugins.
 
 ### `nexus:module:clear`
 
@@ -200,13 +200,13 @@ php artisan nexus:module:cache
 php artisan nexus:module:clear
 ```
 
-Видаляє скомпільований маніфест модулів, повертаючи застосунок до живого
-сканування файлової системи на кожному запиті. Парна команда до
-`nexus:module:cache` — виконувати перед розробкою локально (щоб нові
-модулі/поля/плагіни підхоплювались одразу) або перед повторним
-кешуванням після структурних змін.
+Deletes the compiled module manifest, returning the application to live
+filesystem scanning on every request. The counterpart command to
+`nexus:module:cache` — run it before local development (so new
+modules/fields/plugins are picked up immediately), or before re-caching
+after structural changes.
 
-## Права доступу та користувачі
+## Permissions and users
 
 ### `nexus:permission:init`
 
@@ -214,14 +214,14 @@ php artisan nexus:module:clear
 php artisan nexus:permission:init
 ```
 
-Синхронізує базові permissions адмін-панелі з кодом: проходить по всіх
-кейсах `AdminPanelPermissionEnum`, формує людяну назву (`display_name.en`)
-із значення еніма і робить `Permission::updateOrCreate()` для кожного —
-тобто безпечно перезапускати повторно, нові permissions додасться, наявні
-оновлять лише `display_name`. Викликається автоматично з `nexus:install` і
-з `nexus:create:superadmin`, але її варто запускати вручну й після того, як
-`AdminPanelPermissionEnum` поповнили новими значеннями вручну — щоб вони
-з'явились у таблиці permissions.
+Syncs the admin panel's base permissions with the code: it walks through all
+`AdminPanelPermissionEnum` cases, builds a human-readable name (`display_name.en`)
+from the enum value, and runs `Permission::updateOrCreate()` for each one —
+meaning it's safe to run repeatedly; new permissions get added, and existing ones
+only have their `display_name` updated. It's called automatically from `nexus:install` and
+from `nexus:create:superadmin`, but it's also worth running manually after
+`AdminPanelPermissionEnum` has been manually extended with new values — so they
+show up in the permissions table.
 
 ### `nexus:create:superadmin`
 
@@ -229,18 +229,18 @@ php artisan nexus:permission:init
 php artisan nexus:create:superadmin {name?} {email?} {password?} {--name=} {--email=} {--password=}
 ```
 
-Створює користувача з роллю `super-admin`, якій призначено геть усі
-permissions гарда `web`. Ім'я/email/пароль можна передати позиційними
-аргументами, іменованими опціями або (якщо не передані) команда запитає їх
-інтерактивно (`ask()`/`secret()` для пароля). Спочатку викликає
-`nexus:permission:init`, щоб permissions точно існували. Якщо користувач з
-таким email вже є — команда лише повідомляє про це й нічого не створює
-(не падає помилкою). Роль `super-admin` створюється через
-`firstOrCreate()`, якщо її ще немає, і синхронізується з усіма наявними
-permissions (`syncPermissions()`) при кожному запуску — тобто повторний
-виклик оновить набір прав ролі, навіть якщо користувача вже створено раніше.
-Це перша команда, яку запускають одразу після `nexus:install`, щоб мати
-з чим увійти в адмінку.
+Creates a user with the `super-admin` role, which is assigned absolutely all
+`web` guard permissions. The name/email/password can be passed as positional
+arguments, as named options, or (if not passed) the command will prompt for them
+interactively (`ask()`/`secret()` for the password). It first calls
+`nexus:permission:init`, to make sure permissions actually exist. If a user with
+that email already exists, the command just reports it and creates nothing
+(it doesn't fail with an error). The `super-admin` role is created via
+`firstOrCreate()` if it doesn't exist yet, and is synced with all existing
+permissions (`syncPermissions()`) on every run — meaning a repeated
+call will refresh the role's permission set even if the user was already created earlier.
+This is the first command run right after `nexus:install`, so there's something
+to log into the admin panel with.
 
 ### `nexus:api-token:issue`
 
@@ -248,14 +248,14 @@ permissions (`syncPermissions()`) при кожному запуску — то�
 php artisan nexus:api-token:issue {email}
 ```
 
-Видає Sanctum personal access token для існуючого користувача за email
-(модель береться з `config('auth.providers.users.model')`, тож команда не
-прив'язана жорстко до `App\Models\User`). Якщо користувача з таким email
-немає — помилка. Токен виводиться в консоль одноразово (`createToken('api')
-->plainTextToken`) — це тимчасовий інструмент для REST/GraphQL-доступу,
-поки в адмінці немає власного екрана самообслуговування для API-токенів.
+Issues a Sanctum personal access token for an existing user by email
+(the model is taken from `config('auth.providers.users.model')`, so the command isn't
+hard-tied to `App\Models\User`). If no user with that email
+exists, it's an error. The token is printed to the console once (`createToken('api')
+->plainTextToken`) — this is a temporary tool for REST/GraphQL access,
+until the admin panel has its own self-service screen for API tokens.
 
-## Документація
+## Documentation
 
 ### `nexus:docs:field-types`
 
@@ -263,16 +263,16 @@ php artisan nexus:api-token:issue {email}
 php artisan nexus:docs:field-types {--markdown= : Write the reference as a Markdown file to this path instead of printing a table}
 ```
 
-Генерує повний довідник усіх значень `#[Field(type: ...)]`, які реально
-вміє відрендерити Livewire-форма адмінки: вбудовані типи (з описом кожного
-— `string`, `text`, `relation`, `blockEditor` тощо), аліаси і типи,
-зареєстровані модулями/плагінами через `FieldTypeRegistry`. Без
-`--markdown` виводить таблицю в консоль; з `--markdown={path}` записує
-той самий довідник у Markdown-файл (саме так згенеровано
-`docs/field-types.md` у цьому пакеті). Команда самоперевіряється: звіряє
-захардкоджений масив описів (`$builtIn`) із реальними партиалами на диску
-(`resources/views/tailadmin/livewire/field_types`) і виводить попередження
-про типи, які є на диску, але не задокументовані, або задокументовані, але
-партиала для них уже нема — щоб довідник не розходився з кодом непомітно.
-Запускати після додавання нового вбудованого типу поля, або просто щоб
-подивитись, які типи взагалі доступні для `#[Field(...)]`.
+Generates a complete reference of every `#[Field(type: ...)]` value the
+admin panel's Livewire form can actually render: built-in types (with a description of each
+— `string`, `text`, `relation`, `blockEditor`, and so on), aliases, and types
+registered by modules/plugins via `FieldTypeRegistry`. Without
+`--markdown` it prints a table to the console; with `--markdown={path}` it writes
+that same reference to a Markdown file (this is exactly how
+`docs/field-types.md` in this package was generated). The command self-verifies: it
+cross-checks its hardcoded array of descriptions (`$builtIn`) against the actual partials on disk
+(`resources/views/tailadmin/livewire/field_types`) and prints warnings
+about types that exist on disk but aren't documented, or are documented but no longer
+have a partial — so the reference doesn't silently drift out of sync with the code.
+Run it after adding a new built-in field type, or just to see
+which types are actually available for `#[Field(...)]`.

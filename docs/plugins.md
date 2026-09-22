@@ -1,28 +1,30 @@
-# Плагіни та хуки (Plugin & Hooks system)
+# Plugin & Hooks system
 
-Цей документ описує механізм розширення Nexus, який **не** передбачає власної таблиці в БД:
-плагіни (`app/Nexus/Plugins/**`). Якщо потрібен новий контент-тип зі своєю таблицею — дивіться
-документацію по модулях, цей файл — суто про розширення *чужої* поведінки.
+This document describes Nexus's extension mechanism that does **not** involve owning a
+database table: plugins (`app/Nexus/Plugins/**`). If you need a new content type with its own
+table, see the modules documentation — this file is purely about extending *someone else's*
+behavior.
 
-## Плагін проти модуля
+## Plugin vs. module
 
-- **Модуль** (`app/Nexus/Modules/{Name}`) володіє своєю Eloquent-моделлю, міграцією, admin CRUD.
-- **Плагін** (`app/Nexus/Plugins/{Name}/{Name}Plugin.php`) нічим не володіє. Він або мутує
-  конфігурацію *чужого* модуля (додає поле/колонку/фільтр, змінює правила валідації, підмінює
-  пункт меню), або виконує наскрізну (cross-cutting) логіку застосунку рівня — реєструє маршрут,
-  тип блоку, аліас field-type, слухає життєвий цикл сутностей будь-якого модуля.
+- A **module** (`app/Nexus/Modules/{Name}`) owns its own Eloquent model, migration, and admin CRUD.
+- A **plugin** (`app/Nexus/Plugins/{Name}/{Name}Plugin.php`) owns nothing. It either mutates
+  the configuration of *someone else's* module (adds a field/column/filter, changes validation
+  rules, replaces a menu item), or performs cross-cutting, application-level logic —
+  registers a route, a block type, a field-type alias, listens to the lifecycle of entities of
+  any module.
 
-Плагін — це звичайний PHP-клас, який Nexus сам знаходить на кожному запиті
-(`PluginManager::autoDiscover()`) — реєструвати його вручну у `ServiceProvider` не потрібно.
+A plugin is a plain PHP class that Nexus discovers on its own on every request
+(`PluginManager::autoDiscover()`) — there's no need to register it manually in a `ServiceProvider`.
 
-## Швидкий старт
+## Quick start
 
 ```bash
 php artisan nexus:make:plugin ReviewAdmin --module=Product
 ```
 
-`--module` за замовчуванням `User` і визначає атрибут `#[TargetModule]`. Команда створює
-`app/Nexus/Plugins/ReviewAdmin/ReviewAdminPlugin.php` зі скелетом:
+`--module` defaults to `User` and determines the `#[TargetModule]` attribute. The command creates
+`app/Nexus/Plugins/ReviewAdmin/ReviewAdminPlugin.php` with the skeleton:
 
 ```php
 #[TargetModule('Product')]
@@ -43,10 +45,10 @@ class ReviewAdminPlugin
 }
 ```
 
-Видаліть методи, які вам не потрібні — `PluginManager` викликає `register()`/`boot()`/`handle()`
-лише якщо вони існують.
+Remove the methods you don't need — `PluginManager` calls `register()`/`boot()`/`handle()`
+only if they exist.
 
-## `#[TargetModule]` — обов'язковий якір
+## `#[TargetModule]` — the mandatory anchor
 
 ```php
 #[Attribute(Attribute::TARGET_CLASS)]
@@ -56,33 +58,33 @@ class TargetModule
 }
 ```
 
-Атрибут класу, що вказує, конфігурацію якого модуля мутує плагін. Він робить дві речі:
+A class attribute indicating which module's configuration the plugin mutates. It does two things:
 
-1. Реєструє клас у `PluginManager`, щоб `handle(object $configuration)` викликався щоразу, коли
-   збирається конфігурація вказаного модуля (`ModuleManager::resolveModuleConfig()` →
-   `PluginManager::apply()`). `$configuration` — **свіжа глибока копія** DTO схеми модуля на
-   кожен виклик, її можна вільно мутувати — вона ніколи не "протікає" між запитами чи модулями.
-2. Тільки завдяки цьому атрибуту `PluginManager::registerAll()`/`bootAll()` взагалі бере клас до
-   уваги — `register()`/`boot()` викликаються лише для класів, зареєстрованих через
+1. Registers the class in `PluginManager` so that `handle(object $configuration)` is called every time
+   the configuration of the specified module is assembled (`ModuleManager::resolveModuleConfig()` →
+   `PluginManager::apply()`). `$configuration` is a **fresh deep copy** of the module schema DTO on
+   every call, so it can be freely mutated — it never "leaks" between requests or modules.
+2. Only because of this attribute does `PluginManager::registerAll()`/`bootAll()` even take the
+   class into account — `register()`/`boot()` are called only for classes registered via
    `#[TargetModule]`.
 
-> **Важливо.** `#[Filter]`/`#[Action]`-методи класу підключаються до `HookManager` **незалежно**
-> від наявності `#[TargetModule]` — рефлексія методів відбувається завжди. Але якщо у плагіна
-> немає `#[TargetModule]`, його `register()`/`boot()` просто ніколи не викличуться. Тому, навіть
-> якщо єдина мета плагіна — зареєструвати маршрут чи тип блоку в `boot()` і жодної конфігурації
-> модуля він не чіпає, все одно лишайте `#[TargetModule('User')]` як нейтральний якір (`User` —
-> завжди встановлений стартовий модуль, тому й дефолт команди `nexus:make:plugin` саме такий).
-> Це видно на прикладі реальних плагінів `GraphQLPlugin` і `BlockTypesPlugin` — обидва несуть
-> `#[TargetModule('User')]` з порожнім `handle()`, а вся робота — в `boot()`.
+> **Important.** A class's `#[Filter]`/`#[Action]` methods are hooked up to `HookManager` **regardless**
+> of whether `#[TargetModule]` is present — method reflection always happens. But if a plugin
+> has no `#[TargetModule]`, its `register()`/`boot()` will simply never be called. So even
+> if a plugin's only purpose is to register a route or block type in `boot()` and it touches no
+> module configuration at all, still leave `#[TargetModule('User')]` in place as a neutral anchor (`User`
+> is always the installed starter module, which is why the `nexus:make:plugin` command's default is
+> exactly that). This is visible in the real plugins `GraphQLPlugin` and `BlockTypesPlugin` — both carry
+> `#[TargetModule('User')]` with an empty `handle()`, with all the actual work happening in `boot()`.
 
-## `#[Filter]` / `#[Action]` і хелпери `nexus_filter()` / `nexus_action()`
+## `#[Filter]` / `#[Action]` and the `nexus_filter()` / `nexus_action()` helpers
 
-Це именований, пріоритетно впорядкований механізм розширення в стилі WordPress
-(`apply_filters()`/`do_action()`) — будь-який модуль чи плагін може підключитись до точки
-розширення, не редагуючи код, що її оголошує.
+This is a named, priority-ordered extension mechanism in the WordPress style
+(`apply_filters()`/`do_action()`) — any module or plugin can hook into an extension
+point without editing the code that declares it.
 
-- **Filter** — трансформує значення і **повинен повернути** (можливо, змінене) значення.
-- **Action** — виконує побічний ефект, повернене значення ігнорується.
+- **Filter** — transforms a value and **must return** the (possibly modified) value.
+- **Action** — performs a side effect; the returned value is ignored.
 
 ```php
 #[Attribute(Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
@@ -95,19 +97,19 @@ class Filter
 }
 ```
 
-`#[Action]` має ідентичну сигнатуру. Обидва атрибути можна вішати на один метод повторно (для
-кількох хуків), метод повинен бути **публічним** — `PluginManager::discoverClass()` рефлексує
-лише `ReflectionMethod::IS_PUBLIC`. Менший `priority` виконується раніше (дефолт — 10, як у
+`#[Action]` has an identical signature. Both attributes can be stacked on a single method repeatedly (for
+several hooks); the method must be **public** — `PluginManager::discoverClass()` only reflects
+`ReflectionMethod::IS_PUBLIC`. A lower `priority` runs earlier (default is 10, as in
 WordPress).
 
-Виклик хука в коді модуля чи пакета — через глобальні хелпери:
+Calling a hook from module or package code is done through the global helpers:
 
 ```php
-nexus_filter(string $hook, mixed $value, mixed ...$args): mixed;   // повертає трансформоване значення
+nexus_filter(string $hook, mixed $value, mixed ...$args): mixed;   // returns the transformed value
 nexus_action(string $hook, mixed ...$args): void;
 ```
 
-### Приклад: реєстрація й виклик
+### Example: registering and invoking
 
 ```php
 // app/Nexus/Plugins/Example/ExamplePlugin.php
@@ -134,29 +136,29 @@ class ExamplePlugin
 }
 ```
 
-Виклик (десь у пакеті — саме тут хук насправді викликається для будь-якого модуля):
+The call site (somewhere in the package — this is literally where the hook actually fires for any module):
 
 ```php
 $rules = nexus_filter('nexus.validation.rules', $rules, $moduleConfig, $action);
 nexus_action('nexus.field_types.register', app(FieldTypeRegistry::class));
 ```
 
-Зверніть увагу — хук **не** обмежений одним модулем: усі зареєстровані слухачі
-`nexus.validation.rules` викликаються для кожного модуля. Якщо потрібна поведінка лише для
-конкретного модуля — перевіряйте це всередині методу (`if ($moduleConfig->name !== 'demo') return $rules;`),
-як у прикладі вище.
+Note that a hook is **not** scoped to a single module: all registered listeners for
+`nexus.validation.rules` are called for every module. If you need behavior scoped to a
+specific module, check for it inside the method itself (`if ($moduleConfig->name !== 'demo') return $rules;`),
+as in the example above.
 
-`[ClassName, 'method']`-колбек резолвиться через контейнер **лінькво**, у момент виклику хука —
-клас плагіна не інстанціюється, якщо жоден з його хуків фактично не спрацював.
+A `[ClassName, 'method']` callback is resolved through the container **lazily**, at the moment the hook fires —
+the plugin class is not instantiated unless one of its hooks actually fired.
 
-## `#[AttachField]` / `#[AttachColumn]` / `#[AttachFilter]` — додавання поля/колонки/фільтра на чужий модуль
+## `#[AttachField]` / `#[AttachColumn]` / `#[AttachFilter]` — attaching a field/column/filter to a module you don't own
 
-Декларативний цукор над `handle()` для найпоширенішого сценарію: спеціалізований модуль (напр.
-`Review`) додає одне admin-поле/колонку/фільтр на базовий модуль (напр. `Product`), яким не
-володіє — без того, щоб файл `Product` хоч колись згадував `Review`.
+Declarative sugar over `handle()` for the most common scenario: a specialized module (e.g.,
+`Review`) adds a single admin field/column/filter to a base module (e.g., `Product`) that it doesn't
+own — without the `Product` file ever mentioning `Review` at all.
 
-Атрибути ставляться на публічний метод-маркер класу, що також несе `#[TargetModule]`. **Тіло
-методу ніколи не викликається** — читаються лише атрибути (як і в `#[Filter]`/`#[Action]`):
+The attributes are placed on a public marker method of a class that also carries `#[TargetModule]`. **The
+method body is never called** — only the attributes are read (same as with `#[Filter]`/`#[Action]`):
 
 ```php
 #[TargetModule('Product')]
@@ -174,45 +176,45 @@ class ReviewAdminPlugin
 }
 ```
 
-Параметри:
+Parameters:
 
-| Атрибут | Параметри конструктора |
+| Attribute | Constructor parameters |
 | --- | --- |
 | `AttachField` | `name`, `type`, `section = 'default'`, `label = null`, `isRequired = false`, `order = 0`, `apiExpose = false`, `permission = null` |
 | `AttachColumn` | `name`, `label = null`, `sortable = false`, `tableDefault = true`, `order = 0`, `permission = null` |
 | `AttachFilter` | `name`, `label = null`, `type = 'search'`, `permission = null` |
 
-Важливі нюанси:
+Important nuances:
 
-- **`#[AttachField]` + `#[Relation]` лише робить поле видимим у формі `Product`** — сам Eloquent-
-  зв'язок повинен існувати окремо, оголошений з боку `Review` через `#[AttachRelation]` (див.
-  нижче). Обидві половини потрібні, щоб `relationManager`-поле реально працювало — саме по собі
-  `AttachField` не змусить `$product->reviews()` резолвитись.
-- **`label` має бути у формі `'ownNamespace::translate.key'`**, а не голим рядком. Партіали
-  `_label.blade.php`/`module-table.blade.php` резолвлять голий label проти лейбл-файлу
-  **цільового** модуля (`Product`, який ви не можете чіпати) — форма з `'::'` обходить це й бере
-  переклад з довільного простору імен, тож реальний переклад кладіть у `resources/lang/{locale}/translate.php`
-  свого модуля (`Review`).
-- **`permission`, якщо заданий, незалежно гейтить приєднання для кожного глядача** окремо від
-  того, яке право вже вимагає власна дія edit/view `Product`. Запис, який поточний глядач не може
-  бачити, взагалі не потрапляє в конфігурацію (не рендериться прихованим) — саме це не дає даним
-  платного/опційного модуля протекти до кожного редактора безкоштовного базового модуля. Залиште
-  `null`, щоб успадкувати гейт цільового модуля (дефолтна, зворотно сумісна поведінка).
-- `#[AttachField(apiExpose: true)]` віддзеркалює `#[Field(apiExpose:)]` — виставляє приєднане
-  поле через REST/GraphQL так само, як і власне поле модуля.
-- Значення `#[AttachColumn]`/`#[AttachFilter]` все одно має резолвитись на цільовій моделі як
-  звичайна колонка/фільтр — ці атрибути лише роблять запис видимим, даних вони не створюють.
-  Обчислювана колонка (напр. `_count`) потребує парного `#[AttachScope]` з `withCount(...)`.
-- Усе трьох атрибутів обробляє `PluginManager` разом із `#[Filter]`/`#[Action]`. Вимкнення
-  плагіна (або відсутність модуля `Review`) прибирає приєднання на наступному запиті без падінь —
-  fail-quiet, ніколи не 500.
+- **`#[AttachField]` + `#[Relation]` only makes the field visible in the `Product` form** — the actual Eloquent
+  relation must exist separately, declared on the `Review` side via `#[AttachRelation]` (see
+  below). Both halves are needed for the `relationManager` field to actually work — `AttachField`
+  alone won't make `$product->reviews()` resolve.
+- **`label` must be in the form `'ownNamespace::translate.key'`**, not a bare string. The
+  `_label.blade.php`/`module-table.blade.php` partials resolve a bare label against the label file of the
+  **target** module (`Product`, which you can't touch) — the `'::'` form bypasses this and takes the
+  translation from an arbitrary namespace, so put the actual translation in `resources/lang/{locale}/translate.php`
+  of your own module (`Review`).
+- **`permission`, if set, independently gates the attachment per viewer**, separately from
+  whatever permission `Product`'s own edit/view action already requires. A record the current viewer isn't
+  allowed to see doesn't make it into the configuration at all (it's not rendered hidden) — this is exactly what
+  prevents a paid/optional module's data from leaking to every editor of the free base module. Leave it
+  `null` to inherit the target module's gate (the default, backward-compatible behavior).
+- `#[AttachField(apiExpose: true)]` mirrors `#[Field(apiExpose:)]` — it exposes the attached
+  field over REST/GraphQL the same way as the module's own field.
+- The value of `#[AttachColumn]`/`#[AttachFilter]` still has to resolve on the target model as a
+  regular column/filter — these attributes only make the entry visible, they don't create the data.
+  A computed column (e.g., `_count`) needs a matching `#[AttachScope]` with `withCount(...)`.
+- All three attributes are processed by `PluginManager` together with `#[Filter]`/`#[Action]`. Disabling
+  the plugin (or the absence of the `Review` module) removes the attachment on the next request without failures —
+  fail-quiet, never a 500.
 
-## `#[AttachRelation]` / `#[AttachScope]` — розв'язка зв'язків і scope між модулями
+## `#[AttachRelation]` / `#[AttachScope]` — resolving relations and scopes between modules
 
-Ці атрибути стоять не на плагіні, а на публічних **статичних** методах у папці `Relations/`
-модуля (наприклад `app/Nexus/Modules/Review/Relations/ProductRelations.php`) і працюють поверх
-стандартних механізмів Eloquent — `Model::resolveRelationUsing()` та `Model::addGlobalScope()`
-відповідно, нічого специфічного для Nexus тут немає.
+These attributes are placed not on a plugin, but on public **static** methods in a module's
+`Relations/` folder (e.g., `app/Nexus/Modules/Review/Relations/ProductRelations.php`) and build on top of
+the standard Eloquent mechanisms — `Model::resolveRelationUsing()` and `Model::addGlobalScope()`
+respectively; there's nothing Nexus-specific here.
 
 ```php
 #[Attribute(Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
@@ -241,124 +243,124 @@ public static function published(): \Closure
 }
 ```
 
-`AttachScope::$name` за замовчуванням дорівнює імені методу, якщо не заданий явно. Напрям
-залежності тут навмисно перевернутий: спеціалізований модуль (`Review`) знає про базовий
-(`ShopProduct`), а не навпаки — `ShopProduct` ніколи не дізнається, що `Review` взагалі існує.
+`AttachScope::$name` defaults to the method name if not set explicitly. The dependency
+direction here is intentionally reversed: the specialized module (`Review`) knows about the base
+module (`ShopProduct`), not the other way around — `ShopProduct` never finds out that `Review` even exists.
 
-`#[AttachRelation]` — це саме той шматок, що потрібен, щоб `relationManager`-поле з
-`#[AttachField]` вище реально резолвилось: `#[AttachField]`+`#[Relation]` лише показує поле у
-формі, `#[AttachRelation]` — робить `$product->reviews` робочим зв'язком.
+`#[AttachRelation]` is precisely the piece needed for the `relationManager` field from
+`#[AttachField]` above to actually resolve: `#[AttachField]`+`#[Relation]` only displays the field in the
+form, `#[AttachRelation]` is what makes `$product->reviews` an actual working relation.
 
-## Каталог подій (Events) і їхні пари з хуками
+## Event catalog and their hook counterparts
 
-Майже кожна точка розширення в пакеті спрацьовує **двічі в одному й тому самому місці**: спершу
-справжня Laravel-подія, одразу за нею — відповідний `nexus_filter()`/`nexus_action()` з
-ідентичними даними. Це навмисне дублювання, а не заміна одне одного: власний
-`Listeners/`-клас модуля (не потребує ані плагіна, ані `#[TargetModule]`) — природний вибір для
-реакції конкретного модуля, а `#[Filter]`/`#[Action]` плагіна — для перевикористовуваної,
-міжмодульної, незалежно вимикної логіки.
+Almost every extension point in the package fires **twice at the same spot**: first a
+real Laravel event, immediately followed by the corresponding `nexus_filter()`/`nexus_action()` with
+identical data. This is intentional duplication, not one replacing the other: a module's own
+`Listeners/` class (needs neither a plugin nor `#[TargetModule]`) is the natural choice for a
+specific module's own reaction, while a plugin's `#[Filter]`/`#[Action]` is for reusable,
+cross-module, independently toggleable logic.
 
-Подія з назвою на `*ing`/`*Building`/`*Preparing`/`*Resolving` мутує властивість **за
-посиланням** (`&$data`, `&$rules`, `&$result`, ...) — пишіть у цю властивість напряму, нічого не
-`return`-те з обробника. Кидання винятку з такої події перериває операцію звичайним виключенням
-(окремого прапорця "скасувати" в пакеті немає). Подія в минулому часі (`EntityCreated`,
-`ModuleInstalled`, ...) — це чисте сповіщення про факт, мутувати нічого.
+An event named `*ing`/`*Building`/`*Preparing`/`*Resolving` mutates a property **by
+reference** (`&$data`, `&$rules`, `&$result`, ...) — write directly into that property; don't
+`return` anything from the handler. Throwing an exception from such an event interrupts the operation via a
+regular exception (there's no separate "cancel" flag in the package). A past-tense event (`EntityCreated`,
+`ModuleInstalled`, ...) is a pure notification of a fact — nothing to mutate.
 
-### Життєвий цикл сутності
+### Entity lifecycle
 
-`$moduleConfig` — DTO схеми цільового модуля (`DefaultModuleConfigurationDto`).
+`$moduleConfig` is the target module's schema DTO (`DefaultModuleConfigurationDto`).
 
-| Момент | Клас події | Хук (тип) | Дані |
+| Moment | Event class | Hook (type) | Data |
 | --- | --- | --- | --- |
-| Перед створенням (в т.ч. дублювання) | `EntityCreating` | `nexus.entity.creating` (filter) | `Model $model, array &$data, $moduleConfig` |
-| Після створення | `EntityCreated` | `nexus.entity.created` (action) | `Model $model, $moduleConfig` |
-| Перед оновленням | `EntityUpdating` | `nexus.entity.updating` (filter) | `Model $model, array &$data, array $oldData, $moduleConfig` |
-| Після оновлення | `EntityUpdated` | `nexus.entity.updated` (action) | `Model $model, $moduleConfig` |
-| Перед видаленням | `EntityDeleting` | `nexus.entity.deleting` (action) | `Model $model, $moduleConfig` |
-| Після видалення | `EntityDeleted` | `nexus.entity.deleted` (action) | `Model $model, $moduleConfig` |
-| Перед відновленням | `EntityRestoring` | `nexus.entity.restoring` (action) | `Model $model, $moduleConfig` |
-| Після відновлення | `EntityRestored` | `nexus.entity.restored` (action) | `Model $model, $moduleConfig` |
-| Будь-яка table/group action завершена (delete/restore/duplicate/кастомна) | `ModuleActionExecuted` | `nexus.module.action_executed` (action) | `string $moduleName, string $actionName, ?string $id, ?array $ids` — read-only дії (index/edit/create/view) не входять |
-| Масова дія над вибіркою от-от виконається | `BulkActionExecuting` | `nexus.bulk_action.executing` (filter) | `string $moduleName, string $actionName, array &$ids` — можна прибрати частину id (часткове вето) |
+| Before creation (including duplication) | `EntityCreating` | `nexus.entity.creating` (filter) | `Model $model, array &$data, $moduleConfig` |
+| After creation | `EntityCreated` | `nexus.entity.created` (action) | `Model $model, $moduleConfig` |
+| Before update | `EntityUpdating` | `nexus.entity.updating` (filter) | `Model $model, array &$data, array $oldData, $moduleConfig` |
+| After update | `EntityUpdated` | `nexus.entity.updated` (action) | `Model $model, $moduleConfig` |
+| Before deletion | `EntityDeleting` | `nexus.entity.deleting` (action) | `Model $model, $moduleConfig` |
+| After deletion | `EntityDeleted` | `nexus.entity.deleted` (action) | `Model $model, $moduleConfig` |
+| Before restoration | `EntityRestoring` | `nexus.entity.restoring` (action) | `Model $model, $moduleConfig` |
+| After restoration | `EntityRestored` | `nexus.entity.restored` (action) | `Model $model, $moduleConfig` |
+| Any table/group action completed (delete/restore/duplicate/custom) | `ModuleActionExecuted` | `nexus.module.action_executed` (action) | `string $moduleName, string $actionName, ?string $id, ?array $ids` — read-only actions (index/edit/create/view) are not included |
+| A bulk action over a selection is about to run | `BulkActionExecuting` | `nexus.bulk_action.executing` (filter) | `string $moduleName, string $actionName, array &$ids` — part of the ids can be removed (partial veto) |
 
-### Побудова форми/таблиці модуля в адмінці
+### Building the module's admin form/table
 
-Загальний, імперативний "родич" `#[AttachField]`/`#[AttachColumn]` — дозволяє додати поле/
-колонку/вкладку, не чіпаючи файл модуля.
+A general, imperative "relative" of `#[AttachField]`/`#[AttachColumn]` — lets you add a field/
+column/tab without touching the module's file.
 
-| Момент | Клас події | Хук (тип) | Дані |
+| Moment | Event class | Hook (type) | Data |
 | --- | --- | --- | --- |
-| Конфігурація форми зібрана, перед рендером | `AdminFormBuilding` | `nexus.form.building` (action) | `moduleName, config, ?Model $model, ?array $liveData` — мутуйте `$event->config` напряму |
-| Поля форми фіналізовані | `FormFieldsPrepared` | `nexus.form.fields_prepared` (filter) | `moduleName, array &$fields` |
-| Конфігурація таблиці зібрана, перед рендером | `AdminTableBuilding` | `nexus.table.building` (action) | `moduleName, config` — мутуйте `$event->config` (колонки/фільтри/дії) |
-| Рядки таблиці отримані | `TableDataPrepared` | `nexus.table.data_prepared` (filter) | `moduleName, array &$data` |
+| Form configuration assembled, before rendering | `AdminFormBuilding` | `nexus.form.building` (action) | `moduleName, config, ?Model $model, ?array $liveData` — mutate `$event->config` directly |
+| Form fields finalized | `FormFieldsPrepared` | `nexus.form.fields_prepared` (filter) | `moduleName, array &$fields` |
+| Table configuration assembled, before rendering | `AdminTableBuilding` | `nexus.table.building` (action) | `moduleName, config` — mutate `$event->config` (columns/filters/actions) |
+| Table rows retrieved | `TableDataPrepared` | `nexus.table.data_prepared` (filter) | `moduleName, array &$data` |
 
-### Валідація
+### Validation
 
-| Момент | Клас події | Хук (тип) | Дані |
+| Moment | Event class | Hook (type) | Data |
 | --- | --- | --- | --- |
-| `FormRequest` от-от валідується | `PreparingForValidation` | `nexus.validation.preparing` (action) | `FormRequest $request` |
-| Правила зібрані (спрацьовує і для власного рукописного `AdminStoreRequest`/`AdminUpdateRequest` модуля — через `NexusFormRequest::withValidator()`) | `GatheringValidationRules` | `nexus.validation.rules` (filter) | `$moduleConfig, array &$rules, string $action` |
+| A `FormRequest` is about to be validated | `PreparingForValidation` | `nexus.validation.preparing` (action) | `FormRequest $request` |
+| Rules assembled (also fires for a module's own handwritten `AdminStoreRequest`/`AdminUpdateRequest` — via `NexusFormRequest::withValidator()`) | `GatheringValidationRules` | `nexus.validation.rules` (filter) | `$moduleConfig, array &$rules, string $action` |
 
-### API, імпорт/експорт
+### API, import/export
 
-| Момент | Клас події | Хук (тип) | Дані |
+| Moment | Event class | Hook (type) | Data |
 | --- | --- | --- | --- |
-| Загальний `NexusResource` серіалізує модель (пропускається повністю, якщо у модуля є власний `{Model}Resource`) | `ApiResourceBuilding` | `nexus.api.resource` (filter) | `Model $resource, array &$data` |
-| Кожен рядок CSV-експорту | `ExportRowBuilding` | `nexus.export.row` (filter) | `Model $model, array &$row, string $moduleName` |
-| Кожен рядок CSV-імпорту, перед mass-assignment (у будь-якому разі фільтрується по fillable) | `ImportRowBuilding` | `nexus.import.row` (filter) | `array &$data, $moduleConfig` |
+| The general `NexusResource` serializes a model (skipped entirely if the module has its own `{Model}Resource`) | `ApiResourceBuilding` | `nexus.api.resource` (filter) | `Model $resource, array &$data` |
+| Each row of a CSV export | `ExportRowBuilding` | `nexus.export.row` (filter) | `Model $model, array &$row, string $moduleName` |
+| Each row of a CSV import, before mass assignment (filtered by fillable regardless) | `ImportRowBuilding` | `nexus.import.row` (filter) | `array &$data, $moduleConfig` |
 
-### Права, меню, дашборд
+### Permissions, menu, dashboard
 
-| Момент | Клас події | Хук (тип) | Дані |
+| Moment | Event class | Hook (type) | Data |
 | --- | --- | --- | --- |
-| Рішення про право щойно обчислене | `PermissionChecking` | `nexus.permission.check` (filter) | `string $action, ?Module $module, string $place, bool &$result` |
-| Бокове меню зібране | `SidebarMenuBuilding` | `nexus.menu.sidebar` (filter) | `array &$menu` — масив `MenuConfigDto`, можна додати пункт, не прив'язаний до жодного модуля |
-| Layout дашборду вирішено (каскад own-row → is_default-row → config вже застосовано) | `DashboardLayoutResolving` | `nexus.dashboard.layout` (filter) | `?Authenticatable $user, array &$layout` |
+| A permission decision has just been computed | `PermissionChecking` | `nexus.permission.check` (filter) | `string $action, ?Module $module, string $place, bool &$result` |
+| Side menu assembled | `SidebarMenuBuilding` | `nexus.menu.sidebar` (filter) | `array &$menu` — an array of `MenuConfigDto`; you can add an entry not tied to any module |
+| Dashboard layout resolved (cascade: own row → is_default row → config already applied) | `DashboardLayoutResolving` | `nexus.dashboard.layout` (filter) | `?Authenticatable $user, array &$layout` |
 
-### Медіа, виявлення/життєвий цикл модулів, пошук, сповіщення
+### Media, module discovery/lifecycle, search, notifications
 
-| Момент | Клас події | Хук (тип) | Дані |
+| Moment | Event class | Hook (type) | Data |
 | --- | --- | --- | --- |
-| Перед приєднанням медіа-файлу (кидання винятку відхиляє завантаження) | `MediaAttaching` | `nexus.media.attaching` (action) | `Model $model, UploadedFile $file, string $collection` |
-| Після приєднання дійсно нового файлу (не sha256-дедуп) | `MediaAttached` | `nexus.media.attached` (action) | `Model $model, MediaItemDto $item, string $collection` |
-| Список модулів зібрано, після файлової сканки Modules/UserModules | `ModuleDiscoveryCompleted` | `nexus.module.discovery` (filter) | `Collection &$modules` — додати модуль без реальної директорії, або приховати наявний |
-| Модуль щойно встановлено / видалено | `ModuleInstalled` / `ModuleUninstalled` | `nexus.module.installed` / `nexus.module.uninstalled` (action) | `string $moduleName` |
-| Результати глобального пошуку зібрані | `GlobalSearchCompleted` | `nexus.search.results` (filter) | `array &$results, string $term` — додати групу результатів поза модулями |
-| Payload дзвіночка сповіщень в адмінці зібраний | `NotificationDataBuilding` | `nexus.notification.data` (filter) | `Notification $notification, $notifiable, array &$data` |
+| Before attaching a media file (throwing an exception rejects the upload) | `MediaAttaching` | `nexus.media.attaching` (action) | `Model $model, UploadedFile $file, string $collection` |
+| After attaching a genuinely new file (not a sha256 dedup) | `MediaAttached` | `nexus.media.attached` (action) | `Model $model, MediaItemDto $item, string $collection` |
+| Module list assembled, after the Modules/UserModules filesystem scan | `ModuleDiscoveryCompleted` | `nexus.module.discovery` (filter) | `Collection &$modules` — add a module without a real directory, or hide an existing one |
+| Module just installed / uninstalled | `ModuleInstalled` / `ModuleUninstalled` | `nexus.module.installed` / `nexus.module.uninstalled` (action) | `string $moduleName` |
+| Global search results assembled | `GlobalSearchCompleted` | `nexus.search.results` (filter) | `array &$results, string $term` — add a results group outside the modules |
+| Admin notification-bell payload assembled | `NotificationDataBuilding` | `nexus.notification.data` (filter) | `Notification $notification, $notifiable, array &$data` |
 
-### Типи полів, віджети (boot-time / вивід)
+### Field types, widgets (boot-time / output)
 
-| Момент | Клас події | Хук (тип) | Дані |
+| Moment | Event class | Hook (type) | Data |
 | --- | --- | --- | --- |
-| Реєстрація типів полів на boot (третя й остання точка реєстрації) | `FieldTypesRegistering` | `nexus.field_types.register` (action) | `FieldTypeRegistry $registry` |
-| `data` чи рендерений `html` віджета вирішено, **до** кешування `WidgetOutputCache` | `WidgetOutputResolving` | `widget.data.{key}` / `widget.html.{key}` (filter) | `string $widgetKey, string $kind, mixed &$output, WidgetContext $context` |
+| Field types registration at boot (the third and final registration point) | `FieldTypesRegistering` | `nexus.field_types.register` (action) | `FieldTypeRegistry $registry` |
+| A widget's `data` or rendered `html` has been resolved, **before** `WidgetOutputCache` caching | `WidgetOutputResolving` | `widget.data.{key}` / `widget.html.{key}` (filter) | `string $widgetKey, string $kind, mixed &$output, WidgetContext $context` |
 
-Кожен клас події з таблиць вище лежить у `packages/nodex/nexus/src/Events/` з повним докблоком
-(обґрунтування + готовий приклад слухача) — перед тим, як здогадуватись про форму payload,
-відкрийте сам клас. `ModuleEvent` — старіша, нетипізована подія, залишена для зворотної
-сумісності; для нового коду обирайте конкретну типізовану подію з таблиць вище.
+Every event class from the tables above lives in `packages/nodex/nexus/src/Events/` with a full docblock
+(rationale + a ready-made listener example) — before guessing at the payload shape,
+open the class itself. `ModuleEvent` is an older, untyped event kept for backward
+compatibility; for new code, choose a concrete typed event from the tables above.
 
-## Скафолдинг команди
+## Scaffolding commands
 
 ```bash
 php artisan nexus:make:plugin {name} --module={module}
 ```
 
-Створює `app/Nexus/Plugins/{name}/{name}Plugin.php` зі скелетом з `#[TargetModule]`,
-`register()`/`boot()`/`handle()` і прикладами `#[Filter]`/`#[Action]`. Ніякої додаткової
-реєстрації не потрібно — плагін підхопиться автоматично на наступному запиті.
+Creates `app/Nexus/Plugins/{name}/{name}Plugin.php` with a skeleton containing `#[TargetModule]`,
+`register()`/`boot()`/`handle()`, and examples of `#[Filter]`/`#[Action]`. No additional
+registration is needed — the plugin is picked up automatically on the next request.
 
 ```bash
 php artisan nexus:make:filter {module}
 ```
 
-Це **окрема** команда — вона не пов'язана з атрибутом `#[Filter]`/хуками вище, а створює
-`app/Nexus/Modules/{module}/Filters/ModuleFilterHandler.php`, клас, що перевизначає
-`FilterHandler::filter()` для *таблиці адмінки* цього модуля. Він потрібен, коли
-`#[AttachFilter]` (чи власний `#[TableFilter]` модуля) оголошує `type`, відмінний від
-дефолтного `'search'` — `'search'` уже реалізований базовим `FilterHandler` (LIKE по всіх
-колонках таблиці) і додаткового коду не потребує, а кастомний `type` треба обробити тут:
+This is a **separate** command — it's unrelated to the `#[Filter]` attribute/hooks above; it creates
+`app/Nexus/Modules/{module}/Filters/ModuleFilterHandler.php`, a class that overrides
+`FilterHandler::filter()` for that module's *admin table*. It's needed when
+`#[AttachFilter]` (or the module's own `#[TableFilter]`) declares a `type` other than
+the default `'search'` — `'search'` is already implemented by the base `FilterHandler` (LIKE across all
+table columns) and needs no extra code, while a custom `type` has to be handled here:
 
 ```php
 class ModuleFilterHandler extends FilterHandler
@@ -373,15 +375,15 @@ class ModuleFilterHandler extends FilterHandler
 }
 ```
 
-Клас резолвиться автоматично за іменем модуля — реєструвати вручну не потрібно, але кожен
-кастомний фільтр однаково має бути оголошений у `TableConfigDto->filters` модуля (через
-`#[TableFilter]` або `#[AttachFilter]`), інакше він просто не з'явиться в UI списку.
+The class is resolved automatically by the module's name — no manual registration needed, but every
+custom filter still has to be declared in the module's `TableConfigDto->filters` (via
+`#[TableFilter]` or `#[AttachFilter]`), otherwise it simply won't show up in the list UI.
 
-## Виявлення плагінів і момент завантаження (boot timing)
+## Plugin discovery and boot timing
 
-`PluginManager::autoDiscover()` сканує `app_path('Nexus/Plugins')` на глибину одного рівня
-(`{Plugin}/*.php`), а також окремі `.php`-файли безпосередньо в `Nexus/Plugins/` (для простих
-однофайлових плагінів). Вимкнути плагін без видалення файлу:
+`PluginManager::autoDiscover()` scans `app_path('Nexus/Plugins')` one level deep
+(`{Plugin}/*.php`), as well as individual `.php` files directly inside `Nexus/Plugins/` (for simple
+single-file plugins). To disable a plugin without deleting the file:
 
 ```php
 // config/nexus.php
@@ -392,40 +394,40 @@ class ModuleFilterHandler extends FilterHandler
 ],
 ```
 
-Ключа `plugins` немає в дефолтному конфіг-файлі пакета "з коробки" — за потреби додайте масив
-самі; `config('nexus.plugins.disabled', [])` однаково впаде на порожній масив, якщо ключа немає.
+The `plugins` key doesn't exist in the package's default config file out of the box — add the array
+yourself if needed; `config('nexus.plugins.disabled', [])` falls back to an empty array either way if the key is missing.
 
-> **Важливо: `boot()`, а не `register()`.** Сам пакет викликає `PluginManager::autoDiscover()`
-> та `registerAll()` з `NexusServiceProvider::boot()`, **не** з `register()` — і на це є
-> конкретна причина: `PluginManager::isPluginEnabled()` (перемикач "увімк/вимк" плагіна з
-> адмінки, таблиця `nexus_plugins`) читає з БД, а резолвер з'єднання Eloquent ще не готовий під
-> час `register()` — `register()` кожного провайдера в Laravel виконується раніше за `boot()`
-> будь-якого провайдера, включно з провайдером самого Eloquent. `bootAll()` (виклик `boot()` вже
-> зареєстрованих плагінів) відповідно викликається пізніше, у `boot()` пакета, з тим самим
-> `app.debug`-гейтом. **Якщо ви самі пишете код, що звертається до БД під час
-> discovery/реєстрації власних розширень (не лише плагінів Nexus) — виконуйте його з `boot()`
-> свого `ServiceProvider`, а не з `register()`.** Порушення цього порядку не кидає виняток —
-> DB-перевірка просто мовчки "провалюється" (типово в бік fail-open, тобто нібито "все увімкнено"),
-> що складно відловити пізніше.
+> **Important: `boot()`, not `register()`.** The package itself calls `PluginManager::autoDiscover()`
+> and `registerAll()` from `NexusServiceProvider::boot()`, **not** from `register()` — and there's a
+> specific reason for this: `PluginManager::isPluginEnabled()` (the plugin on/off toggle
+> in the admin panel, the `nexus_plugins` table) reads from the DB, and the Eloquent connection resolver isn't
+> ready yet during `register()` — every provider's `register()` in Laravel runs before any
+> provider's `boot()`, including the Eloquent provider's own. `bootAll()` (calling `boot()` on already
+> registered plugins) is accordingly called later, in the package's `boot()`, under the same
+> `app.debug` gate. **If you write your own code that hits the DB during
+> discovery/registration of your own extensions (not just Nexus plugins), run it from your own
+> `ServiceProvider`'s `boot()`, not from `register()`.** Violating this order doesn't throw an exception —
+> the DB check simply fails silently (typically fail-open, i.e., appearing as if "everything is enabled"),
+> which is hard to catch later.
 
-Виняток, кинутий під час discovery/`register()`/`boot()` одного плагіна, прокидається далі лише
-якщо `app.debug === true`; інакше він логується через `report()` і проковтується — тобто один
-зламаний плагін не покладе всю адмінку в продакшені. Це не привід ігнорувати помилку — перевіряйте
-логи, тиша ще не означає успіх.
+An exception thrown during discovery/`register()`/`boot()` of a single plugin only propagates further
+if `app.debug === true`; otherwise it is logged via `report()` and swallowed — meaning one
+broken plugin won't take down the entire admin panel in production. This is not a reason to ignore the error — check the
+logs; silence still doesn't mean success.
 
-## Готовий приклад
+## Ready-made example
 
-`app/Nexus/Plugins/ConfirmFixtureNote/ConfirmFixtureNotePlugin.php` — робочий приклад
-`#[AttachField]`/`#[AttachColumn]`/`#[AttachFilter]` (додає relationManager-поле "notes",
-лічильник "notes_count" і пошуковий фільтр "notes_search" на модуль `ConfirmFixture`, яким не
-володіє), у парі з data-шаром у `Relations/ConfirmFixtureRelations.php` того ж модуля.
-Покрито тестом `tests/Feature/Nexus/AttachFieldColumnTest.php`.
+`app/Nexus/Plugins/ConfirmFixtureNote/ConfirmFixtureNotePlugin.php` — a working example of
+`#[AttachField]`/`#[AttachColumn]`/`#[AttachFilter]` (adds a "notes" relationManager field,
+a "notes_count" counter, and a "notes_search" search filter to the `ConfirmFixture` module, which it
+doesn't own), paired with the data layer in `Relations/ConfirmFixtureRelations.php` of that same module.
+Covered by the test `tests/Feature/Nexus/AttachFieldColumnTest.php`.
 
-`app/Nexus/Plugins/Example/ExamplePlugin.php` — робочий приклад повного циклу
-discover → registerAll/bootAll → apply(): `handle()`, що мутує лейбл пункту меню, `#[Filter]`
-на `nexus.validation.rules`, обмежений модулем `Demo`, і `#[Action]`, що реєструє аліас
-типу поля. Покрито тестом `tests/Feature/Nexus/PluginSystemTest.php`.
+`app/Nexus/Plugins/Example/ExamplePlugin.php` — a working example of the full cycle
+discover → registerAll/bootAll → apply(): `handle()`, which mutates a menu item's label, `#[Filter]`
+on `nexus.validation.rules` scoped to the `Demo` module, and `#[Action]`, which registers a field-type
+alias. Covered by the test `tests/Feature/Nexus/PluginSystemTest.php`.
 
-`app/Nexus/Plugins/GraphQL/GraphQLPlugin.php` і `app/Nexus/Plugins/BlockTypes/BlockTypesPlugin.php`
-— приклади плагінів-якорів (`#[TargetModule('User')]` з порожнім `handle()`), уся робота яких —
-у `boot()` (реєстрація маршруту GraphQL API та типів блоків редактора відповідно).
+`app/Nexus/Plugins/GraphQL/GraphQLPlugin.php` and `app/Nexus/Plugins/BlockTypes/BlockTypesPlugin.php`
+— examples of anchor plugins (`#[TargetModule('User')]` with an empty `handle()`), all of whose work
+happens in `boot()` (registering the GraphQL API route and editor block types, respectively).

@@ -1,26 +1,28 @@
-# Архітектура пакета Nodex\Nexus
+# Nodex\Nexus Package Architecture
 
-Цей документ — про внутрішню "сантехніку" самого пакета `nodex/nexus`
-(`packages/nodex/nexus`): як `NexusServiceProvider` піднімає застосунок, як
-влаштований конфіг, кеш маніфесту модулів, Blade-директиви, система шаблонів
-та реєстрація типів полів. Як писати модуль/плагін/віджет — це окремі
-документи ([modules.md](modules.md), [plugins.md](plugins.md), [widgets.md](widgets.md)),
-тут про це немає.
+This document covers the internal "plumbing" of the `nodex/nexus` package
+itself (`packages/nodex/nexus`): how `NexusServiceProvider` boots the
+application, how the config is structured, the module manifest cache, Blade
+directives, the template system, and field-type registration. How to write a
+module/plugin/widget is covered in separate documents
+([modules.md](modules.md), [plugins.md](plugins.md), [widgets.md](widgets.md));
+none of that is here.
 
-Джерело істини — сам код, насамперед `src/NexusServiceProvider.php`. Усі
-твердження нижче звірені з реальними файлами; де впевненості немає, це прямо
-сказано.
+The source of truth is the code itself, primarily
+`src/NexusServiceProvider.php`. All statements below have been checked
+against the actual files; where there is no certainty, that is stated
+explicitly.
 
-## 1. Послідовність завантаження (`NexusServiceProvider`)
+## 1. Boot sequence (`NexusServiceProvider`)
 
 ### `register()`
 
-Порядок важливий: пізніші кроки покладаються на те, що сінглтони з попередніх
-кроків уже існують у контейнері.
+Order matters: later steps rely on singletons from earlier steps already
+existing in the container.
 
-1. `require_once __DIR__.'/helpers/functions.php'` — глобально стають
-   доступні `nexus_filter()`/`nexus_action()`.
-2. Біндяться як `singleton()` майже всі основні сервіси пакета:
+1. `require_once __DIR__.'/helpers/functions.php'` — makes `nexus_filter()`/
+   `nexus_action()` globally available.
+2. Almost all of the package's core services are bound as `singleton()`:
    `PathManager`, `ModuleRegistry`, `ModuleManager`, `ModuleManifestCache`,
    `FormBuilder`, `ModuleServiceForAdminPanel`, `IconManager`, `HookManager`,
    `RelationRegistrar`, `ModuleDependencyChecker`, `PluginManager`,
@@ -28,11 +30,10 @@
    `FieldVisibilityEvaluator`, `WidgetRegistry`, `BlockTypeRegistry`,
    `DashboardLayoutResolver`, `AdminDashboardRenderer`, `FrontWidgetRenderer`,
    `TemplateTypeResolver`, `NexusRuleCollector`.
-3. `MediaLibraryInterface` біндиться через `bind()` (не `singleton()`) на
-   `SpatieMediaLibraryService` — застосунок може перевизначити цей бінд у
-   власному провайдері (який завантажується після `NexusServiceProvider`), і
-   перевизначення просто виграє, без будь-якої спеціальної точки розширення
-   з боку Nexus:
+3. `MediaLibraryInterface` is bound via `bind()` (not `singleton()`) to
+   `SpatieMediaLibraryService` — the application can override this binding in
+   its own provider (which loads after `NexusServiceProvider`), and the
+   override simply wins, with no dedicated extension point on Nexus's side:
 
    ```php
    $this->app->bind(
@@ -40,57 +41,58 @@
        SpatieMediaLibraryService::class,
    );
    ```
-4. Так само `bind()`-иться `SettingsProviderInterface` → `DatabaseSettingsProvider`
-   (сховище для `#[Setting(...)]`).
-5. Якщо клас `Faker\Generator` доступний — реєструється `FakerGenerator`
-   singleton із кастомним `FakerImageProvider`.
+4. `SettingsProviderInterface` → `DatabaseSettingsProvider` is likewise
+   `bind()`-ed (the store for `#[Setting(...)]`).
+5. If the `Faker\Generator` class is available, a `FakerGenerator` singleton
+   is registered with a custom `FakerImageProvider`.
 
-`PluginManager::autoDiscover()`/`registerAll()` у `register()` **не
-викликаються** — вони перенесені у `boot()` (див. розділ "Готчі" нижче), і
-коментар прямо в коді пояснює чому.
+`PluginManager::autoDiscover()`/`registerAll()` are **not called** in
+`register()` — they were moved into `boot()` (see the "Gotchas" section
+below), and a comment right in the code explains why.
 
-### `boot()`, у фактичному порядку джерела
+### `boot()`, in the actual order of the source
 
-1. **Discovery та реєстрація плагінів** (`PluginManager::autoDiscover()` +
-   `registerAll()`), обгорнуті в `try/catch`: у `app.debug` виняток
-   прокидається далі, інакше — `report($e)` і мовчазне проковтування.
+1. **Plugin discovery and registration** (`PluginManager::autoDiscover()` +
+   `registerAll()`), wrapped in `try/catch`: under `app.debug` the exception
+   is rethrown, otherwise it's `report($e)` and silently swallowed.
 2. `Model::shouldBeStrict(! $this->app->isProduction())`.
 3. `mergeConfig()` — `mergeConfigFrom(config/nexus.php, 'nexus')`.
-4. `publish()` — реєстрація publishable-груп (таблиця нижче).
-5. `loadMigrationsFrom(__DIR__.'/database/migrations')` пакета +
-   `registerDefaultApiRateLimiter()` (дефолтний rate-лімітер `'api'`, тільки
-   якщо застосунок ще не визначив свій — інакше `throttleApi()` без власного
-   `RateLimiter::for('api', ...)` впав би з `MissingRateLimiterException`).
-6. Реєструються три Blade-директиви: `@position`, `@nexusForm`,
-   `@nexusBlocks` (розділ 4).
-7. `registerValidationRulesFilter()` — хук на
+4. `publish()` — registers the publishable groups (table below).
+5. `loadMigrationsFrom(__DIR__.'/database/migrations')` of the package +
+   `registerDefaultApiRateLimiter()` (a default `'api'` rate limiter, only if
+   the application hasn't already defined its own — otherwise `throttleApi()`
+   without an app-defined `RateLimiter::for('api', ...)` would fail with
+   `MissingRateLimiterException`).
+6. Three Blade directives are registered: `@position`, `@nexusForm`,
+   `@nexusBlocks` (section 4).
+7. `registerValidationRulesFilter()` — a hook on
    `Illuminate\Contracts\Validation\Factory::resolver()`.
-8. Визначається список модулів для discovery: поза консоллю — з
-   `ModuleManifestCache::get()` (якщо файл кешу існує), інакше —
-   `ModuleRegistry::getEnabledModules()`; у консолі — завжди **всі** модулі
-   через `ModuleRegistry::getAllModules()` (щоб `migrate:fresh` та подібні
-   команди бачили все, незалежно від `is_enabled`).
-9. По черзі: `loadMigration()` → `loadView()` → `loadTranslation()` →
+8. The list of modules for discovery is determined: outside the console —
+   from `ModuleManifestCache::get()` (if the cache file exists), otherwise
+   `ModuleRegistry::getEnabledModules()`; in the console — always **all**
+   modules via `ModuleRegistry::getAllModules()` (so that `migrate:fresh` and
+   similar commands see everything, regardless of `is_enabled`).
+9. In sequence: `loadMigration()` → `loadView()` → `loadTranslation()` →
    `loadIcon()` → `loadRoute()` → `loadEvents()` →
    `Event::listen(ModuleInstalled::class, SendModuleInstalledNotification::class)`
    → `loadRelations()` → `loadFieldTypes()` →
    `registerBuiltInFieldTypeAliases()` → `registerBuiltInFieldTypeDefaultRules()`
-   → `loadWidgets()` → `loadLivewireComponents()` (реєструє три Livewire-компоненти:
-   `nexus-module-table`, `nexus-module-form`, `nexus-module-settings-form`).
-10. `viewCompose()` — вішає `View::composer()` на
-    `nexus::{template}.layouts.adminpanel` (сайдбар-меню +
-    `moduleMissingDependencies`), плюс власні `$config->composers` кожного
-    модуля.
-11. У консолі — `registerSeeders()`.
-12. `runCommand()` — реєстрація артизан-команд пакета й модулів.
-13. **Boot плагінів** (`PluginManager::bootAll()`), той самий `try/catch`
-    з `app.debug`-гейтом, що й у кроці 1.
-14. Фінальна точка реєстрації типів полів: подія `FieldTypesRegistering` +
-    `nexus_action('nexus.field_types.register', $fieldTypeRegistry)`.
+   → `loadWidgets()` → `loadLivewireComponents()` (registers three Livewire
+   components: `nexus-module-table`, `nexus-module-form`,
+   `nexus-module-settings-form`).
+10. `viewCompose()` — attaches a `View::composer()` to
+    `nexus::{template}.layouts.adminpanel` (sidebar menu +
+    `moduleMissingDependencies`), plus each module's own `$config->composers`.
+11. In the console — `registerSeeders()`.
+12. `runCommand()` — registers the package's and modules' artisan commands.
+13. **Plugin boot** (`PluginManager::bootAll()`), the same `try/catch` with
+    the `app.debug` gate as in step 1.
+14. The final field-type registration point: the `FieldTypesRegistering`
+    event + `nexus_action('nexus.field_types.register', $fieldTypeRegistry)`.
 
 ```php
-// NexusServiceProvider::boot(), фрагмент — три поточні реєстрації типів полів
-$this->loadFieldTypes();                       // 2: модульні FieldTypes/*.php
+// NexusServiceProvider::boot(), excerpt — the three current field-type registration points
+$this->loadFieldTypes();                       // 2: per-module FieldTypes/*.php
 $this->registerBuiltInFieldTypeAliases();
 $this->registerBuiltInFieldTypeDefaultRules();
 ...
@@ -99,64 +101,67 @@ event(new FieldTypesRegistering($fieldTypeRegistry));                 // 3a
 nexus_action('nexus.field_types.register', $fieldTypeRegistry);       // 3b
 ```
 
-## 2. Конфіг: `config/nexus.php`
+## 2. Config: `config/nexus.php`
 
-### Ключі пакетного файлу (`packages/nodex/nexus/src/config/nexus.php`)
+### Keys in the package file (`packages/nodex/nexus/src/config/nexus.php`)
 
-| Ключ | Призначення |
+| Key | Purpose |
 | --- | --- |
-| `template` | Активна адмін-тема (`env('ZENTARA_TEMPLATE', 'tailadmin')`) — розділ 5. |
-| `admin_prefix` | Префікс адмін-роутів (`env('ADMIN_PREFIX', 'admin')`). |
-| `admin_middleware` | Middleware-стек адмінки: `['web', 'auth', NexusAdminMiddleware::class]` + закоментований приклад для app-специфічного middleware (типу локалізації). |
-| `api_prefix` | Префікс API-роутів (`env('API_PREFIX', 'api')`). |
-| `api_middleware` | Middleware-стек API: `['api']`. |
-| `table.pagination.per_page_options` / `default_per_page` | Опції пагінації в таблицях модулів. |
-| `permissions.generate_default` | Чи генерувати дефолтні permission-и для модуля. |
-| `toast.enabled` / `toast.delay` | Поведінка toast-сповіщень в адмінці. |
-| `widget_template_map` | Мапа `route name → template type` для `@position`/фронт-віджетів (див. `TemplateTypeResolver`). |
-| `dashboard.default` | Впорядкований список widget-ключів (`#[Widget(name:)]`) для дашборду на свіжій інсталяції без рядків у `nexus_dashboard_layouts`. |
-| `media_library.enabled` | Вмикає/вимикає `#[Field(type: 'gallery')]` (стаб-повідомлення замість поля, якщо `false`). |
-| `plugins.disabled` | Список FQCN плагінів, які `PluginManager::autoDiscover()` має пропустити. |
+| `template` | The active admin theme (`env('ZENTARA_TEMPLATE', 'tailadmin')`) — section 5. |
+| `admin_prefix` | Prefix for admin routes (`env('ADMIN_PREFIX', 'admin')`). |
+| `admin_middleware` | The admin middleware stack: `['web', 'auth', NexusAdminMiddleware::class]` + a commented-out example for app-specific middleware (such as localization). |
+| `api_prefix` | Prefix for API routes (`env('API_PREFIX', 'api')`). |
+| `api_middleware` | The API middleware stack: `['api']`. |
+| `table.pagination.per_page_options` / `default_per_page` | Pagination options in module tables. |
+| `permissions.generate_default` | Whether to generate default permissions for a module. |
+| `toast.enabled` / `toast.delay` | Toast-notification behavior in the admin panel. |
+| `widget_template_map` | A `route name → template type` map for `@position`/front-end widgets (see `TemplateTypeResolver`). |
+| `dashboard.default` | An ordered list of widget keys (`#[Widget(name:)]`) for the dashboard on a fresh install with no rows yet in `nexus_dashboard_layouts`. |
+| `media_library.enabled` | Enables/disables `#[Field(type: 'gallery')]` (shows a stub message instead of the field when `false`). |
+| `plugins.disabled` | A list of plugin FQCNs that `PluginManager::autoDiscover()` should skip. |
 
-Ключі `nexus.graphql_middleware`, `nexus.graphql_prefix` у пакетному файлі
-**відсутні навмисно** — GraphQL є платним app-level плагіном
-(`app/Nexus/Plugins/GraphQL`), не частиною цього репозиторію (див.
-`../README.md`), тож ці ключі живуть лише в кореневому `config/nexus.php`.
+The `nexus.graphql_middleware` and `nexus.graphql_prefix` keys are
+**deliberately absent** from the package file — GraphQL is a paid app-level
+plugin (`app/Nexus/Plugins/GraphQL`), not part of this repository (see
+`../README.md`), so these keys live only in the application's root
+`config/nexus.php`.
 
-### Дубльований конфіг-файл (root vs package)
+### Duplicated config file (root vs. package)
 
-`packages/nodex/nexus/src/config/nexus.php` (дефолти пакета) і опублікована
-копія `config/nexus.php` у корені застосунку — два різні файли, і
-`mergeConfigFrom()` у `boot()` **домальовує лише ті ключі, яких немає в
-кореневому файлі**; жодного наявного там ключа він не перезаписує. Тобто для
-будь-якого ключа, який є в обох файлах, реально діє значення з кореневого —
-перевірити можна командою:
+`packages/nodex/nexus/src/config/nexus.php` (the package defaults) and the
+published copy `config/nexus.php` at the application root are two separate
+files, and `mergeConfigFrom()` in `boot()` **only fills in keys that are
+missing from the root file**; it never overwrites a key that's already
+there. In other words, for any key present in both files, the value that
+actually takes effect is the one from the root file — you can verify this
+with:
 
 ```bash
 php artisan config:show nexus.dashboard
 ```
 
-Станом на зараз обидва файли звірені й синхронізовані для спільних ключів
-(`dashboard.default`, `media_library`, `plugins.disabled` приведені до
-однакових значень; `admin_middleware` в пакеті має закоментований приклад
-замість активного app-специфічного `SetAdminLocale::class`, який лишається
-тільки в корені). `graphql_prefix`/`graphql_middleware` живуть виключно в
-корені — свідомо, не помилка синхронізації.
+As of now, both files have been checked and synchronized for their shared
+keys (`dashboard.default`, `media_library`, and `plugins.disabled` have been
+brought to matching values; the package's `admin_middleware` has a
+commented-out example in place of the active app-specific
+`SetAdminLocale::class`, which remains only in the root file).
+`graphql_prefix`/`graphql_middleware` live exclusively in the root file —
+deliberately, not as a sync oversight.
 
-⚠️ **Правило для мейнтейнерів**: якщо додаєте чи змінюєте будь-який ключ
-`nexus.*`, який не є app-специфічним — редагуйте **обидва** файли
-(`packages/nodex/nexus/src/config/nexus.php` і кореневий `config/nexus.php`),
-і перевіряйте, яке значення реально активне, через `config:show`. Новий
-ключ, якого ще немає в кореневому файлі, підхопиться нормально через
-`mergeConfigFrom()` — саме тому пастку легко не помітити з першого разу: усе
-працює, поки ключ новий.
+⚠️ **Rule for maintainers**: if you add or change any `nexus.*` key that
+isn't app-specific, edit **both** files
+(`packages/nodex/nexus/src/config/nexus.php` and the root `config/nexus.php`),
+and verify which value is actually active via `config:show`. A new key that
+isn't yet in the root file will be picked up normally through
+`mergeConfigFrom()` — which is exactly why this trap is easy to miss the
+first time: everything works, as long as the key is new.
 
-## 3. Кеш маніфесту модулів (`bootstrap/cache/nexus-modules.php`)
+## 3. Module manifest cache (`bootstrap/cache/nexus-modules.php`)
 
-`ModuleManifestCache` (`src/Services/ModuleManifestCache.php`) компілює
-результат дискового сканування кожного модуля (views/routes/translations/
-icons/commands/listeners/relations/scopes/fieldTypes/widgets) в один
-PHP-масив, записаний у `bootstrap/cache/nexus-modules.php`:
+`ModuleManifestCache` (`src/Services/ModuleManifestCache.php`) compiles the
+result of each module's on-disk scan (views/routes/translations/icons/
+commands/listeners/relations/scopes/fieldTypes/widgets) into a single PHP
+array written to `bootstrap/cache/nexus-modules.php`:
 
 ```php
 /**
@@ -170,38 +175,40 @@ PHP-масив, записаний у `bootstrap/cache/nexus-modules.php`:
  */
 ```
 
-Навіщо він існує: без кешу `NexusServiceProvider::boot()` на **кожен**
-HTTP-запит робить `is_dir`/`is_file`-перевірки, читає директорії й рефлексує
-класи для кожного увімкненого модуля — суто продуктивність.
+Why it exists: without the cache, `NexusServiceProvider::boot()` performs
+`is_dir`/`is_file` checks, reads directories, and reflects classes for every
+enabled module on **every** HTTP request — this is purely a performance
+optimization.
 
-Ключові властивості:
+Key properties:
 
-- Читається лише поза консоллю (`! $this->app->runningInConsole()`) — команди
-  (`migrate`, тести тощо) завжди сканують диск наживо, щоб бачити щойно додані
-  модулі без перекомпіляції кешу.
-- Якщо файл кешу відсутній — `ModuleManifestCache::get()` повертає `null`, і
-  `NexusServiceProvider` мовчки падає назад на живе сканування, поведінка не
-  змінюється.
-- Список увімкнених модулів з кешу все одно фільтрується одним живим SQL-запитом
-  до `nexus_modules` (`enabledModulesFromManifest()`), бо "увімкнено/вимкнено" —
-  це перемикач у БД, а не файлова структура.
+- It's only read outside the console (`! $this->app->runningInConsole()`) —
+  commands (`migrate`, tests, etc.) always scan the disk live, so they see
+  newly added modules without needing to recompile the cache.
+- If the cache file is missing, `ModuleManifestCache::get()` returns `null`,
+  and `NexusServiceProvider` silently falls back to live scanning; behavior
+  doesn't change.
+- The list of enabled modules from the cache is still filtered through one
+  live SQL query against `nexus_modules` (`enabledModulesFromManifest()`),
+  because "enabled/disabled" is a toggle in the DB, not a filesystem
+  structure.
 
-Керування командами:
+Managed via commands:
 
 ```bash
-php artisan nexus:module:cache   # скомпілювати bootstrap/cache/nexus-modules.php
-php artisan nexus:module:clear   # видалити його, повернутись до живого сканування
+php artisan nexus:module:cache   # compile bootstrap/cache/nexus-modules.php
+php artisan nexus:module:clear   # delete it, fall back to live scanning
 ```
 
-Якщо щось щойно додане під `app/Nexus/**` (модуль, тип поля, віджет,
-listener, файл перекладу) не з'являється — перше, що варто перевірити,
-це чи існує файл кешу.
+If something newly added under `app/Nexus/**` (a module, field type, widget,
+listener, translation file) isn't showing up, the first thing to check is
+whether the cache file exists.
 
-## 4. Blade-директиви
+## 4. Blade directives
 
-Усі три реєструються прямо в `NexusServiceProvider::boot()` і поділяють один
-принцип: **ніколи не кидають помилку через відсутні дані**, а мовчки
-рендерять пусте місце.
+All three are registered directly in `NexusServiceProvider::boot()` and
+share one principle: **they never throw an error over missing data**, they
+just silently render nothing.
 
 ### `@position('name')` / `@position('name', $templateType)`
 
@@ -219,10 +226,10 @@ Blade::directive('position', function (string $expression) {
 });
 ```
 
-Рендерить усі активні `WidgetAssignment` для заданої позиції через
-`FrontWidgetRenderer`. Якщо `templateType` не передано — визначається через
-`TemplateTypeResolver::resolve()` (route-параметр → дефолт роута →
-`config('nexus.widget_template_map')` за назвою роута → `'default'`).
+Renders all active `WidgetAssignment`s for the given position via
+`FrontWidgetRenderer`. If `templateType` isn't passed, it's determined via
+`TemplateTypeResolver::resolve()` (route parameter → route default →
+`config('nexus.widget_template_map')` by route name → `'default'`).
 
 ### `@nexusForm('contact-slug')`
 
@@ -232,8 +239,8 @@ Blade::directive('nexusForm', function (string $expression) {
 });
 ```
 
-Вставляє публічну форму подання (модуль `Form`) за слагом. Невідомий чи
-неактивний слаг — просто нічого не рендерить.
+Inserts a public submission form (the `Form` module) by slug. An unknown or
+inactive slug simply renders nothing.
 
 ### `@nexusBlocks($page->blocks)`
 
@@ -243,16 +250,15 @@ Blade::directive('nexusBlocks', function (string $expression) {
 });
 ```
 
-Рендерить упорядковану колекцію блоків (наприклад, `PageBlock`), для кожного
-резолвлячи `nexus::public.block_types.{type}` за `View::exists()`. Блок
-невідомого типу пропускається — решта блоків сторінки все одно
-відмальовується.
+Renders an ordered collection of blocks (e.g. `PageBlock`), resolving
+`nexus::public.block_types.{type}` for each one via `View::exists()`. A block
+of an unknown type is skipped — the rest of the page's blocks still render.
 
-## 5. Система шаблонів (tailadmin)
+## 5. Template system (tailadmin)
 
-Активна тема визначається ключем `config('nexus.template')`
-(`env('ZENTARA_TEMPLATE', 'tailadmin')`). Значення підставляється в шлях
-в'юхи буквально в десятках місць пакета, наприклад:
+The active theme is determined by the `config('nexus.template')` key
+(`env('ZENTARA_TEMPLATE', 'tailadmin')`). The value is substituted into the
+view path literally in dozens of places in the package, for example:
 
 ```php
 // Http/Controllers/NexusController.php
@@ -262,97 +268,104 @@ return view('nexus::'.config('nexus.template').'.pages.dashboard', [...]);
 return view('nexus::'.config('nexus.template').'.livewire.module-table', [...]);
 ```
 
-`viewCompose()` в `NexusServiceProvider` теж прив'язаний саме до
-`nexus::{template}.layouts.adminpanel` — нова тема повинна мати такий файл,
-щоб отримати `menus`/`moduleMissingDependencies`.
+`viewCompose()` in `NexusServiceProvider` is also tied specifically to
+`nexus::{template}.layouts.adminpanel` — a new theme must have this file in
+order to receive `menus`/`moduleMissingDependencies`.
 
-**Історична примітка**: на диску є лише одна повна тема з Blade-в'юхами —
-`src/resources/views/tailadmin/**` (поряд ще спільні `components/`,
-`partials/`, `public/`). Коментар у самому конфігу натякає на історію:
+**Historical note**: on disk there is only one complete theme with Blade
+views — `src/resources/views/tailadmin/**` (alongside shared `components/`,
+`partials/`, `public/`). A comment in the config itself hints at the
+history:
 
 ```php
 'template' => env('ZENTARA_TEMPLATE', 'tailadmin'), // tailadmin (nexus theme archived, see resources/views/nexus/ removed in Stage 2)
 ```
 
-Раніше існувала ще й тема `nexus`, яку архівували на "Stage 2" й видалили з
-`resources/views/nexus/`. Тема `adminlte` пройшла той самий шлях і на момент
-першого проходу цієї документації лишалась мертвим артефактом: Blade-шар
-відсутній, а `src/resources/publish/adminlte/**` — 99 МБ статичного
-CSS/JS/img класичної теми AdminLTE — публікувався в `public/` попри те, що
-рендерити цю тему було нічим (`ZENTARA_TEMPLATE=adminlte` зламав би рендер
-на кожному екрані). Каталог **видалено повністю**; два вендорні JS/CSS-файли
-з нього, які реально використовувала тема `tailadmin`
-(`plugins/dropzone/dropzone.js` — drag-and-drop для полів-зображень,
-`plugins/jquery-colorbox/example1/colorbox.css` — стилі логін-сторінки),
-перенесені в `src/resources/publish/packages/{dropzone,jquery-colorbox}` і
-посилання на них у в'юхах оновлені. `config('nexus.template')` тепер
-фактично підтримує лише `tailadmin`; додавання іншої теми знову вимагатиме
-власного дерева `resources/views/{name}/layouts/adminpanel.blade.php` і
-решти файлів за тією ж конвенцією.
+There used to also be a `nexus` theme, which was archived at "Stage 2" and
+removed from `resources/views/nexus/`. The `adminlte` theme went down the
+same path and, as of the first pass of this documentation, remained a dead
+artifact: no Blade layer existed for it, yet
+`src/resources/publish/adminlte/**` — 99 MB of static CSS/JS/img for the
+classic AdminLTE theme — was still being published into `public/`, even
+though there was nothing to render that theme with
+(`ZENTARA_TEMPLATE=adminlte` would break rendering on every screen). The
+directory has been **removed entirely**; two vendor JS/CSS files from it that
+the `tailadmin` theme actually used
+(`plugins/dropzone/dropzone.js` — drag-and-drop for image fields,
+`plugins/jquery-colorbox/example1/colorbox.css` — login-page styles) were
+moved into `src/resources/publish/packages/{dropzone,jquery-colorbox}` and
+the references to them in views were updated. `config('nexus.template')`
+now effectively supports only `tailadmin`; adding another theme will again
+require its own `resources/views/{name}/layouts/adminpanel.blade.php` tree
+and the rest of the files following the same convention.
 
-## 6. Реєстрація типів полів (`FieldTypeRegistry`)
+## 6. Field-type registration (`FieldTypeRegistry`)
 
-`FieldTypeRegistry` (`src/Services/FieldTypeRegistry.php`) — єдина точка
-резолву того, як рендериться `#[Field(type: ...)]`, спільна для обох
-диспетчерів (legacy `templates/sections/_field.blade.php` і Livewire
-`livewire/field_types/dispatch.blade.php`). Порядок резолву (з докблоку
-класу), однаковий для обох:
+`FieldTypeRegistry` (`src/Services/FieldTypeRegistry.php`) is the single
+resolution point for how `#[Field(type: ...)]` gets rendered, shared by both
+dispatchers (the legacy `templates/sections/_field.blade.php` and the
+Livewire `livewire/field_types/dispatch.blade.php`). The resolution order
+(from the class's docblock) is the same for both:
 
-1. `{module}::admin.field_types.{type}` (legacy) або
-   `{module}::admin.livewire_field_types.{type}` (Livewire) — власне
-   перевизначення модуля, завжди виграє, перевіряється самим диспетчером
-   ще до звернення до реєстру.
-2. Цей реєстр — `registerView()` / `registerClass()` / `registerCallback()`.
-3. Вбудована в'юха за конвенційним шляхом типу
-   (`.../templates.field_types.{type}` чи `.../livewire.field_types.{type}`) —
-   резолвиться через `View::exists()`, тобто вбудований тип узагалі не
-   потребує реєстрації в цьому класі, достатньо файлу за конвенцією.
-4. `.../field_types.unknown` (legacy) чи `.../field_types/unsupported`
-   (Livewire) — банер-заглушка, якщо нічого з вищого не спрацювало.
+1. `{module}::admin.field_types.{type}` (legacy) or
+   `{module}::admin.livewire_field_types.{type}` (Livewire) — the module's
+   own override, always wins, checked by the dispatcher itself before it
+   even consults the registry.
+2. This registry — `registerView()` / `registerClass()` / `registerCallback()`.
+3. The built-in view at the conventional path for the type
+   (`.../templates.field_types.{type}` or `.../livewire.field_types.{type}`)
+   — resolved via `View::exists()`, meaning a built-in type doesn't need to
+   be registered in this class at all, a file at the conventional path is
+   enough.
+4. `.../field_types.unknown` (legacy) or `.../field_types/unsupported`
+   (Livewire) — a placeholder banner, if none of the above matched.
 
-### Три точки реєстрації, і коли кожна відбувається
+### Three registration points, and when each one happens
 
-Підтверджено в `NexusServiceProvider::boot()`:
+Confirmed in `NexusServiceProvider::boot()`:
 
-1. **`loadFieldTypes()`** — сканує `FieldTypes/`-папку кожного увімкненого
-   модуля (`ModuleManifestCache::discoverFieldTypes()` або жива версія того
-   самого сканування) і реєструє кожен знайдений клас-рендерер через
-   `$registry->registerClass($fieldType['type'], $fieldType['class'])`.
-   Тип реєструється як `camelCase(ім'я файлу)`.
-2. **Подія `FieldTypesRegistering`** — фінальний крок `boot()`, вже після
-   `loadFieldTypes()` і після boot-фази всіх плагінів.
-3. **Дія `nexus_action('nexus.field_types.register', $fieldTypeRegistry)`** —
-   одразу за подією, той самий реєстр, без потреби створювати клас-плагін;
-   зазвичай саме цим шляхом плагіни `#[Action(hook: 'nexus.field_types.register')]`
-   реєструють/перевизначають типи.
+1. **`loadFieldTypes()`** — scans the `FieldTypes/` folder of every enabled
+   module (`ModuleManifestCache::discoverFieldTypes()` or the live version of
+   the same scan) and registers every discovered renderer class via
+   `$registry->registerClass($fieldType['type'], $fieldType['class'])`. The
+   type is registered as `camelCase(file name)`.
+2. **The `FieldTypesRegistering` event** — the final step of `boot()`,
+   already after `loadFieldTypes()` and after the boot phase of all plugins.
+3. **The `nexus_action('nexus.field_types.register', $fieldTypeRegistry)`
+   action** — right after the event, the same registry, with no need to
+   create a plugin class; this is usually the path plugins
+   `#[Action(hook: 'nexus.field_types.register')]` use to register/override
+   types.
 
-Обидва останні пункти виконуються **в кінці `boot()`** — тобто вже після
-того, як всі модульні `FieldTypes/`-папки завантажені (крок 1) і після
-`PluginManager::bootAll()`. Це дає плагінам можливість перевизначити тип,
-зареєстрований модулем.
+Both of the last two points run **at the very end of `boot()`** — that is,
+after all per-module `FieldTypes/` folders have been loaded (step 1) and
+after `PluginManager::bootAll()`. This gives plugins the ability to override
+a type registered by a module.
 
-`registerBuiltInFieldTypeAliases()` (аліаси `editor→text`, `date→birthday`)
-і `registerBuiltInFieldTypeDefaultRules()` (базові правила валідації за
-типом поля, наприклад `'email' => ['email']`) виконуються між кроком 1 і
-кроками 2–3 — вони не є окремою "точкою реєстрації типів" у сенсі
-докблоку `FieldTypeRegistry`, а доповнюють вже зареєстровані типи алісами й
-дефолтними правилами валідації.
+`registerBuiltInFieldTypeAliases()` (aliases `editor→text`, `date→birthday`)
+and `registerBuiltInFieldTypeDefaultRules()` (base validation rules by field
+type, e.g. `'email' => ['email']`) run between step 1 and steps 2–3 — they
+aren't a separate "type registration point" in the sense of the
+`FieldTypeRegistry` docblock, but rather they augment the already-registered
+types with aliases and default validation rules.
 
-### Чи є пастка з БД, як у плагінів?
+### Is there a DB trap here, like with plugins?
 
-Явних ознак того, що `FieldTypeRegistry`/`loadFieldTypes()` потребують БД,
-у коді немає — реєстрація типів працює виключно з файловою системою й
-рефлексією класів (`class_exists`, `is_subclass_of`), звернень до Eloquent
-чи `DB::` тут не знайдено. На відміну від `PluginManager::autoDiscover()`
-(розділ 7), реєстрація типів полів не має відомої пастки з доступністю БД.
+There's no explicit sign in the code that `FieldTypeRegistry`/
+`loadFieldTypes()` need the DB — type registration works purely off the
+filesystem and class reflection (`class_exists`, `is_subclass_of`); no calls
+to Eloquent or `DB::` were found here. Unlike
+`PluginManager::autoDiscover()` (section 7), field-type registration has no
+known DB-availability trap.
 
-## 7. Готчі для мейнтейнерів
+## 7. Gotchas for maintainers
 
-### 7.1. `register()` vs `boot()` і доступність БД — `PluginManager`
+### 7.1. `register()` vs. `boot()` and DB availability — `PluginManager`
 
-Найбільш задокументована й найважливіша пастка в самому файлі провайдера.
-`PluginManager::autoDiscover()`/`registerAll()` викликаються з `boot()`, а
-не з `register()` — навмисно, з детальним поясненням прямо в коді:
+The best-documented and most important trap, right in the provider file
+itself. `PluginManager::autoDiscover()`/`registerAll()` are called from
+`boot()`, not `register()` — deliberately, with a detailed explanation right
+in the code:
 
 ```php
 // Auto-discover and register plugins. Deliberately in boot(), not
@@ -368,16 +381,16 @@ CSS/JS/img класичної теми AdminLTE — публікувався в 
 // page displayed.
 ```
 
-Іншими словами: `register()` усіх сервіс-провайдерів (включно з
-Laravel-івським `DatabaseServiceProvider`) виконується **до** `boot()`
-будь-якого з них — тож звернення до БД із `register()` гарантовано провалиться
-з `Call to a member function connection() on null`. Якщо плануєте додати ще
-один DB-залежний механізм discovery (наприклад, ще одну перевірку на
-"увімкнено/вимкнено" з таблиці) — виконуйте його з `boot()`, як
-`PluginManager`, і не з `register()`.
+In other words: `register()` for every service provider (including
+Laravel's own `DatabaseServiceProvider`) runs **before** `boot()` for any of
+them — so a DB call from `register()` is guaranteed to fail with
+`Call to a member function connection() on null`. If you're planning to add
+another DB-dependent discovery mechanism (say, another
+enabled/disabled check against a table), run it from `boot()`, like
+`PluginManager` does, and not from `register()`.
 
-Другий шар цієї ж пастки: помилка плагіна під час `register()`/`boot()` не
-валить застосунок мовчки в продакшені —
+A second layer of the same trap: a plugin error during `register()`/`boot()`
+doesn't silently crash the application in production —
 
 ```php
 try {
@@ -392,30 +405,31 @@ try {
 }
 ```
 
-— тобто без `app.debug=true` зламаний плагін проковтується `report()`, і
-про це можна дізнатись лише з логів, а не з видимого падіння адмінки.
+— meaning that without `app.debug=true`, a broken plugin gets swallowed by
+`report()`, and you can only find out from the logs, not from a visible
+crash in the admin panel.
 
-### 7.2. Подвійний конфіг-файл (root vs package)
+### 7.2. Duplicated config file (root vs. package)
 
-Див. розділ 2 повністю: редагування
-`packages/nodex/nexus/src/config/nexus.php` саме по собі нічого не змінює
-для ключа, який уже є в кореневому `config/nexus.php` — потрібно редагувати
-обидва файли й перевіряти активне значення через
+See section 2 in full: editing
+`packages/nodex/nexus/src/config/nexus.php` by itself changes nothing for a
+key that already exists in the root `config/nexus.php` — you need to edit
+both files and verify the active value via
 `php artisan config:show nexus.<key>`.
 
-### 7.3. Кеш маніфесту модулів заморожує все відразу
+### 7.3. The module manifest cache freezes everything at once
 
-`bootstrap/cache/nexus-modules.php` заморожує discovery одразу для
+`bootstrap/cache/nexus-modules.php` freezes discovery for
 views/routes/translations/icons/commands/listeners/relations/scopes/
-fieldTypes/widgets усіх модулів — не лише для однієї підсистеми. Після
-будь-якої структурної зміни під `app/Nexus/**` (новий модуль, новий тип
-поля, новий листенер тощо) — `php artisan nexus:module:clear`, якщо кеш
-взагалі використовується в поточному оточенні.
+fieldTypes/widgets of all modules at once — not just for one subsystem.
+After any structural change under `app/Nexus/**` (a new module, a new field
+type, a new listener, etc.) — run `php artisan nexus:module:clear`, if the
+cache is being used at all in the current environment.
 
-### 7.4. `adminlte` видалено — `config('nexus.template')` де-факто підтримує лише `tailadmin`
+### 7.4. `adminlte` has been removed — `config('nexus.template')` de facto supports only `tailadmin`
 
-Див. розділ 5: тема `adminlte` була мертвим артефактом (без дерева Blade-в'юх)
-і видалена повністю разом із 99 МБ невикористовуваних статичних асетів.
-`config('nexus.template')` формально все ще приймає будь-який рядок — інша
-тема без власного `resources/views/{name}/layouts/adminpanel.blade.php`
-призведе до помилок "view not found" так само, як раніше `adminlte`.
+See section 5: the `adminlte` theme was a dead artifact (no Blade view tree)
+and has been removed entirely, along with 99 MB of unused static assets.
+`config('nexus.template')` still formally accepts any string — another theme
+without its own `resources/views/{name}/layouts/adminpanel.blade.php` will
+produce "view not found" errors, just as `adminlte` did before.

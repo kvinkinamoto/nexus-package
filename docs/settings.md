@@ -1,20 +1,20 @@
 ## <h2 style="color:#ba363f">Settings Registry</h2>
 
-Реєстр налаштувань — це загальний механізм, який дозволяє будь-якому модулю
-чи плагіну оголосити власні налаштування (`#[Setting(...)]`) без окремої
-міграції чи моделі. На відміну від повноцінного модуля, який має власну
-таблицю (одна модель → одна таблиця БД), налаштування зберігаються в
-одній спільній таблиці `nexus_module_settings` як пара (module, key) →
-value. Тобто додати новий setting — це додати один атрибут на клас, а не
-писати `php artisan make:migration`.
+The settings registry is a general-purpose mechanism that lets any module
+or plugin declare its own settings (`#[Setting(...)]`) without a separate
+migration or model. Unlike a full module, which has its own
+table (one model → one database table), settings are stored in
+a single shared table, `nexus_module_settings`, as a (module, key) →
+value pair. In other words, adding a new setting means adding one attribute to a class, not
+writing `php artisan make:migration`.
 
-Кожен модуль, що оголосив хоча б один `#[Setting(...)]`, автоматично отримує
-екран `.../action/settings` і рядок на сторінці «All Settings» — окрема
-таблиця для setting-ів модулю не потрібна.
+Any module that declares at least one `#[Setting(...)]` automatically gets
+a `.../action/settings` screen and a row on the "All Settings" page — a separate
+table for the module's settings is not needed.
 
-## Атрибут `#[Setting(...)]`
+## The `#[Setting(...)]` attribute
 
-Файл: `src/Attributes/Setting.php`.
+File: `src/Attributes/Setting.php`.
 
 ```php
 #[Attribute(Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
@@ -33,29 +33,29 @@ class Setting
 }
 ```
 
-Атрибут вішається на клас (`TARGET_CLASS`) і є повторюваним (`IS_REPEATABLE`)
-— тобто на один клас можна повісити скільки завгодно `#[Setting(...)]`,
-кожен оголошує одне поле.
+The attribute is applied to a class (`TARGET_CLASS`) and is repeatable (`IS_REPEATABLE`)
+— meaning you can attach as many `#[Setting(...)]` as you like to a single class,
+each one declaring one field.
 
-| Параметр | Тип | Обов'язковий | Опис |
+| Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
-| `name` | `string` | так | Ключ налаштування, унікальний у межах модуля. Зберігається як `key` у `nexus_module_settings` і передається в `SettingsBuilder::get()/set()`. |
-| `type` | `string` | так | Тип поля для рендеру форми. У реальному використанні зустрічаються: `string`, `text`, `boolean`, `integer`, `select`, `image` — саме ці типи обробляє `module-settings-form.blade.php`. Інший тип рендериться як звичайний `<input type="text">` (гілка `@else`). |
-| `label` | `?string` | ні | Підпис поля. Якщо не задано, `SettingConfigDto` підставляє `ucfirst($name)`. Фактичний текст на екрані бере переклад `{module}::translate.{lowercase label}` через `nexus_trans_label()` (та сама конвенція, що й у звичайних `#[Field]`). |
-| `default` | `mixed` | ні | Значення за замовчуванням, яке повертає `SettingsBuilder::get()`, поки в БД немає власного рядка. |
-| `required` | `bool` | ні (`false`) | Чи обов'язкове поле при збереженні — `ModuleSettingsForm::save()` будує з цього правило валідації `required`/`nullable`. |
-| `options` | `array` | ні (`[]`) | Пари `value => label` для `type: 'select'`. Ігнорується іншими типами. |
-| `multiple` | `bool` | ні (`false`) | Прапорець "множинний вибір" у `SettingConfigDto` (`isMultiple`). На сьогодні жоден з реальних `#[Setting]`-описів у проєкті його не використовує, і blade-шаблон форми не має гілки, яка б його враховувала — атрибут читається (`AttributeSchemaReader::processSettingAttrs()` викликає `$setting->multiple(...)`), але видимого ефекту в поточному UI немає. |
-| `comment` | `?string` | ні | Підказка під полем (`<p class="mt-1.5 text-xs text-gray-400">`). |
+| `name` | `string` | yes | The setting's key, unique within the module. Stored as `key` in `nexus_module_settings` and passed to `SettingsBuilder::get()/set()`. |
+| `type` | `string` | yes | The field type for form rendering. In practice these occur: `string`, `text`, `boolean`, `integer`, `select`, `image` — `module-settings-form.blade.php` handles exactly these types. Any other type renders as a plain `<input type="text">` (the `@else` branch). |
+| `label` | `?string` | no | The field's label. If not set, `SettingConfigDto` falls back to `ucfirst($name)`. The actual text shown on screen comes from the `{module}::translate.{lowercase label}` translation via `nexus_trans_label()` (the same convention used for regular `#[Field]`). |
+| `default` | `mixed` | no | The default value returned by `SettingsBuilder::get()` as long as there's no row of its own in the database. |
+| `required` | `bool` | no (`false`) | Whether the field is required when saving — `ModuleSettingsForm::save()` builds the `required`/`nullable` validation rule from this. |
+| `options` | `array` | no (`[]`) | `value => label` pairs for `type: 'select'`. Ignored by other types. |
+| `multiple` | `bool` | no (`false`) | The "multiple choice" flag in `SettingConfigDto` (`isMultiple`). As of now none of the real `#[Setting]` declarations in the project use it, and the form's blade template has no branch that accounts for it — the attribute is read (`AttributeSchemaReader::processSettingAttrs()` calls `$setting->multiple(...)`), but it has no visible effect in the current UI. |
+| `comment` | `?string` | no | A hint shown below the field (`<p class="mt-1.5 text-xs text-gray-400">`). |
 
-## Як підключити налаштування до модуля/плагіна
+## How to attach settings to a module/plugin
 
-Достатньо повісити один або кілька `#[Setting(...)]` на клас, який
-`ModuleManager` вже резолвить як конфігурацію модуля — це або Eloquent-модель
-модуля (`Models/{Name}.php`), або окремий клас `ModuleConfiguration.php` для
-модулів без власної таблиці. Реальний приклад — `SitemapCustomUrl`
-(`app/Nexus/Modules/Sitemap/Models/SitemapCustomUrl.php`), де модуль одночасно
-має власну CRUD-таблицю (`sitemap_custom_urls`) *і* три налаштування:
+It's enough to attach one or more `#[Setting(...)]` to a class that
+`ModuleManager` already resolves as the module's configuration — either the module's Eloquent
+model (`Models/{Name}.php`), or a separate `ModuleConfiguration.php` class for
+modules without their own table. A real example is `SitemapCustomUrl`
+(`app/Nexus/Modules/Sitemap/Models/SitemapCustomUrl.php`), where the module simultaneously
+has its own CRUD table (`sitemap_custom_urls`) *and* three settings:
 
 ```php
 #[Module(
@@ -76,19 +76,19 @@ class SitemapCustomUrl extends Model
 }
 ```
 
-Приклад модуля без власної моделі — `App\Nexus\Modules\Settings\ModuleConfiguration`
-(сайтові налаштування: `site_name`, `site_description`, `maintenance_mode`,
-`logo`, `favicon`), побудований повністю на `#[Setting]` без жодної таблиці
-під сам модуль.
+An example of a module without its own model is `App\Nexus\Modules\Settings\ModuleConfiguration`
+(site settings: `site_name`, `site_description`, `maintenance_mode`,
+`logo`, `favicon`), built entirely on `#[Setting]` without any table
+for the module itself.
 
-Атрибути зчитує `AttributeSchemaReader::processSettingAttrs()`: кожен
-`#[Setting]` перетворюється на `SettingConfigDto` і кладеться в
-`DefaultModuleConfigurationDto::$settings[$name]` — саме цей масив і бачать
-`ModuleSettingsForm` та сторінка «All Settings».
+Attributes are read by `AttributeSchemaReader::processSettingAttrs()`: each
+`#[Setting]` is turned into a `SettingConfigDto` and placed into
+`DefaultModuleConfigurationDto::$settings[$name]` — this is exactly the array that
+`ModuleSettingsForm` and the "All Settings" page see.
 
-## Де зберігаються значення та як їх читати в коді
+## Where values are stored and how to read them in code
 
-Значення зберігаються в таблиці `nexus_module_settings`
+Values are stored in the `nexus_module_settings` table
 (`database/migrations/2025_01_01_000000_create_nexus_tables.php`):
 
 ```php
@@ -101,27 +101,27 @@ Schema::create('nexus_module_settings', function (Blueprint $table) {
 });
 ```
 
-Один рядок = одна пара (модуль, ключ); `value` — `json`-колонка, тому туди
-пишеться будь-який скалярний чи структурований PHP-тип. Унікальний індекс
-`(module_id, key)` додано пізнішою міграцією
+One row = one (module, key) pair; `value` is a `json` column, so
+any scalar or structured PHP type can be written to it. The unique index
+`(module_id, key)` was added by a later migration
 (`2026_09_07_000000_add_unique_module_key_to_nexus_module_settings_table.php`)
-— саме на ньому тримається `updateOrCreate()` у провайдері.
+— this is exactly what `updateOrCreate()` in the provider relies on.
 
-Зберігання і читання йде через два шари:
+Storage and reading go through two layers:
 
-- `Nodex\Nexus\Services\Interfaces\SettingsProviderInterface` — контракт
-  (`get`/`set`/`getAll`), в контейнері прив'язаний до
-  `Nodex\Nexus\Services\DatabaseSettingsProvider` у `NexusServiceProvider`
+- `Nodex\Nexus\Services\Interfaces\SettingsProviderInterface` — the contract
+  (`get`/`set`/`getAll`), bound in the container to
+  `Nodex\Nexus\Services\DatabaseSettingsProvider` in `NexusServiceProvider`
   (`$this->app->bind(SettingsProviderInterface::class, DatabaseSettingsProvider::class)`).
-  Застосунок може підмінити прив'язку власним провайдером тим самим шляхом,
-  яким перевизначається `MediaLibraryInterface`.
-- `Nodex\Nexus\Services\SettingsBuilder` — фасад-обгортка над провайдером з
-  кешуванням (`Cache::rememberForever("nexus_settings_{module}_{key}")`) і
-  пріоритетом `config('nexus::{module}.{key}')` над збереженим значенням.
+  The application can replace this binding with its own provider the same way
+  `MediaLibraryInterface` is overridden.
+- `Nodex\Nexus\Services\SettingsBuilder` — a facade wrapper around the provider with
+  caching (`Cache::rememberForever("nexus_settings_{module}_{key}")`) and
+  giving `config('nexus::{module}.{key}')` priority over the stored value.
 
-Окремого helper-функції на кшталт `nexus_setting()` у пакеті **немає** —
-у всьому проєкті значення читають і пишуть виключно через статичні методи
-`SettingsBuilder`:
+The package has **no** separate helper function like `nexus_setting()` —
+throughout the project, values are read and written exclusively through the static
+`SettingsBuilder` methods:
 
 ```php
 use Nodex\Nexus\Services\SettingsBuilder;
@@ -133,40 +133,40 @@ $mode = SettingsBuilder::get('sitemap', 'mode', 'multi');
 SettingsBuilder::set('sitemap', 'split_size', 5000);
 ```
 
-Так це використовується, наприклад, у `app/Nexus/Modules/Sitemap/Commands/GenerateSitemaps.php`
-та `app/Nexus/Modules/Order/Services/OrderService.php`
+This is how it's used, for example, in `app/Nexus/Modules/Sitemap/Commands/GenerateSitemaps.php`
+and `app/Nexus/Modules/Order/Services/OrderService.php`
 (`SettingsBuilder::get('order', 'allow_guest_checkout', true)`).
 
-⚠️ Кеш через `Cache::rememberForever()` інвалідується лише по конкретному
-ключу (`SettingsBuilder::forget($module, $key)`, який викликається всередині
-`set()`). Масового `forget()` для всіх ключів модуля одразу немає — гілка
-`if ($key)` у `forget()` без `$key` нічого не робить (лишений коментар
+⚠️ The `Cache::rememberForever()` cache is only invalidated for a specific
+key (`SettingsBuilder::forget($module, $key)`, which is called inside
+`set()`). There's no bulk `forget()` for all of a module's keys at once — the
+`if ($key)` branch in `forget()` does nothing without `$key` (there's a leftover comment
 `// This needs to be handled by the provider...`).
 
-## Сторінка «All Settings»
+## The "All Settings" page
 
-Топбар адмінки (`tailadmin/layouts/header.blade.php`, пункт «Settings» в
-account dropdown) веде на `route('nexus.module.action', ['module' => 'settings', 'action' => 'index'])`.
-Це `index()` модуля `App\Nexus\Modules\Settings` — його власний
-`AdminController::index()` перебирає всі **увімкнені** модулі
-(`Module::query()->where('is_enabled', true)`), для кожного резолвить
-конфіг через `ModuleManager::getModuleConfig($name)` і залишає лише ті, у
-яких `$config->settings` непорожній. Результат сортується за назвою пункту
-меню і рендериться у `settings::overview`
-(`app/Nexus/Modules/Settings/resources/views/overview.blade.php`) — список
-карток "модуль → кількість налаштувань → посилання Manage".
+The admin topbar (`tailadmin/layouts/header.blade.php`, the "Settings" item in the
+account dropdown) leads to `route('nexus.module.action', ['module' => 'settings', 'action' => 'index'])`.
+This is the `index()` of the `App\Nexus\Modules\Settings` module — its own
+`AdminController::index()` iterates over all **enabled** modules
+(`Module::query()->where('is_enabled', true)`), resolves the
+config for each via `ModuleManager::getModuleConfig($name)`, and keeps only the ones
+where `$config->settings` is not empty. The result is sorted by menu item name
+and rendered in `settings::overview`
+(`app/Nexus/Modules/Settings/resources/views/overview.blade.php`) — a list of
+cards "module → number of settings → Manage link".
 
-Свідомо не робиться одна велика форма з усіма налаштуваннями всіх модулів
-одразу: різні модулі мають різні права доступу і різний сенс полів,
-тому кожен рядок веде на власний екран
+It is a deliberate choice not to have one big form with all settings from all modules
+at once: different modules have different access permissions and different field
+semantics, so each row leads to its own screen
 `route('nexus.module.action', ['module' => $name, 'action' => 'settings'])`,
-який рендерить `Nodex\Nexus\Livewire\ModuleSettingsForm` для конкретного
-модуля.
+which renders `Nodex\Nexus\Livewire\ModuleSettingsForm` for that specific
+module.
 
-## Роутинг: `action=>'settings'`, а не `'edit'`
+## Routing: `action=>'settings'`, not `'edit'`
 
-Для налаштувань навмисно використовується окрема дія `settings`, а не
-перевикористовується `edit`:
+A separate `settings` action is intentionally used for settings, instead of
+reusing `edit`:
 
 ```php
 // NexusController::settings()
@@ -178,23 +178,23 @@ public function settings(FormRequest $request, Module $module, ?string $id = nul
 }
 ```
 
-Причина (з докблоку методу): для модуля з прив'язаною моделлю `edit` вже
-означає «редагувати конкретний рядок за `id`» — екран налаштувань, що
-поділяв би цю назву дії, або конфліктував би з цим маршрутом, або (без `id`)
-хибно трактувався б `ModuleForm::mount()` як звичайна форма створення/
-редагування рядка. Тому посилання на екран налаштувань модуля завжди
-формується як:
+The reason (from the method's docblock): for a module bound to a model, `edit`
+already means "edit a specific row by `id`" — a settings screen that shared
+that action name would either conflict with that route, or (without `id`)
+be misinterpreted by `ModuleForm::mount()` as a regular create/
+edit row form. That's why the link to a module's settings screen is always
+built as:
 
 ```php
 route('nexus.module.action', ['module' => $moduleName, 'action' => 'settings'])
 ```
 
-а не `'action' => 'edit'`. Це працює однаково незалежно від того, чи має
-модуль власну модель узагалі (`App\Nexus\Modules\Settings` моделі не має і
-покладається на цей самий метод).
+and not `'action' => 'edit'`. This works the same regardless of whether the
+module has its own model at all (`App\Nexus\Modules\Settings` has no model and
+relies on this same method).
 
-Права доступу до екрана налаштувань також узгоджені навмисно нестандартно:
-`ModuleSettingsForm::mount()` перевіряє право `'edit'` (`ModuleManager::checkPermission('edit', ...)`),
-а не окреме `'settings'`-право — жоден модуль такого окремого права не
-реєструє, а «може редагувати модуль» вважається достатньою умовою для
-керування його налаштуваннями.
+Access permissions for the settings screen are also deliberately non-standard:
+`ModuleSettingsForm::mount()` checks the `'edit'` permission (`ModuleManager::checkPermission('edit', ...)`),
+rather than a separate `'settings'` permission — no module registers such a separate
+permission, and "can edit the module" is considered a sufficient condition for
+managing its settings.

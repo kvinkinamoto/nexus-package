@@ -1,23 +1,23 @@
 <h2 style="color:#ba363f">Modules</h2>
 
-Модуль у Nexus — це самодостатній тип контенту для адмінки: Eloquent-модель,
-чия форма створення/редагування, таблиця списку, валідація та (за потреби)
-API-ресурс описуються PHP 8 атрибутами прямо на класі моделі. Жодного
-окремого `ModuleConfiguration`-білдера писати не треба — атрибути читає
-`AttributeSchemaReader` і збирає з них DTO, яким далі керується вся адмінка
-(форма, таблиця, ajax-релейшени, валідація). Клас-`ModuleConfiguration` як
-окрема сутність усе ще підтримується (`#[Module]` можна повісити не на саму
-модель, а на конфіг-клас поруч — див. параметр `model` нижче), але в реальних
-модулях пакета він не використовується: атрибути завжди на моделі.
+A module in Nexus is a self-contained content type for the admin panel: an Eloquent
+model whose create/edit form, list table, validation, and (if needed)
+API resource are described by PHP 8 attributes right on the model class. No
+separate `ModuleConfiguration` builder needs to be written — the attributes are read by
+`AttributeSchemaReader`, which assembles a DTO from them that drives the entire admin panel
+(form, table, ajax relations, validation). The `ModuleConfiguration` class as a
+separate entity is still supported (`#[Module]` can be placed not on the
+model itself, but on a config class next to it — see the `model` parameter below), but in the
+package's real modules it is not used: attributes always live on the model.
 
-Модуль автоматично реєструється в системі, щойно `ModuleRegistry` знаходить
-клас із `#[Module(...)]` у ввімкненому каталозі `Modules/**` — окремого
-`ModuleServiceProvider` для кожного модуля писати не треба.
+A module is automatically registered in the system as soon as `ModuleRegistry` finds
+a class with `#[Module(...)]` in the enabled `Modules/**` directory — there's no need to
+write a separate `ModuleServiceProvider` for each module.
 
-## 1. Мінімальний робочий приклад
+## 1. Minimal working example
 
-Нижче — спрощена, але повністю робоча модель модуля, побудована за
-конвенціями, які реально використовуються в пакеті (див. `Modules/Form/Models/Form.php`):
+Below is a simplified but fully working module model, built following
+the conventions actually used in the package (see `Modules/Form/Models/Form.php`):
 
 ```php
 <?php
@@ -61,31 +61,31 @@ class Demo extends Model
 }
 ```
 
-Це саме те, що генерує `php artisan nexus:make:module Demo` (див. розділ 9).
-Трейт `HasAttributeSchemaProperties` — обов'язковий на кожній
-атрибут-керованій моделі модуля, саме він дозволяє звертатись до `$name` як
-до звичайної властивості моделі, попри те що вона оголошена `protected`.
+This is exactly what `php artisan nexus:make:module Demo` generates (see section 9).
+The `HasAttributeSchemaProperties` trait is required on every
+attribute-driven module model — it's what lets you access `$name` as
+a regular model property, even though it's declared `protected`.
 
 ## 2. `#[Module(...)]`
 
-Атрибут вішається на клас моделі (`Attribute::TARGET_CLASS`) і декларує сам
-факт існування модуля.
+The attribute is placed on the model class (`Attribute::TARGET_CLASS`) and declares
+the very existence of the module.
 
-| Параметр | Тип | За замовч. | Опис |
+| Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `name` | `string` | — (обов'язковий) | Унікальне camelCase ім'я модуля, напр. `'article'`, `'shopProduct'`. |
-| `label` | `string` | `''` | Людська назва, що показується в меню адмінки. |
-| `icon` | `string` | `'solar:box-bold'` | Іконка (Solar Icons або FontAwesome). |
-| `group` | `string` | `'Site'` | Батьківська група в меню, напр. `'Shop'`, `'Users'`, `'Content'`. |
-| `showInMenu` | `bool` | `true` | Показувати модуль у боковому меню. |
-| `permissions` | `bool` | `true` | Автоматично генерувати CRUD-права для модуля. |
-| `isTree` | `bool` | `false` | Чи модуль представляє деревовидну структуру. |
-| `menuResolver` | `?string` | `null` | Клас кастомного резолвера пунктів меню (реалізує `UrlResolverInterface`). Реальний приклад — `App\Nexus\Modules\User\Services\UserMenuResolver`. |
-| `model` | `?string` | `null` | Явний клас Eloquent-моделі, якщо `#[Module]` повішено не на саму модель (наприклад, окремий `ModuleConfiguration`-клас над вендорською моделлю). За замовчуванням — сам анотований клас. |
-| `requires` | `array` | `[]` | Імена інших модулів, потрібних для роботи (напр. `Wishlist` вимагає `ShopProduct`). Суто інформаційне — **не блокує** інсталяцію чи ввімкнення; відсутню залежність підсвічує банер в адмінці (`ModuleDependencyChecker`). |
-| `wizard` | `bool` | `false` | Рендерити форму як покроковий wizard замість однієї сторінки. Потребує хоча б одного `#[Section(tab:)]` — наявні вкладки стають кроками з навігацією Next/Back. |
-| `slideOver` | `bool` | `false` | Відкривати форму редагування в offcanvas-панелі зі списку замість переходу на окрему сторінку. |
-| `livewire` | `bool` | `false` | Історичний прапорець поетапного переходу на Livewire — на сьогодні **неактивний**, жодна логіка контролера на нього не реагує. Залишений для зворотної сумісності зі старими оголошеннями `#[Module(...)]`. |
+| `name` | `string` | — (required) | Unique camelCase module name, e.g. `'article'`, `'shopProduct'`. |
+| `label` | `string` | `''` | Human-readable name shown in the admin menu. |
+| `icon` | `string` | `'solar:box-bold'` | Icon (Solar Icons or FontAwesome). |
+| `group` | `string` | `'Site'` | Parent menu group, e.g. `'Shop'`, `'Users'`, `'Content'`. |
+| `showInMenu` | `bool` | `true` | Whether to show the module in the side menu. |
+| `permissions` | `bool` | `true` | Automatically generate CRUD permissions for the module. |
+| `isTree` | `bool` | `false` | Whether the module represents a tree structure. |
+| `menuResolver` | `?string` | `null` | Custom menu item resolver class (implements `UrlResolverInterface`). A real example is `App\Nexus\Modules\User\Services\UserMenuResolver`. |
+| `model` | `?string` | `null` | Explicit Eloquent model class, if `#[Module]` is placed not on the model itself (e.g., a separate `ModuleConfiguration` class wrapping a vendor model). Defaults to the annotated class itself. |
+| `requires` | `array` | `[]` | Names of other modules required for this one to work (e.g., `Wishlist` requires `ShopProduct`). Purely informational — it does **not** block installation or enabling; a missing dependency is highlighted by a banner in the admin panel (`ModuleDependencyChecker`). |
+| `wizard` | `bool` | `false` | Render the form as a step-by-step wizard instead of a single page. Requires at least one `#[Section(tab:)]` — existing tabs become steps with Next/Back navigation. |
+| `slideOver` | `bool` | `false` | Open the edit form in an offcanvas panel from the list instead of navigating to a separate page. |
+| `livewire` | `bool` | `false` | A legacy flag from the phased migration to Livewire — currently **inactive**, no controller logic reacts to it. Kept for backward compatibility with older `#[Module(...)]` declarations. |
 
 ```php
 #[Module(name: 'article', label: 'Статті', icon: 'solar:document-bold', group: 'Content')]
@@ -94,34 +94,34 @@ class Article extends Model { ... }
 
 ## 3. `#[Field(...)]`
 
-Вішається на публічну/protected властивість або на метод-релейшен
-(`TARGET_PROPERTY | TARGET_METHOD`) і оголошує поле форми.
+Placed on a public/protected property or a relation method
+(`TARGET_PROPERTY | TARGET_METHOD`) and declares a form field.
 
-| Параметр | Тип | За замовч. | Опис |
+| Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `type` | `string` | — (обов'язковий) | Тип поля. Повний перелік вбудованих типів і що кожен з них рендерить — див. [`docs/field-types.md`](./field-types.md). |
-| `section` | `string` | `'main'` | Ключ секції форми, до якої належить поле (див. `#[Section]`). |
-| `label` | `?string` | `null` | Людська назва. Якщо `null` — генерується з імені властивості. |
-| `required` | `bool` | `true` | Чи поле обов'язкове. |
-| `translated` | `bool` | `false` | Чи поле мультимовне (потребує `Spatie\Translatable\HasTranslations` + `public $translatable` на моделі). |
-| `editor` | `bool` | `false` | Увімкнути WYSIWYG-редактор (застосовується для `type: 'text'`). |
-| `default` | `mixed` | `null` | Значення за замовчуванням. |
-| `enum` | `?string` | `null` | Клас backed-enum'а для опцій `select`/`radio`/`enum`. |
-| `action` | `?string` | `null` | Назва дії для інтерактивних полів (напр. `'boolToggle'`). |
-| `actionField` | `?string` | `null` | Назва поля в БД для дії, якщо відрізняється від імені властивості. |
-| `disabled` | `bool\|string` | `false` | Заблокувати поле. Рядкове значення `'create'` або `'edit'` обмежує блокування лише цим контекстом. |
-| `view` | `?string` | `null` | Для `type: 'view'` — Blade-в'ю `namespace::path`, у яку передаються `$model`, `$field`, `$module`. |
-| `relationConfig` | `array` | `[]` | Для `type: 'relation'` — додаткові override-параметри, напр. `['path_field' => 'path']`. |
-| `order` | `int` | `0` | Порядок виводу в секції (менше — вище). За замовчуванням — порядок оголошення в класі. |
-| `rules` | `string\|array` | `[]` | Правила валідації для store і update одразу. Рядок через `\|` або масив. Для перекладних полів автоматично застосовується до кожної локалі (`field.*`). |
-| `storeRules` | `string\|array` | `[]` | Правила лише для store (перекривають `rules`). |
-| `updateRules` | `string\|array` | `[]` | Правила лише для update (перекривають `rules`). |
-| `showWhen` | `array` | `[]` | Умови показу поля: масив `['field' => '...', 'op' => 'eq\|neq\|in\|notIn\|truthy\|falsy\|gt\|lt\|contains', 'value' => ...]`. Порожньо — завжди показане. |
-| `showWhenLogic` | `string` | `'and'` | Як комбінуються кілька умов `showWhen`: `'and'` або `'or'`. |
-| `clearWhenHidden` | `bool` | `false` | Очищати значення на клієнті, коли поле ховається. |
-| `apiExpose` | `bool` | `false` | Чи включати поле в авто-згенерований API-ресурс (`NexusResource::toArray()`). За замовчуванням поле лише адмінське. |
-| `showInInfolist` | `bool` | `true` | Чи показувати поле на read-only екрані перегляду (Infolist). Вимикайте для технічних/чутливих полів (напр. `password`). |
-| `slugSource` | `?string` | `null` | Для `type: 'slug'` — ім'я іншого поля цієї ж форми, значення якого слагіфікує кнопка "generate". |
+| `type` | `string` | — (required) | Field type. For the full list of built-in types and what each one renders, see [`docs/field-types.md`](./field-types.md). |
+| `section` | `string` | `'main'` | Key of the form section the field belongs to (see `#[Section]`). |
+| `label` | `?string` | `null` | Human-readable name. If `null`, it's generated from the property name. |
+| `required` | `bool` | `true` | Whether the field is required. |
+| `translated` | `bool` | `false` | Whether the field is multilingual (requires `Spatie\Translatable\HasTranslations` + `public $translatable` on the model). |
+| `editor` | `bool` | `false` | Enable a WYSIWYG editor (applies to `type: 'text'`). |
+| `default` | `mixed` | `null` | Default value. |
+| `enum` | `?string` | `null` | Backed enum class for `select`/`radio`/`enum` options. |
+| `action` | `?string` | `null` | Action name for interactive fields (e.g., `'boolToggle'`). |
+| `actionField` | `?string` | `null` | Name of the DB field for the action, if it differs from the property name. |
+| `disabled` | `bool\|string` | `false` | Disable the field. A string value of `'create'` or `'edit'` limits the disabling to that context only. |
+| `view` | `?string` | `null` | For `type: 'view'` — a Blade view `namespace::path`, which receives `$model`, `$field`, `$module`. |
+| `relationConfig` | `array` | `[]` | For `type: 'relation'` — additional override parameters, e.g. `['path_field' => 'path']`. |
+| `order` | `int` | `0` | Output order within the section (lower — higher up). Defaults to the declaration order in the class. |
+| `rules` | `string\|array` | `[]` | Validation rules for both store and update at once. A string separated by `\|` or an array. For translatable fields it's automatically applied to each locale (`field.*`). |
+| `storeRules` | `string\|array` | `[]` | Rules for store only (override `rules`). |
+| `updateRules` | `string\|array` | `[]` | Rules for update only (override `rules`). |
+| `showWhen` | `array` | `[]` | Conditions for showing the field: an array `['field' => '...', 'op' => 'eq\|neq\|in\|notIn\|truthy\|falsy\|gt\|lt\|contains', 'value' => ...]`. Empty — always shown. |
+| `showWhenLogic` | `string` | `'and'` | How multiple `showWhen` conditions are combined: `'and'` or `'or'`. |
+| `clearWhenHidden` | `bool` | `false` | Clear the value on the client when the field is hidden. |
+| `apiExpose` | `bool` | `false` | Whether to include the field in the auto-generated API resource (`NexusResource::toArray()`). By default the field is admin-only. |
+| `showInInfolist` | `bool` | `true` | Whether to show the field on the read-only view screen (Infolist). Disable for technical/sensitive fields (e.g., `password`). |
+| `slugSource` | `?string` | `null` | For `type: 'slug'` — the name of another field in the same form whose value the "generate" button slugifies. |
 
 ```php
 #[Column(label: 'Title', sortable: true, searchable: true)]
@@ -129,55 +129,55 @@ class Article extends Model { ... }
 protected $title;
 ```
 
-### Як з `#[Field]` виводяться правила валідації
+### How validation rules are derived from `#[Field]`
 
-Якщо модуль **не** оголошує `#[Requests(...)]`, збіркою валідаційних правил
-займається `Nodex\Nexus\Services\Validation\NexusRuleCollector`. Для кожного
-не-релейшен поля порядок такий:
+If a module does **not** declare `#[Requests(...)]`, gathering the validation rules
+is handled by `Nodex\Nexus\Services\Validation\NexusRuleCollector`. For every
+non-relation field, the order is as follows:
 
-1. Дефолтні правила типу (`FieldTypeRegistry::getDefaultRules($field->type)`).
-2. `rules`, потім `storeRules`/`updateRules` (залежно від дії) — додаються поверх.
-3. Якщо серед правил немає ні `required`, ні `nullable` — підставляється
-   `required` (коли `required: true`) або `nullable`.
-4. Для перекладного поля (`translated: true`) ключ стає `{name}.*`.
-5. Для `showWhen`-поля, прихованого за поточних вхідних значень, правило
-   форсовано замінюється на `['exclude']`.
+1. Default rules for the type (`FieldTypeRegistry::getDefaultRules($field->type)`).
+2. `rules`, then `storeRules`/`updateRules` (depending on the action) — added on top.
+3. If the rules contain neither `required` nor `nullable`, one is substituted —
+   `required` (when `required: true`) or `nullable`.
+4. For a translatable field (`translated: true`), the key becomes `{name}.*`.
+5. For a `showWhen` field hidden given the current input values, the rule
+   is forcibly replaced with `['exclude']`.
 
-Для relation-полів (`type: 'relation'` або поля з `#[RepeaterField]`)
-збирач сам не знає ні зв'язаної таблиці, ні структури pivot-даних — він
-підставляє лише мінімальний baseline (`required`/`nullable`, плюс `array`
-для множинних зв'язків), достатній, щоб ключ `relation.{name}` узагалі
-пережив Laravel'івський `validated()`.
+For relation fields (`type: 'relation'` or fields with `#[RepeaterField]`),
+the collector itself knows neither the related table nor the pivot-data structure — it
+only substitutes a minimal baseline (`required`/`nullable`, plus `array`
+for multiple relations), just enough for the `relation.{name}` key to
+survive Laravel's `validated()` at all.
 
-**Важливо:** щойно модуль оголошує `#[Requests(actions: [...])]`, поле-рівневі
-`rules`/`storeRules`/`updateRules` для дій `store`/`update` **більше не
-враховуються** — `rules()` відповідного Request-класу мусить самостійно
-покривати кожне поле, включно з relation-полями у вигляді `relation.*`-ключів
+**Important:** as soon as a module declares `#[Requests(actions: [...])]`, field-level
+`rules`/`storeRules`/`updateRules` for the `store`/`update` actions are **no longer
+taken into account** — the `rules()` method of the corresponding Request class must on its own
+cover every field, including relation fields in the form of `relation.*` keys
 (`'relation.tags' => 'nullable|array'`, `'relation.tags.*' => 'integer'`).
-Незгаданий relation-ключ валідацію мовчки пропускає, і зв'язок просто не
-збережеться — без жодної помилки. Щоб уникнути ручного дублювання
-`NexusRuleCollector`-логіки в такому Request-класі, підключіть трейт
-`Nodex\Nexus\Concerns\ComposesNexusRules` — він викликає `NexusRuleCollector`
-всередині `rules()` і дає перекрити лише те, чого збирач не вміє
-(`extraRules()`: unique-перевірки, `Rule::exists()`, крос-польова логіка).
+An unmentioned relation key silently skips validation, and the relation simply won't
+be saved — without any error. To avoid manually duplicating
+`NexusRuleCollector` logic in such a Request class, use the trait
+`Nodex\Nexus\Concerns\ComposesNexusRules` — it calls `NexusRuleCollector`
+inside `rules()` and lets you override only what the collector can't handle
+(`extraRules()`: uniqueness checks, `Rule::exists()`, cross-field logic).
 
 ## 4. `#[Column(...)]`
 
-Вішається на ту ж властивість/метод, що й `#[Field]` (необов'язково — можна
-мати `#[Field]` без `#[Column]`, якщо поле не має бути в таблиці списку).
-Конфігурує колонку в таблиці списку модуля.
+Placed on the same property/method as `#[Field]` (optional — you can
+have `#[Field]` without `#[Column]` if the field shouldn't appear in the list table).
+Configures a column in the module's list table.
 
-| Параметр | Тип | За замовч. | Опис |
+| Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `label` | `?string` | `null` | Заголовок колонки. |
-| `sortable` | `bool` | `false` | Чи колонка сортується. |
-| `action` | `?string` | `null` | Спеціальна інтерактивна дія в колонці. Вбудовані значення: `'boolToggle'`, `'ordering'`. |
-| `fieldName` | `?string` | `null` | Назва поля в БД, якщо відрізняється від імені властивості — використовується дією `boolToggle`, щоб знати, яку колонку оновлювати. |
-| `customField` | `?string` | `null` | Назва кастомного Blade-партіалу з `templates/custom_index_fields/` для рендеру цієї клітинки. |
-| `actionConfirm` | `bool` | `false` | Показувати діалог підтвердження перед виконанням дії. |
-| `tableDefault` | `bool` | `true` | Чи колонка видима в таблиці за замовчуванням (впливає на пікер видимості колонок для користувача). |
-| `order` | `int` | `0` | Порядок у таблиці (менше — лівіше). За замовчуванням — порядок оголошення в класі. |
-| `searchable` | `bool` | `false` | Явний opt-in у глобальний крос-модульний пошук (`GlobalSearchService`). На відміну від пер-модульного фільтра пошуку, який LIKE-матчить усі фізичні колонки, глобальний пошук вимагає явної позначки, щоб не "протікали" внутрішні/нерелевантні колонки. |
+| `label` | `?string` | `null` | Column header. |
+| `sortable` | `bool` | `false` | Whether the column is sortable. |
+| `action` | `?string` | `null` | A special interactive action in the column. Built-in values: `'boolToggle'`, `'ordering'`. |
+| `fieldName` | `?string` | `null` | Name of the DB field, if it differs from the property name — used by the `boolToggle` action to know which column to update. |
+| `customField` | `?string` | `null` | Name of a custom Blade partial from `templates/custom_index_fields/` for rendering this cell. |
+| `actionConfirm` | `bool` | `false` | Show a confirmation dialog before performing the action. |
+| `tableDefault` | `bool` | `true` | Whether the column is visible in the table by default (affects the column-visibility picker for the user). |
+| `order` | `int` | `0` | Order in the table (lower — further left). Defaults to the declaration order in the class. |
+| `searchable` | `bool` | `false` | Explicit opt-in to the global cross-module search (`GlobalSearchService`). Unlike the per-module search filter, which LIKE-matches all physical columns, global search requires an explicit flag so internal/irrelevant columns don't "leak" in. |
 
 ```php
 #[Column(label: 'Активний', action: 'boolToggle', fieldName: 'is_active')]
@@ -187,31 +187,31 @@ public bool $is_active;
 
 ## 5. `#[Section]` / `#[SectionColumn]`
 
-`#[Section]` вішається на клас моделі (повторюваний, `IS_REPEATABLE`) і
-декларує іменовану секцію форми та її позицію в сітці макета.
+`#[Section]` is placed on the model class (repeatable, `IS_REPEATABLE`) and
+declares a named form section and its position in the layout grid.
 
-| Параметр | Тип | За замовч. | Опис |
+| Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `name` | `string` | — (обов'язковий) | Унікальний ключ секції, на який посилається `#[Field(section: '...')]`. |
-| `column` | `string` | `'right'` | Колонка макета, до якої належить секція. Має збігатися з ім'ям `SectionColumn` (`'left'`, `'right'` або кастомне). |
-| `type` | `string` | `'base'` | Тип рендеру секції (мапиться на Blade-партіал у `templates/sections/`). Вбудовані значення: `'base'`, `'columns_2'`, `'information'`. |
-| `icon` | `string` | `'solar:box-bold'` | Іконка заголовка картки секції. |
-| `tab` | `?string` | `null` | Ключ вкладки, до якої прив'язується колонка цієї секції. |
+| `name` | `string` | — (required) | Unique section key, referenced by `#[Field(section: '...')]`. |
+| `column` | `string` | `'right'` | Layout column the section belongs to. Must match a `SectionColumn` name (`'left'`, `'right'`, or a custom one). |
+| `type` | `string` | `'base'` | Section rendering type (maps to a Blade partial in `templates/sections/`). Built-in values: `'base'`, `'columns_2'`, `'information'`. |
+| `icon` | `string` | `'solar:box-bold'` | Icon for the section card header. |
+| `tab` | `?string` | `null` | Key of the tab this section's column is attached to. |
 
 ```php
 #[Section(name: 'main',     column: 'left',  type: 'columns_2', icon: 'solar:document-bold')]
 #[Section(name: 'settings', column: 'right', type: 'base',      icon: 'solar:settings-bold')]
 ```
 
-`#[SectionColumn]` (теж на класі, повторюваний) перевизначає CSS-клас
-(ширину) колонки макета. За замовчуванням існують `'left'`/`'right'` з
-класами `col-lg-8`/`col-lg-4`.
+`#[SectionColumn]` (also on the class, repeatable) overrides the CSS class
+(width) of a layout column. By default `'left'`/`'right'` exist with
+classes `col-lg-8`/`col-lg-4`.
 
-| Параметр | Тип | Опис |
+| Parameter | Type | Description |
 | --- | --- | --- |
-| `name` | `string` | Ім'я колонки, що перевизначається. |
-| `class` | `string` | CSS-клас (напр. `'col-lg-8'`). |
-| `tab` | `?string` | Опційна прив'язка до конкретної вкладки. |
+| `name` | `string` | Name of the column being overridden. |
+| `class` | `string` | CSS class (e.g., `'col-lg-8'`). |
+| `tab` | `?string` | Optional binding to a specific tab. |
 
 ```php
 #[SectionColumn(name: 'left', class: 'col-lg-8')]
@@ -220,30 +220,30 @@ public bool $is_active;
 
 ## 6. `#[Relation]`
 
-Вішається поруч із `#[Field(type: 'relation'|'images'|'repeater'|...)]` на
-метод (або властивість — для релейшена, що приходить з трейта, як
-`Spatie\Permission`'s `HasRoles::roles()`, і тому не має власного методу в
-моделі; у такому разі `type` треба вказувати явно). Конфігурує, як
-Eloquent-релейшен подається в адмінці.
+Placed alongside `#[Field(type: 'relation'|'images'|'repeater'|...)]` on a
+method (or a property — for a relation coming from a trait, like
+`Spatie\Permission`'s `HasRoles::roles()`, which therefore has no own method on the
+model; in that case `type` must be specified explicitly). Configures how an
+Eloquent relation is presented in the admin panel.
 
-| Параметр | Тип | За замовч. | Опис |
+| Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `type` | `?string` | `null` | Тип релейшена: `'belongsTo'`, `'hasMany'`, `'belongsToMany'`, `'hasOne'`. Якщо не вказано — Nexus намагається визначити автоматично з return-типу методу. |
-| `show` | `string` | `'name'` | Поле зв'язаної моделі, яке показується в селектах і лейблах. |
-| `showFallback` | `?string` | `null` | Поле-фолбек (і в лейблі, і в пошуку), коли значення `show` порожнє для конкретного запису. |
-| `required` | `bool` | `false` | Чи вибір значення обов'язковий. |
-| `ajax` | `bool` | `false` | `false` — список опцій підвантажується наперед (до 50), поводиться як звичайний select (годиться для невеликих таблиць: ролі, категорії). `true` — нічого не підвантажується наперед, результати з'являються лише при введенні (якщо не задано `ajaxMode: 'load'`). |
-| `ajaxMode` | `string` | `'search'` | Актуально лише при `ajax: true`. `'search'` — результати лише за пошуковим запитом (для великих таблиць). `'load'` — все підвантажується наперед і одночасно підтримує пошук (для середніх таблиць). |
-| `ajaxResource` | `?string` | `null` | Кастомний API Resource клас для трансформації ajax-відповіді. |
-| `relatedModule` | `?string` | `null` | Власне ім'я nexus-модуля зв'язаної моделі — обов'язкове для `#[Field(type: 'relationManager')]`, дозволяє зв'язати рядки з edit/delete-діями того модуля й побудувати посилання "view all", відфільтроване на батьківський запис. |
+| `type` | `?string` | `null` | Relation type: `'belongsTo'`, `'hasMany'`, `'belongsToMany'`, `'hasOne'`. If not specified, Nexus tries to determine it automatically from the method's return type. |
+| `show` | `string` | `'name'` | Field of the related model shown in selects and labels. |
+| `showFallback` | `?string` | `null` | Fallback field (both in the label and search) used when the `show` value is empty for a specific record. |
+| `required` | `bool` | `false` | Whether selecting a value is required. |
+| `ajax` | `bool` | `false` | `false` — the option list is preloaded (up to 50), behaving like a regular select (suitable for small tables: roles, categories). `true` — nothing is preloaded, results appear only as you type (unless `ajaxMode: 'load'` is set). |
+| `ajaxMode` | `string` | `'search'` | Relevant only with `ajax: true`. `'search'` — results only from the search query (for large tables). `'load'` — everything is preloaded and search is also supported (for medium tables). |
+| `ajaxResource` | `?string` | `null` | Custom API Resource class for transforming the ajax response. |
+| `relatedModule` | `?string` | `null` | The nexus module name of the related model — required for `#[Field(type: 'relationManager')]`, lets you link rows to that module's edit/delete actions and build a "view all" link filtered to the parent record. |
 
 ```php
-// BelongsToMany, невелика таблиця — переладжується як select
+// BelongsToMany, small table — rendered as a select
 #[Field(type: 'relation', section: 'roles_and_permissions')]
 #[Relation(type: 'belongsToMany', show: 'name')]
 public function roles(): BelongsToMany { ... }
 
-// BelongsTo з ajax-пошуком, велика таблиця
+// BelongsTo with ajax search, large table
 #[Field(type: 'relation', section: 'settings')]
 #[Relation(type: 'belongsTo', show: 'name', ajax: true, ajaxMode: 'search')]
 public function category(): BelongsTo { ... }
@@ -251,23 +251,23 @@ public function category(): BelongsTo { ... }
 
 ## 7. `#[RepeaterField]`
 
-Декларує одну колонку поля типу `repeater` (`TARGET_METHOD`, повторюваний) —
-складається стеком на тому самому `hasMany`-методі, одна колонка на кожен
-`#[RepeaterField]`, у порядку оголошення. Сам relation-метод усе одно
-потребує `#[Field(type: 'repeater', ...)]` + `#[Relation(type: 'hasMany', ...)]`
-як у будь-якого іншого `HasMany` — `#[RepeaterField]` лише додає метадані
-колонок поверх.
+Declares a single column of a `repeater`-type field (`TARGET_METHOD`, repeatable) —
+stacked on the same `hasMany` method, one column per
+`#[RepeaterField]`, in declaration order. The relation method itself still
+requires `#[Field(type: 'repeater', ...)]` + `#[Relation(type: 'hasMany', ...)]`
+like any other `HasMany` — `#[RepeaterField]` only adds column
+metadata on top.
 
-| Параметр | Тип | За замовч. | Опис |
+| Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `name` | `string` | — (обов'язковий) | Ключ колонки — на сабміті стає `relation[{relationName}][{index}][{name}]`. |
-| `type` | `string` | — (обов'язковий) | Тип клітинки, розв'язується так само, як і будь-який `#[Field]` тип (override модуля → реєстр → вбудований). |
-| `label` | `?string` | `null` | Заголовок колонки. Автогенерується з `name`, якщо `null`. |
-| `required` | `bool` | `false` | Чи обов'язкова колонка. |
-| `rules` | `string\|array` | `[]` | Правила валідації для цієї колонки — застосовуються `NexusRuleCollector`'ом як `relation.{name}.*.{column}`. |
-| `width` | `?string` | `null` | CSS-ширина `<th>`/`<td>`, напр. `'120px'` або `'20%'`. |
-| `showWhen` | `array` | `[]` | Наразі зібрано, але ще не застосовується функціонально (заплановано для по-рядкової умовної видимості). |
-| `showWhenLogic` | `string` | `'and'` | Логіка комбінування `showWhen`. |
+| `name` | `string` | — (required) | Column key — on submit becomes `relation[{relationName}][{index}][{name}]`. |
+| `type` | `string` | — (required) | Cell type, resolved the same way as any `#[Field]` type (module override → registry → built-in). |
+| `label` | `?string` | `null` | Column header. Auto-generated from `name` if `null`. |
+| `required` | `bool` | `false` | Whether the column is required. |
+| `rules` | `string\|array` | `[]` | Validation rules for this column — applied by `NexusRuleCollector` as `relation.{name}.*.{column}`. |
+| `width` | `?string` | `null` | CSS width of the `<th>`/`<td>`, e.g., `'120px'` or `'20%'`. |
+| `showWhen` | `array` | `[]` | Currently collected, but not yet functionally applied (planned for per-row conditional visibility). |
+| `showWhenLogic` | `string` | `'and'` | Logic for combining `showWhen`. |
 
 ```php
 #[Field(type: 'repeater', section: 'fields_section', label: 'Fields')]
@@ -282,21 +282,21 @@ public function fields(): HasMany
 }
 ```
 
-## 8. Допоміжні атрибути
+## 8. Auxiliary attributes
 
 ### `#[Permission]`
 
-Реєструє кастомний permission для дії модуля, щоб він з'явився в панелі
-керування правами й міг призначатись ролям/юзерам звідти. **Не** призначає
-право нікому автоматично — цим займається адмін вручну. Можна вішати на клас
-моделі (для глобальних кастомних прав модуля) або на метод кастомного
-контролера (для прав конкретної дії).
+Registers a custom permission for a module action, so that it appears in the
+permissions management panel and can be assigned to roles/users from there. It does **not**
+assign the permission to anyone automatically — that's done manually by the admin. Can be placed
+on the model class (for global custom permissions of the module) or on a custom
+controller method (for a specific action's permission).
 
-| Параметр | Тип | За замовч. | Опис |
+| Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `action` | `string` | — (обов'язковий) | Ключ дії — стає суфіксом імені права: `{moduleName}_{action}`. |
-| `label` | `?string` | `null` | Людський лейбл у панелі прав. Автогенерується з `action`, якщо `null`. |
-| `guard` | `string` | `'web'` | Guard, під яким реєструється право. |
+| `action` | `string` | — (required) | Action key — becomes the suffix of the permission name: `{moduleName}_{action}`. |
+| `label` | `?string` | `null` | Human-readable label in the permissions panel. Auto-generated from `action` if `null`. |
+| `guard` | `string` | `'web'` | Guard under which the permission is registered. |
 
 ```php
 #[Permission(action: 'run', label: 'Run backup now')]
@@ -304,11 +304,11 @@ public function fields(): HasMany
 
 ### `#[Requests]`
 
-Прив'язує кастомні `FormRequest`-класи до дій модуля за ключем дії (`'store'`,
-`'update'`, `'restore'`, `'boolToggle'` або будь-яка кастомна назва групової
-дії). Резолвиться `GetModuleRequestAction::getRequestByMethodName()` для
-будь-якої дії, не лише `store`/`update`. Див. розділ 3 щодо того, як це
-впливає на джерело правил валідації.
+Binds custom `FormRequest` classes to module actions by action key (`'store'`,
+`'update'`, `'restore'`, `'boolToggle'`, or any custom group action name).
+Resolved by `GetModuleRequestAction::getRequestByMethodName()` for
+any action, not just `store`/`update`. See section 3 for how this
+affects the source of validation rules.
 
 ```php
 #[Requests(actions: ['store' => AdminStoreRequest::class, 'update' => AdminUpdateRequest::class])]
@@ -316,8 +316,8 @@ public function fields(): HasMany
 
 ### `#[Composer]`
 
-Реєструє клас Blade view-composer'а для власних в'ю модуля (клас на класі
-моделі, повторюваний).
+Registers a Blade view-composer class for the module's own views (a class on the
+model class, repeatable).
 
 ```php
 #[Composer(class: DemoIndexComposer::class)]
@@ -325,40 +325,40 @@ public function fields(): HasMany
 
 ### `#[MethodResource]`
 
-Прив'язує окремий API Resource-клас (із хінтами eager-load) до одного
-кастомного методу контролера, замість того, щоб той метод падав на
-загальний `NexusResource`-фолбек.
+Binds a separate API Resource class (with eager-load hints) to one
+custom controller method, instead of that method falling back to
+the general `NexusResource` fallback.
 
-| Параметр | Тип | Опис |
+| Parameter | Type | Description |
 | --- | --- | --- |
-| `method` | `string` | Ім'я методу контролера. |
-| `resourceClass` | `string` | Клас API Resource. |
-| `with` | `array` | Список зв'язків для eager-load. |
+| `method` | `string` | Controller method name. |
+| `resourceClass` | `string` | API Resource class. |
+| `with` | `array` | List of relations to eager-load. |
 
 ```php
 #[MethodResource(method: 'export', resourceClass: DemoExportResource::class, with: ['items'])]
 ```
 
-## 9. Скафолдинг нового модуля
+## 9. Scaffolding a new module
 
 ```
 php artisan nexus:make:module {name}
 ```
 
-Команда приймає ім'я (автоматично приводиться до `UcfirstCamel`) і, якщо
-модуля з такою назвою ще не існує в `app/Nexus/Modules/{Name}`, генерує:
+The command takes a name (automatically converted to `UcfirstCamel`) and, if
+a module with that name doesn't already exist in `app/Nexus/Modules/{Name}`, generates:
 
-- `Models/{Name}.php` — модель з `#[Module]`, базовими `#[TableAction]`
+- `Models/{Name}.php` — a model with `#[Module]`, basic `#[TableAction]`
   (`edit`/`delete`), `#[TableGroupAction(deleteGroup)]`, `#[Requests]`,
-  однією секцією `main` і одним полем `name` — мінімальний робочий модуль,
-  готовий одразу після міграції.
+  one `main` section, and one `name` field — a minimal working module,
+  ready right after migration.
 - `Requests/AdminStoreRequest.php`, `Requests/AdminUpdateRequest.php` —
-  порожні `NexusFormRequest`-нащадки з правилом `'name' => 'required|string'`.
+  empty `NexusFormRequest` descendants with the rule `'name' => 'required|string'`.
 - `database/migrations/{timestamp}_create_{plural_snake}_table.php`.
 - `resources/lang/en/translate.php`, `resources/lang/uk/translate.php`.
 - `resources/views/docs.blade.php`.
 
-Далі команда сама підказує наступні кроки:
+The command then suggests the next steps itself:
 
 ```
 1. Add the fields/relations you need to Models/{Name}.php
@@ -366,30 +366,30 @@ php artisan nexus:make:module {name}
 3. php artisan nexus:module:install {Name}
 ```
 
-`nexus:module:install {name}` (без імені — усі модулі) створює рядок
-`Module` у БД, запускає міграції та реєструє власну папку `Widgets/` модуля
-в живому реєстрі.
+`nexus:module:install {name}` (without a name — all modules) creates a
+`Module` row in the DB, runs migrations, and registers the module's own `Widgets/` folder
+in the live registry.
 
-## 10. Кеш маніфесту модулів
+## 10. Module manifest cache
 
-Якщо існує файл `bootstrap/cache/nexus-modules.php`, discovery модулів
-(а також field-types, widgets, listeners, translations) обслуговується зі
-скомпільованого маніфесту, а не з живого сканування файлової системи. Це
-означає, що **щойно доданий або змінений модуль не з'явиться**, доки кеш не
-перебудувати:
+If the file `bootstrap/cache/nexus-modules.php` exists, module discovery
+(as well as field-types, widgets, listeners, translations) is served from the
+compiled manifest instead of a live filesystem scan. This means that a
+**newly added or modified module will not appear** until the cache is
+rebuilt:
 
 ```
-php artisan nexus:module:cache   # скомпілювати/перебудувати маніфест негайно
-php artisan nexus:module:clear   # видалити маніфест, повернутись до live-сканування
+php artisan nexus:module:cache   # compile/rebuild the manifest immediately
+php artisan nexus:module:clear   # delete the manifest, revert to live scanning
 ```
 
-Після будь-якої структурної зміни під `app/Nexus/Modules/**` (новий модуль,
-новий field type, новий listener) — перевіряйте, чи існує
-`bootstrap/cache/nexus-modules.php`, і виконуйте `nexus:module:clear` (або
-одразу `nexus:module:cache`, щоб не чекати на live-сканування наступного
-запиту).
+After any structural change under `app/Nexus/Modules/**` (a new module,
+a new field type, a new listener), check whether
+`bootstrap/cache/nexus-modules.php` exists, and run `nexus:module:clear` (or
+`nexus:module:cache` right away, to avoid waiting for the live scan on the next
+request).
 
-## Довідка по типах полів
+## Field types reference
 
-Повний перелік вбудованих `type`-значень для `#[Field]`/`#[RepeaterField]` і
-короткий опис кожного — у [`field-types.md`](./field-types.md).
+A full list of the built-in `type` values for `#[Field]`/`#[RepeaterField]` and
+a brief description of each is in [`field-types.md`](./field-types.md).

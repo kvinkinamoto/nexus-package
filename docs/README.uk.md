@@ -9,7 +9,8 @@ Nexus — це Laravel-пакет для швидкої побудови адм�
 
 Ця сторінка — вхідна точка в документацію. Встановлення пакета описане
 окремо в [`../Instalation.md`](../Instalation.md); ліцензійні умови — в
-[`../README.md`](../README.md).
+[`../README.md`](../README.md). Модулі до пакету можна знайти на сайті проєкту:
+[https://www.nexus-cms.shop/](https://www.nexus-cms.shop/).
 
 Якщо ви користуєтесь лише безкоштовними модулями, підтримайте розвиток
 проєкту донатом: [send.monobank.ua/jar/2V1YcJMoCr](https://send.monobank.ua/jar/2V1YcJMoCr).

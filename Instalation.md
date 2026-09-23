@@ -76,7 +76,12 @@ Run `php artisan nexus:install` - install library
 
 Run `php artisan nexus:update` - update library
 
-Run `php artisan nexus:module:install {name}` - install module (miss name - all modules)
+## Modules
+
+Additional modules for the package can be found on the project website:
+👉 [https://www.nexus-cms.shop/](https://www.nexus-cms.shop/)
+
+Run `php artisan nexus:module:install {name}` - install module (omit name to install all modules)
 
 Setting up an access token for the private repository
 composer config --global github-oauth.github.com YOUR_TOKEN

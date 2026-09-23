@@ -14,6 +14,8 @@ A module is automatically registered in the system as soon as `ModuleRegistry` f
 a class with `#[Module(...)]` in the enabled `Modules/**` directory — there's no need to
 write a separate `ModuleServiceProvider` for each module.
 
+Ready-made and additional modules can be found on the project website: [https://www.nexus-cms.shop/](https://www.nexus-cms.shop/).
+
 ## 1. Minimal working example
 
 Below is a simplified but fully working module model, built following

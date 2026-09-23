@@ -9,7 +9,8 @@ settings without a migration.
 
 This page is the entry point into the documentation. Package installation is described
 separately in [`../Instalation.md`](../Instalation.md); licensing terms are in
-[`../README.md`](../README.md).
+[`../README.md`](../README.md). Additional modules can be found on the project website:
+[https://www.nexus-cms.shop/](https://www.nexus-cms.shop/).
 
 If you're only using the free modules, consider supporting ongoing development with a donation:
 [send.monobank.ua/jar/2V1YcJMoCr](https://send.monobank.ua/jar/2V1YcJMoCr).

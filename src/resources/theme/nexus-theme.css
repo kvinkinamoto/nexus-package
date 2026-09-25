@@ -1,0 +1,382 @@
+/* Nexus admin theme (tailadmin). Published by `php artisan nexus:install` and imported from resources/css/app.css. */
+
+@source '../../vendor/nodex/nexus/src/resources/views/tailadmin/**/*.blade.php';
+@source '../../app/Nexus/Modules/**/*.blade.php';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-outfit: Outfit, sans-serif;
+
+    --breakpoint-2xsm: 375px;
+    --breakpoint-xsm: 425px;
+    --breakpoint-3xl: 2000px;
+
+    --text-title-2xl: 72px;
+    --text-title-2xl--line-height: 90px;
+    --text-title-xl: 60px;
+    --text-title-xl--line-height: 72px;
+    --text-title-lg: 48px;
+    --text-title-lg--line-height: 60px;
+    --text-title-md: 36px;
+    --text-title-md--line-height: 44px;
+    --text-title-sm: 30px;
+    --text-title-sm--line-height: 38px;
+    --text-theme-xl: 20px;
+    --text-theme-xl--line-height: 30px;
+    --text-theme-sm: 14px;
+    --text-theme-sm--line-height: 20px;
+    --text-theme-xs: 12px;
+    --text-theme-xs--line-height: 18px;
+
+    --color-brand-25: #f2f7ff;
+    --color-brand-50: #ecf3ff;
+    --color-brand-100: #dde9ff;
+    --color-brand-200: #c2d6ff;
+    --color-brand-300: #9cb9ff;
+    --color-brand-400: #7592ff;
+    --color-brand-500: #465fff;
+    --color-brand-600: #3641f5;
+    --color-brand-700: #2a31d8;
+    --color-brand-800: #252dae;
+    --color-brand-900: #262e89;
+    --color-brand-950: #161950;
+
+    --color-gray-25: #fcfcfd;
+    --color-gray-50: #f9fafb;
+    --color-gray-100: #f2f4f7;
+    --color-gray-200: #e4e7ec;
+    --color-gray-300: #d0d5dd;
+    --color-gray-400: #98a2b3;
+    --color-gray-500: #667085;
+    --color-gray-600: #475467;
+    --color-gray-700: #344054;
+    --color-gray-800: #1d2939;
+    --color-gray-900: #101828;
+    --color-gray-950: #0c111d;
+    --color-gray-dark: #1a2231;
+
+    --color-success-25: #f6fef9;
+    --color-success-50: #ecfdf3;
+    --color-success-100: #d1fadf;
+    --color-success-200: #a6f4c5;
+    --color-success-300: #6ce9a6;
+    --color-success-400: #32d583;
+    --color-success-500: #12b76a;
+    --color-success-600: #039855;
+    --color-success-700: #027a48;
+    --color-success-800: #05603a;
+    --color-success-900: #054f31;
+    --color-success-950: #053321;
+
+    --color-error-25: #fffbfa;
+    --color-error-50: #fef3f2;
+    --color-error-100: #fee4e2;
+    --color-error-200: #fecdca;
+    --color-error-300: #fda29b;
+    --color-error-400: #f97066;
+    --color-error-500: #f04438;
+    --color-error-600: #d92d20;
+    --color-error-700: #b42318;
+    --color-error-800: #912018;
+    --color-error-900: #7a271a;
+    --color-error-950: #55160c;
+
+    --color-warning-25: #fffcf5;
+    --color-warning-50: #fffaeb;
+    --color-warning-100: #fef0c7;
+    --color-warning-200: #fedf89;
+    --color-warning-300: #fec84b;
+    --color-warning-400: #fdb022;
+    --color-warning-500: #f79009;
+    --color-warning-600: #dc6803;
+    --color-warning-700: #b54708;
+    --color-warning-800: #93370d;
+    --color-warning-900: #7a2e0e;
+    --color-warning-950: #4e1d09;
+
+    --shadow-theme-md: 0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06);
+    --shadow-theme-lg: 0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03);
+    --shadow-theme-sm: 0px 1px 3px 0px rgba(16, 24, 40, 0.1), 0px 1px 2px 0px rgba(16, 24, 40, 0.06);
+    --shadow-theme-xs: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
+    --shadow-theme-xl: 0px 20px 24px -4px rgba(16, 24, 40, 0.08), 0px 8px 8px -4px rgba(16, 24, 40, 0.03);
+    --shadow-focus-ring: 0px 0px 0px 4px rgba(70, 95, 255, 0.12);
+
+    --z-index-1: 1;
+    --z-index-9: 9;
+    --z-index-99: 99;
+    --z-index-999: 999;
+    --z-index-9999: 9999;
+    --z-index-99999: 99999;
+    --z-index-999999: 999999;
+}
+
+/*
+  Tailwind v4 default border color is `currentColor`; pin it back to
+  gray-200 so elements without an explicit border-color utility still
+  read correctly (TailAdmin v3-compat shim). Scoped to elements, so it
+  doesn't touch the old (pre-existing) nexus theme's own compiled CSS.
+*/
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
+    button:not(:disabled),
+    [role='button']:not(:disabled) {
+        cursor: pointer;
+    }
+}
+
+@utility menu-item {
+    @apply relative flex items-center w-full gap-3 px-3 py-2 font-medium rounded-lg text-theme-sm;
+}
+
+@utility menu-item-active {
+    @apply bg-brand-50 text-brand-500 dark:bg-brand-500/[0.12] dark:text-brand-400;
+}
+
+@utility menu-item-inactive {
+    @apply text-gray-700 hover:bg-gray-100 group-hover:text-gray-700 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-300;
+}
+
+@utility menu-item-icon {
+    @apply text-gray-500 group-hover:text-gray-700 dark:text-gray-400;
+}
+
+@utility menu-item-icon-active {
+    @apply text-brand-500 dark:text-brand-400;
+}
+
+@utility menu-item-icon-inactive {
+    @apply text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300;
+}
+
+@utility menu-item-arrow {
+    @apply relative;
+}
+
+@utility menu-item-arrow-active {
+    @apply rotate-180 text-brand-500 dark:text-brand-400;
+}
+
+@utility menu-item-arrow-inactive {
+    @apply text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300;
+}
+
+@utility menu-dropdown-item {
+    @apply text-theme-sm relative flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium;
+}
+
+@utility menu-dropdown-item-active {
+    @apply bg-brand-50 text-brand-500 dark:bg-brand-500/[0.12] dark:text-brand-400;
+}
+
+@utility menu-dropdown-item-inactive {
+    @apply text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5;
+}
+
+@utility no-scrollbar {
+    &::-webkit-scrollbar {
+        display: none;
+    }
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+@utility custom-scrollbar {
+    &::-webkit-scrollbar {
+        @apply size-1.5;
+    }
+    &::-webkit-scrollbar-track {
+        @apply rounded-full;
+    }
+    &::-webkit-scrollbar-thumb {
+        @apply bg-gray-200 rounded-full dark:bg-gray-700;
+    }
+}
+
+/*
+  Global Livewire "busy" feedback — resources/js/app.js adds this class to
+  whatever [wire:click] element was just clicked for the duration of the
+  request it triggers (dims it + shows a small spinner), so clicks that
+  don't visibly change the page (sort headers, toggles, pagination) still
+  give the user feedback that something is happening.
+*/
+@utility nexus-wire-busy {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.6;
+
+    &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: 6px;
+        width: 14px;
+        height: 14px;
+        margin-top: -7px;
+        border-radius: 9999px;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        animation: nexus-wire-busy-spin 0.6s linear infinite;
+    }
+}
+
+@keyframes nexus-wire-busy-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Collapsed (icon-only) sidebar expands to full width on hover */
+.sidebar:hover {
+    width: 290px;
+}
+.sidebar:hover .logo {
+    display: block;
+}
+.sidebar:hover .logo-icon {
+    display: none;
+}
+.sidebar:hover .sidebar-header {
+    justify-content: space-between;
+}
+.sidebar:hover .menu-group-title {
+    display: block;
+}
+.sidebar:hover .menu-group-icon {
+    display: none;
+}
+.sidebar:hover .menu-item-text {
+    display: inline;
+}
+.sidebar:hover .menu-item-arrow {
+    display: block;
+}
+.sidebar:hover .menu-dropdown {
+    display: flex;
+}
+
+/* Custom checkbox indicator used by TailAdmin-style table row checkboxes */
+.tableCheckbox:checked ~ span span {
+    @apply opacity-100;
+}
+.tableCheckbox:checked ~ span {
+    @apply border-brand-500 bg-brand-500;
+}
+.form-check-input:checked ~ span {
+    @apply border-[6px] border-brand-500 dark:border-brand-500;
+}
+
+/*
+  Choices.js dark-theme overrides. Its own CSS (CDN, choices.min.css) is a
+  light-only theme with no dark-mode variant, so every field carrying
+  data-choices (see livewire/field_types/{select,enum,gender,...}.blade.php
+  and templates/field_types/{select,enum,relation,...}.blade.php) rendered
+  as a plain white box against the rest of the dark UI. Re-themed here to
+  match the same input look (h-11, rounded-lg, border-gray-300/gray-700,
+  focus:ring brand-500) used everywhere else — loads after choices.min.css
+  (see layouts/adminpanel.blade.php) so equal-specificity selectors win
+  without !important.
+*/
+.choices {
+    margin-bottom: 0;
+}
+
+.choices__inner {
+    @apply min-h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-1.5 text-sm text-gray-800 shadow-theme-xs dark:border-gray-700 dark:bg-gray-900 dark:text-white/90;
+}
+
+.choices.is-open .choices__inner,
+.choices.is-focused .choices__inner {
+    @apply border-brand-300 ring-3 ring-brand-500/10 dark:border-brand-800;
+}
+
+.choices[data-type*='select-one'] .choices__inner {
+    @apply py-2.5 pl-4;
+}
+
+.choices[data-type*='select-one'] .choices__input {
+    @apply border-gray-200 bg-gray-50 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white/90;
+}
+
+.choices__list--single {
+    padding: 0;
+}
+
+.choices__list--single .choices__item,
+.choices__placeholder {
+    @apply text-gray-800 opacity-100 dark:text-white/90;
+}
+
+.choices__list--multiple .choices__item {
+    @apply rounded-full border border-gray-200 bg-gray-50 text-xs font-medium text-gray-700 dark:border-gray-800 dark:bg-white/5 dark:text-gray-300;
+}
+
+.choices__list--multiple .choices__item.is-highlighted {
+    @apply bg-gray-100 dark:bg-white/10;
+}
+
+.choices__button {
+    filter: none;
+    opacity: 0.6;
+}
+:where(.dark) .choices__button {
+    filter: invert(1);
+}
+
+.choices__input {
+    @apply bg-transparent text-sm text-gray-800 dark:text-white/90;
+}
+.choices__input::placeholder {
+    @apply text-gray-400;
+}
+
+.choices__list--dropdown,
+.choices__list[aria-expanded] {
+    @apply rounded-lg border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900;
+}
+
+.choices__list--dropdown .choices__item--selectable,
+.choices__list[aria-expanded] .choices__item--selectable {
+    @apply text-sm text-gray-700 dark:text-gray-300;
+}
+
+.choices__list--dropdown .choices__item--selectable.is-highlighted,
+.choices__list[aria-expanded] .choices__item--selectable.is-highlighted {
+    @apply bg-gray-100 dark:bg-white/10;
+}
+
+/*
+  .is-selected marks whichever option matches the field's current value —
+  separate from .is-highlighted (hover/keyboard nav) above. Choices' own
+  default is a flat light gray (#f2f2f2) with no dark variant, which is what
+  actually read as "too light" against the rest of this overrides block.
+*/
+.choices__list--dropdown .choices__item--selectable.is-selected,
+.choices__list[aria-expanded] .choices__item--selectable.is-selected {
+    @apply bg-brand-50 text-brand-500 dark:bg-brand-500/[0.12] dark:text-brand-400;
+}
+
+.choices__list--dropdown .choices__list,
+.choices__list[aria-expanded] .choices__list {
+    @apply custom-scrollbar;
+}
+
+.choices[data-type*='select-one']:after {
+    border-color: var(--color-gray-400) transparent transparent transparent;
+}
+.choices[data-type*='select-one'].is-open:after {
+    border-color: transparent transparent var(--color-gray-400) transparent;
+}
+
+.choices.is-disabled .choices__inner,
+.choices.is-disabled .choices__input {
+    @apply cursor-not-allowed opacity-50;
+}

@@ -214,6 +214,11 @@ class NexusServiceProvider extends ServiceProvider
 
         $this->registerValidationRulesFilter();
 
+        // Laravel sorts 'auth' (AuthenticatesRequests) ahead of non-priority
+        // middleware, so the Auth-module check must be prioritised to run first.
+        $this->app->make(\Illuminate\Contracts\Http\Kernel::class)
+            ->prependToMiddlewarePriority(\Nodex\Nexus\Http\Middleware\CheckAuthModuleInstalled::class);
+
         /** @var ModuleRegistry $registry */
         $registry = $this->app->make(ModuleRegistry::class);
 
@@ -564,6 +569,11 @@ class NexusServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/resources/js' => resource_path('js/nexus'),
         ], ['nexus-js', 'nexus']);
+
+        $this->publishes([
+            __DIR__.'/resources/theme/nexus-theme.css' => resource_path('css/nexus-theme.css'),
+            __DIR__.'/resources/theme/nexus-theme.js' => resource_path('js/nexus-theme.js'),
+        ], ['nexus-theme', 'nexus']);
 
         $this->publishes([
             __DIR__.'/Modules' => app_path('/Nexus/Modules'),

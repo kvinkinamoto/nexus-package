@@ -1,5 +1,6 @@
 <?php
 
+use Nodex\Nexus\Http\Middleware\CheckAuthModuleInstalled;
 use Nodex\Nexus\Http\Middleware\NexusAdminMiddleware;
 
 return [
@@ -7,6 +8,7 @@ return [
     'admin_prefix' => env('ADMIN_PREFIX', 'admin'),
     'admin_middleware' => [
         'web',
+        CheckAuthModuleInstalled::class,
         'auth',
         NexusAdminMiddleware::class,
         // Add your own app-level middleware here if needed, e.g. a locale

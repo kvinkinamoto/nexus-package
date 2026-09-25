@@ -136,7 +136,10 @@ class PublishDefaultModules extends Command
      * entity is App\Models\User (Laravel's own auth config expects the model
      * at that conventional path), not app/Nexus/Modules/User/Models/User.php.
      * Published once per stub; becomes a normal file in the app afterwards,
-     * never touched again without --force.
+     * never touched again without --force. The one exception: Laravel ships
+     * its own stock app/Models/User.php in every fresh app, so a destination
+     * that lacks the stub's 'marker' is treated as that stock file — it is
+     * backed up to *.bak and replaced (otherwise the stub could never apply).
      */
     protected function publishAppStubs(array $requestedModules): void
     {
@@ -144,6 +147,7 @@ class PublishDefaultModules extends Command
             'User' => [
                 'stub' => dirname(__DIR__, 2).'\\src\\AppStubs\\User.php.stub',
                 'destination' => app_path('Models\\User.php'),
+                'marker' => 'UserModelTrait',
             ],
         ];
 
@@ -157,9 +161,17 @@ class PublishDefaultModules extends Command
             }
 
             if (File::exists($stub['destination']) && ! $this->option('force')) {
-                $this->warn('⚠️ '.basename($stub['destination']).' already exists — skipped');
+                $isStockFile = isset($stub['marker'])
+                    && ! str_contains(File::get($stub['destination']), $stub['marker']);
 
-                continue;
+                if (! $isStockFile) {
+                    $this->warn('⚠️ '.basename($stub['destination']).' already exists — skipped');
+
+                    continue;
+                }
+
+                File::copy($stub['destination'], $stub['destination'].'.bak');
+                $this->warn('⚠️ '.basename($stub['destination']).' is the stock Laravel file — replaced, backup: '.basename($stub['destination']).'.bak');
             }
 
             File::copy($stub['stub'], $stub['destination']);

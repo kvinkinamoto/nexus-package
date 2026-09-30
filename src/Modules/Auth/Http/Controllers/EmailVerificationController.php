@@ -1,9 +1,9 @@
 <?php
 
-namespace Nodex\Nexus\Modules\Auth\Http\Controllers;
+namespace App\Nexus\Modules\Auth\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Nodex\Nexus\Modules\Auth\Requests\EmailVerificationRequest;
+use App\Nexus\Modules\Auth\Requests\EmailVerificationRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

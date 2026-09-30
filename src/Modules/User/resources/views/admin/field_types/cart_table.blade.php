@@ -3,11 +3,6 @@
         return;
     }
 
-    // Cart is an optional module: render nothing if it is not installed.
-    if (!method_exists($model, 'cart')) {
-        return;
-    }
-
     $cart = $model->cart()
         ->with(['products.product:id,name,price,price_discount', 'products.product.image'])
         ->first();

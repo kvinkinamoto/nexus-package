@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Modules\User\Services;
+namespace App\Nexus\Modules\User\Services;
 
 use Nodex\Nexus\Services\Abstracted\ModuleManagerAbstract;
 

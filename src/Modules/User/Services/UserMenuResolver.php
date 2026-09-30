@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Modules\User\Services;
+namespace App\Nexus\Modules\User\Services;
 
 use Illuminate\Database\Eloquent\Model;
 use Nodex\Nexus\Contracts\UrlResolverInterface;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Modules\User\Enums;
+namespace App\Nexus\Modules\User\Enums;
 
 enum Gender: string
 {

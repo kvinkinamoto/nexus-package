@@ -1,9 +1,9 @@
 <?php
 
-namespace Nodex\Nexus\Modules\Permission\Models;
+namespace App\Nexus\Modules\Permission\Models;
 
-use Nodex\Nexus\Modules\Permission\Requests\AdminStoreRequest;
-use Nodex\Nexus\Modules\Permission\Requests\AdminUpdateRequest;
+use App\Nexus\Modules\Permission\Requests\AdminStoreRequest;
+use App\Nexus\Modules\Permission\Requests\AdminUpdateRequest;
 use Nodex\Nexus\Attributes\Column;
 use Nodex\Nexus\Attributes\Field;
 use Nodex\Nexus\Attributes\Module;

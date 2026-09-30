@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Modules\User\Listeners;
+namespace App\Nexus\Modules\User\Listeners;
 
 use Illuminate\Support\Facades\Log;
 use Nodex\Nexus\Events\ModuleEvent;

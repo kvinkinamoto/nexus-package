@@ -1,8 +1,8 @@
 <?php
 
-namespace Nodex\Nexus\Modules\User\Requests;
+namespace App\Nexus\Modules\User\Requests;
 
-use Nodex\Nexus\Modules\User\Enums\Gender;
+use App\Nexus\Modules\User\Enums\Gender;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;

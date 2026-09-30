@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Modules\User\Filters;
+namespace App\Nexus\Modules\User\Filters;
 
 use Illuminate\Database\Eloquent\Builder;
 //use Nodex\Nexus\Enums\AdminAvailableFilterEnum;

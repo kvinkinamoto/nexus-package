@@ -1,8 +1,8 @@
 <?php
 
-use Nodex\Nexus\Modules\Auth\Http\Controllers\AuthController;
-use Nodex\Nexus\Modules\Auth\Http\Controllers\EmailVerificationController;
-use Nodex\Nexus\Modules\Auth\Http\Controllers\PasswordResetController;
+use App\Nexus\Modules\Auth\Http\Controllers\AuthController;
+use App\Nexus\Modules\Auth\Http\Controllers\EmailVerificationController;
+use App\Nexus\Modules\Auth\Http\Controllers\PasswordResetController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['web'])->group(function () {

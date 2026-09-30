@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Modules\User\Models;
+namespace App\Nexus\Modules\User\Models;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;

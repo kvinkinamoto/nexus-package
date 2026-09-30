@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Modules\Auth\Services;
+namespace App\Nexus\Modules\Auth\Services;
 
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Http\Request;

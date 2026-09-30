@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Modules\Auth\Http\Resources;
+namespace App\Nexus\Modules\Auth\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;

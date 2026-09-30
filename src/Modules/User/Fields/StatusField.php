@@ -1,9 +1,9 @@
 <?php
 
-namespace Nodex\Nexus\Modules\User\Fields;
+namespace App\Nexus\Modules\User\Fields;
 
 
-use Nodex\Nexus\Modules\User\Enums\Status;
+use App\Nexus\Modules\User\Enums\Status;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\View\View;
 use Nodex\Nexus\Services\Interfaces\CustomFieldTypeInterface;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Modules\Auth\Requests;
+namespace App\Nexus\Modules\Auth\Requests;
 
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Http\FormRequest;

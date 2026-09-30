@@ -64,11 +64,11 @@
                         {{ $model['name'] }} {{ $model->last_name }}
                         @if(!empty($model->status))
                             @switch($model->status)
-                                @case(\Nodex\Nexus\Modules\User\Enums\Status::PENDING->value)
+                                @case(\App\Nexus\Modules\User\Enums\Status::PENDING->value)
                                     <i class="{{ nexus_icon('clock') }} text-warning align-middle"
                                        title="@lang(lcfirst($module->name).'::translate.status')"></i>
                                     @break
-                                @case(\Nodex\Nexus\Modules\User\Enums\Status::BLOCKED->value)
+                                @case(\App\Nexus\Modules\User\Enums\Status::BLOCKED->value)
                                     <i class="{{ nexus_icon('block') }} text-danger align-middle"
                                        title="@lang(lcfirst($module->name).'::translate.status')"></i>
                                     @break

@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Modules\User\Http\Controllers;
+namespace App\Nexus\Modules\User\Http\Controllers;
 
 
 use App\Http\Controllers\Controller;

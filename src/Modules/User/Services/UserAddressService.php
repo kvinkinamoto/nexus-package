@@ -1,9 +1,9 @@
 <?php
 
-namespace Nodex\Nexus\Modules\User\Services;
+namespace App\Nexus\Modules\User\Services;
 
 use App\Models\User;
-use Nodex\Nexus\Modules\User\Models\UserAddress;
+use App\Nexus\Modules\User\Models\UserAddress;
 use Illuminate\Support\Facades\DB;
 
 class UserAddressService

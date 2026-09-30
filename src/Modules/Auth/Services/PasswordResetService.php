@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Modules\Auth\Services;
+namespace App\Nexus\Modules\Auth\Services;
 
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;

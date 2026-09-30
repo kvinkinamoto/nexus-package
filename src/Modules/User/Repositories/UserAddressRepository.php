@@ -1,9 +1,9 @@
 <?php
 
-namespace Nodex\Nexus\Modules\User\Repositories;
+namespace App\Nexus\Modules\User\Repositories;
 
 use App\Models\User;
-use Nodex\Nexus\Modules\User\Models\UserAddress;
+use App\Nexus\Modules\User\Models\UserAddress;
 use Illuminate\Database\Eloquent\Collection;
 
 class UserAddressRepository

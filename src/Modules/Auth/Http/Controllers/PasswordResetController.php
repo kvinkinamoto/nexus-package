@@ -1,11 +1,11 @@
 <?php
 
-namespace Nodex\Nexus\Modules\Auth\Http\Controllers;
+namespace App\Nexus\Modules\Auth\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Nodex\Nexus\Modules\Auth\Requests\ResetPasswordRequest;
-use Nodex\Nexus\Modules\Auth\Requests\SendPasswordResetLinkRequest;
-use Nodex\Nexus\Modules\Auth\Services\PasswordResetService;
+use App\Nexus\Modules\Auth\Requests\ResetPasswordRequest;
+use App\Nexus\Modules\Auth\Requests\SendPasswordResetLinkRequest;
+use App\Nexus\Modules\Auth\Services\PasswordResetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;

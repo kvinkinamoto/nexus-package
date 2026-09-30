@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Modules\User\Requests;
+namespace App\Nexus\Modules\User\Requests;
 
 use Nodex\Nexus\Http\Requests\NexusFormRequest;
 

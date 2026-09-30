@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Modules\Auth;
+namespace App\Nexus\Modules\Auth;
 
 use Nodex\Nexus\Attributes\Module;
 

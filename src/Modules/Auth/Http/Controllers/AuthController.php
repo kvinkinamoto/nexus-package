@@ -1,12 +1,12 @@
 <?php
 
-namespace Nodex\Nexus\Modules\Auth\Http\Controllers;
+namespace App\Nexus\Modules\Auth\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Nodex\Nexus\Modules\Auth\Http\Resources\UserResource;
-use Nodex\Nexus\Modules\Auth\Requests\LoginRequest;
-use Nodex\Nexus\Modules\Auth\Requests\RegisterUserRequest;
-use Nodex\Nexus\Modules\Auth\Services\AuthService;
+use App\Nexus\Modules\Auth\Http\Resources\UserResource;
+use App\Nexus\Modules\Auth\Requests\LoginRequest;
+use App\Nexus\Modules\Auth\Requests\RegisterUserRequest;
+use App\Nexus\Modules\Auth\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;

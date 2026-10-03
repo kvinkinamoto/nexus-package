@@ -1,6 +1,6 @@
 <?php
 
-namespace Nodex\Nexus\Exeptions;
+namespace Nodex\Nexus\Exceptions;
 
 class DataNotImplemented extends \Exception
 {

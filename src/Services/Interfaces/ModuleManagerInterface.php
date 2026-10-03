@@ -2,7 +2,7 @@
 
 namespace Nodex\Nexus\Services\Interfaces;
 
-use Nodex\Nexus\Exeptions\DataNotImplemented;
+use Nodex\Nexus\Exceptions\DataNotImplemented;
 
 interface ModuleManagerInterface
 {

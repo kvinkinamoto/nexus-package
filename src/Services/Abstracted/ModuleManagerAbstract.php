@@ -3,7 +3,7 @@
 namespace Nodex\Nexus\Services\Abstracted;
 
 use Illuminate\Database\Eloquent\Model;
-use Nodex\Nexus\Exeptions\DataNotImplemented;
+use Nodex\Nexus\Exceptions\DataNotImplemented;
 use Nodex\Nexus\Services\Interfaces\ModuleManagerInterface;
 
 class ModuleManagerAbstract implements ModuleManagerInterface

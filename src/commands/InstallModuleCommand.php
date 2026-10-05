@@ -15,7 +15,7 @@ class InstallModuleCommand extends Command
     {
         $module = Str::ucfirst($this->argument('name'));
         if ($module) {
-            $moduleManager->install($module);
+            $moduleManager->install($module, $this->output);
             $this->info("Module {$module} installed successfully");
         } else {
             $modules = $moduleManager->getModules();

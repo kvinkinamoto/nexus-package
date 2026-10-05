@@ -188,6 +188,8 @@ class ModuleManager
             return;
         }
 
+        $this->warnAboutMissingDependencies($name, $output);
+
         // updateOrCreate(['name' => $name], ...) would match-or-create by
         // exact string, so installing the same module again under different
         // casing (a plausible slip — see Module::findByName()'s docblock)
@@ -270,6 +272,29 @@ class ModuleManager
 
         event(new \Nodex\Nexus\Events\ModuleInstalled($name));
         nexus_action('nexus.module.installed', $name);
+    }
+
+    /**
+     * #[Module(requires: [...])] is declarative, so a missing dependency never
+     * blocks the install — it is only reported, because a module installed
+     * without what it needs may fail later with "Class not found" /
+     * "Route [...] not defined" (see Instalation.md, "Module dependencies").
+     */
+    private function warnAboutMissingDependencies(string $name, ?OutputInterface $output): void
+    {
+        try {
+            $missing = app(ModuleDependencyChecker::class)->getMissingDependencies($name);
+        } catch (\Throwable $e) {
+            return;
+        }
+
+        if (empty($missing)) {
+            return;
+        }
+
+        $message = "Module {$name} requires modules that are not installed/enabled: ".implode(', ', $missing);
+        \Illuminate\Support\Facades\Log::warning($message);
+        $output?->writeln("<comment>{$message}</comment>");
     }
 
     /**

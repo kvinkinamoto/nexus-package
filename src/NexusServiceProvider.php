@@ -71,6 +71,8 @@ class NexusServiceProvider extends ServiceProvider
      */
     private ?array $moduleManifest = null;
 
+    private ?Collection $consoleDiscoveryModules = null;
+
     public function register()
     {
         require_once __DIR__.'/helpers/functions.php';
@@ -274,19 +276,40 @@ class NexusServiceProvider extends ServiceProvider
     }
 
     /**
-     * Discovery-time module list. In console (migrations, artisan commands
-     * during tests, etc.) we need every module regardless of enabled state,
-     * to avoid missing fixtures and foreign-key ordering issues. Outside
-     * console, $this->modules is already the enabled-only list resolved
-     * above in boot().
+     * Discovery-time module list: installed AND enabled modules only, in
+     * console and outside it alike. A folder under app/Nexus/Modules without
+     * a nexus_modules row has not been installed, and a row with
+     * is_enabled=0 is switched off — neither may contribute migrations,
+     * routes, views, etc. ModuleManager::install() migrates a module by
+     * explicit path, so it does not depend on this list.
+     * Outside console, $this->modules is already the enabled-only list
+     * resolved above in boot().
      */
     private function modulesForDiscovery(): iterable
     {
-        if ($this->app->runningInConsole()) {
-            return $this->app->make(ModuleRegistry::class)->getAllModules();
+        if (! $this->app->runningInConsole()) {
+            return $this->modules;
         }
 
-        return $this->modules;
+        if ($this->consoleDiscoveryModules !== null) {
+            return $this->consoleDiscoveryModules;
+        }
+
+        $all = $this->app->make(ModuleRegistry::class)->getAllModules();
+
+        try {
+            $installed = array_map(
+                fn ($n) => Str::lower($n),
+                ModuleModel::query()->where('is_enabled', 1)->pluck('name')->toArray()
+            );
+        } catch (\Throwable $e) {
+            // nexus_modules not migrated yet (fresh install): no module is installed.
+            return collect();
+        }
+
+        return $this->consoleDiscoveryModules = $all->filter(
+            fn ($module) => in_array(Str::lower($module['name']), $installed)
+        );
     }
 
     /**

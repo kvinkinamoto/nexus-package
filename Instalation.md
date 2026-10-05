@@ -106,6 +106,45 @@ The admin layout expects `resources/css/app.css` and `resources/js/app.js` as Vi
 `php artisan vendor:publish --tag=nexus-theme --force`.
 
 Update the library: `php artisan nexus:update`.
+
+### Which modules the package picks up
+
+A folder in `app/Nexus/Modules` alone does not make a module active. In the console (`php artisan ...`) and in
+the browser the package loads migrations, routes, views, translations, icons and commands **only for modules that
+are installed and enabled** (a row in `nexus_modules` with `is_enabled = 1`). Therefore:
+
+- a module folder that has not been installed (`php artisan nexus:module:install {name}`) is ignored by
+  `php artisan migrate` and the rest of the console;
+- a disabled module is ignored as well: its migrations do not run until the module is enabled. If its tables are
+  needed by other modules (foreign keys), `migrate` on a clean database may fail;
+- `php artisan migrate:fresh` on an empty database creates only the package tables: module tables appear after the
+  modules are installed (`nexus:module:install`, which migrates the module by its own path).
+
+## Module dependencies and common installation errors
+
+Dependencies between modules cannot be removed completely: `Order` needs `ShopProduct`, `Wishlist` needs the catalog,
+`Book` needs `Author`, and so on. Dependencies are declared with `#[Module(requires: [...])]` and are **purely
+declarative** — they do not block installation. A module installed without the modules it needs may therefore fail
+later at runtime. Starting with this version `nexus:module:install` prints a warning
+(`Module X requires modules that are not installed/enabled: ...`) and writes it to the log; the installation continues.
+
+Install modules from base to dependent: first the modules others rely on, then the dependent ones.
+Check the "Requires" section of a module's `README` before installing it.
+
+| Symptom | Likely cause | What to do |
+| --- | --- | --- |
+| `Class "App\Nexus\Modules\X\…" not found` | The module references a class of module `X`, which is missing | Install (publish and `nexus:module:install X`) module `X` |
+| `Route [name] not defined` | A view or redirect uses another module's route (e.g. `shop.home`, `account.orders`) | Install the module that defines that route, or replace the link with your own route |
+| `Table '…' doesn't exist` | Migrations ran in the wrong order or not at all | `php artisan migrate:status`, then `php artisan migrate`; install the dependency module first |
+| `Duplicate column` / `table already exists` | The module's migration was re-stamped (`--force`) after it had run | Do not use `--force` on a module whose migration has run; remove the duplicate migration file |
+| A module is published but not listed in the admin | No row in `nexus_modules` | `php artisan nexus:module:install <Name>` |
+| `Call to undefined method App\Models\User::…()` | Stock `User` model without the modules' traits | Publish the `User` module (the stub replaces the model) or merge with `src/AppStubs/User.php.stub` |
+| `Unable to locate file in Vite manifest` | A page includes JS/CSS that does not exist in your project | Add the entry to `vite.config.js` and run `npm run build`, or remove the include |
+| Page renders without styles | Frontend not built or theme not wired | `npm install && npm run build`, check the `nexus-theme` imports |
+| `Class "Laravel\Socialite\…" not found` | A Composer package required by the module is not installed | `composer require` the package listed under "Requirements" in the module's `README` |
+
+If a module still does not work after the fix, check `storage/logs/laravel.log` and run
+`php artisan nexus:module:clear`, then `php artisan optimize:clear`.
 ## Modules
 
 Additional modules for the package can be found on the project website:

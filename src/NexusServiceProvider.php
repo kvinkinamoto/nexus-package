@@ -514,6 +514,13 @@ class NexusServiceProvider extends ServiceProvider
             if ($hasTranslation) {
                 $dir = $pathManager->getTranslationPath($module['name'], $module['is_user_module']);
                 $this->loadTranslationsFrom($dir, Str::lcfirst($module['name']));
+
+                // #[Module(name: ...)] is usually all lower-case ('blogcategory')
+                // while the folder is StudlyCase, and views/labels build the
+                // namespace from that attribute name — register both spellings.
+                if (Str::lower($module['name']) !== Str::lcfirst($module['name'])) {
+                    $this->loadTranslationsFrom($dir, Str::lower($module['name']));
+                }
             }
         }
     }

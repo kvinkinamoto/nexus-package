@@ -52,7 +52,7 @@
                                 class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
                                 <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                                     <input type="checkbox" class="widget-toggle h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" checked value="{{ $key }}">
-                                    {{ $widget['meta']->label }}
+                                    {{ nexus_trans_label('', $widget['meta']->label, $widget['meta']->label) }}
                                 </label>
                                 <div class="flex gap-1">
                                     <button type="button" class="widget-move-up flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5" title="@lang('nexus::translate.move_up')"><i class="bx bx-up-arrow-alt text-sm"></i></button>
@@ -89,7 +89,7 @@
                                     class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
                                     <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                                         <input type="checkbox" class="widget-toggle h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" value="{{ $key }}">
-                                        {{ $widget['meta']->label }}
+                                        {{ nexus_trans_label('', $widget['meta']->label, $widget['meta']->label) }}
                                     </label>
                                 </li>
                             @endforeach

@@ -50,6 +50,7 @@ return [
     'invalid_json' => 'Значення не є коректним JSON.',
     'video' => 'Відео',
     'Site' => 'Сайт',
+    'total users' => 'Всього користувачів',
     'System' => 'Система',
     'Catalog' => 'Каталог',
     'Content' => 'Контент',

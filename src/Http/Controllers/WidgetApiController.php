@@ -34,8 +34,25 @@ class WidgetApiController extends Controller
     ) {
     }
 
+    /**
+     * These routes are deliberately not behind auth:sanctum (see
+     * routes/api.php), so the default guard never sees a Bearer token. If one
+     * is sent and valid, make Sanctum the default guard for this request —
+     * the same Auth::shouldUse() trick auth:sanctum itself performs — so the
+     * Auth::user()/Auth::check() calls below resolve the token's user.
+     * Anonymous requests and projects without Sanctum are unaffected.
+     */
+    private function useSanctumGuardWhenAuthenticated(): void
+    {
+        if (config('auth.guards.sanctum') && Auth::guard('sanctum')->check()) {
+            Auth::shouldUse('sanctum');
+        }
+    }
+
     public function index(Request $request): JsonResponse
     {
+        $this->useSanctumGuardWhenAuthenticated();
+
         $entries = $this->visibleEntries($request);
 
         $data = array_values(array_map(
@@ -48,6 +65,8 @@ class WidgetApiController extends Controller
 
     public function show(Request $request, string $key): JsonResponse
     {
+        $this->useSanctumGuardWhenAuthenticated();
+
         $entry = $this->registry->find($key);
 
         if (!$entry || !in_array(WidgetSurface::Api, $entry['meta']->surfaces, true)) {

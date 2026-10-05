@@ -820,6 +820,31 @@ class NexusServiceProvider extends ServiceProvider
         Livewire::component('nexus-module-table', ModuleTable::class);
         Livewire::component('nexus-module-form', ModuleForm::class);
         Livewire::component('nexus-module-settings-form', ModuleSettingsForm::class);
+
+        // A module's own Livewire components (Livewire/*.php) are registered
+        // as 'nexus-{kebab-case class name}' — MenuItemsManager becomes
+        // <livewire:nexus-menu-items-manager>, so a module needs no
+        // app-level Livewire::component() call.
+        foreach ($this->modulesForDiscovery() as $module) {
+            $dir = $module['path'].DIRECTORY_SEPARATOR.'Livewire';
+
+            if (! is_dir($dir)) {
+                continue;
+            }
+
+            foreach (File::files($dir) as $file) {
+                if ($file->getExtension() !== 'php') {
+                    continue;
+                }
+
+                $basename = $file->getBasename('.php');
+                $class = $module['namespace'].'\\Livewire\\'.$basename;
+
+                if (class_exists($class) && is_subclass_of($class, \Livewire\Component::class)) {
+                    Livewire::component('nexus-'.Str::kebab($basename), $class);
+                }
+            }
+        }
     }
 
     /**

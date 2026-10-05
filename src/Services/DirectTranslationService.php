@@ -173,12 +173,30 @@ class DirectTranslationService
 
             $this->setArrayValue($data, $key, $value);
 
-            $content = "<?php\n\nreturn " . var_export($data, true) . ";\n";
-            $content = str_replace('array (', '[', $content);
-            $content = str_replace(')', ']', $content);
-
-            File::put($filePath, $content);
+            File::put($filePath, "<?php\n\nreturn " . $this->exportLangArray($data) . ";\n");
         }
+    }
+
+    /**
+     * Short-array PHP source for a lang array. Only scalars go through
+     * var_export(), so brackets/parentheses inside translated text are never
+     * touched (a global string replace on the exported source would corrupt them).
+     */
+    protected function exportLangArray(array $data, int $level = 1): string
+    {
+        if ($data === []) {
+            return '[]';
+        }
+
+        $pad = str_repeat('    ', $level);
+        $lines = [];
+
+        foreach ($data as $key => $value) {
+            $exported = is_array($value) ? $this->exportLangArray($value, $level + 1) : var_export($value, true);
+            $lines[] = $pad . var_export($key, true) . ' => ' . $exported . ',';
+        }
+
+        return "[\n" . implode("\n", $lines) . "\n" . str_repeat('    ', $level - 1) . ']';
     }
 
     protected function setArrayValue(array &$array, string $key, mixed $value): void

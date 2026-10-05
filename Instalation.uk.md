@@ -145,6 +145,12 @@ Laravel). Живуть у `src/Modules/{Auth,User,Permission,Role}` пакета
 
 Якщо після виправлення модуль усе ще не працює, перевірте `storage/logs/laravel.log` і виконайте
 `php artisan nexus:module:clear`, а потім `php artisan optimize:clear`.
+### Livewire-компоненти модулів
+
+Пакет автоматично реєструє Livewire-компоненти модулів: кожен клас із теки `Livewire/*.php` встановленого
+модуля реєструється як `nexus-{kebab-case імені класу}` (наприклад, `Livewire\MenuItemsManager` →
+`<livewire:nexus-menu-items-manager>`). Додавати `Livewire::component(...)` у `AppServiceProvider` не потрібно.
+Клас має наслідувати `Livewire\Component`.
 ## Модулі
 
 Модулі до пакету можна знайти на сайті проєкту:

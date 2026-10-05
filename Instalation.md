@@ -145,6 +145,12 @@ Check the "Requires" section of a module's `README` before installing it.
 
 If a module still does not work after the fix, check `storage/logs/laravel.log` and run
 `php artisan nexus:module:clear`, then `php artisan optimize:clear`.
+### Module Livewire components
+
+The package registers modules' Livewire components automatically: every class in an installed module's
+`Livewire/*.php` folder is registered as `nexus-{kebab-case class name}` (for example,
+`Livewire\MenuItemsManager` → `<livewire:nexus-menu-items-manager>`). There is no need to call
+`Livewire::component(...)` in `AppServiceProvider`. The class must extend `Livewire\Component`.
 ## Modules
 
 Additional modules for the package can be found on the project website:

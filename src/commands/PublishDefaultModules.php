@@ -25,7 +25,7 @@ class PublishDefaultModules extends Command
     protected function publishModules(): void
     {
         $sourcePath = $this->getVendorModulesPath();
-        $targetPath = app_path('Nexus\\Modules');
+        $targetPath = app_path('Nexus/Modules');
 
         if (! File::exists($sourcePath)) {
             $this->error("Source path not found: {$sourcePath}");
@@ -46,7 +46,7 @@ class PublishDefaultModules extends Command
                 continue;
             }
 
-            $destination = $targetPath.'\\'.$moduleName;
+            $destination = $targetPath.'/'.$moduleName;
 
             if (File::exists($destination)) {
                 if (! $this->option('force')) {
@@ -106,7 +106,7 @@ class PublishDefaultModules extends Command
      */
     protected function refreshMigrationTimestamps(string $modulePath, string $moduleName): void
     {
-        $migrationsDir = $modulePath.'\\database\\migrations';
+        $migrationsDir = $modulePath.'/database/migrations';
 
         if (! File::isDirectory($migrationsDir)) {
             return;
@@ -124,7 +124,7 @@ class PublishDefaultModules extends Command
             $rest = preg_replace('/^\d{4}_\d{2}_\d{2}_\d{6}/', '', $file->getFilename());
             $newName = $timestamp->format('Y_m_d_His').'_'.$slug.$rest;
 
-            File::move($file->getPathname(), $migrationsDir.'\\'.$newName);
+            File::move($file->getPathname(), $migrationsDir.'/'.$newName);
 
             $timestamp = $timestamp->addSecond();
         }
@@ -145,8 +145,8 @@ class PublishDefaultModules extends Command
     {
         $stubs = [
             'User' => [
-                'stub' => dirname(__DIR__, 2).'\\src\\AppStubs\\User.php.stub',
-                'destination' => app_path('Models\\User.php'),
+                'stub' => dirname(__DIR__, 2).'/src/AppStubs/User.php.stub',
+                'destination' => app_path('Models/User.php'),
                 'marker' => 'UserModelTrait',
             ],
         ];
@@ -193,7 +193,7 @@ class PublishDefaultModules extends Command
 
     protected function getVendorModulesPath(): string
     {
-        return dirname(__DIR__, 2).'\\src\\Modules';
+        return dirname(__DIR__, 2).'/src/Modules';
     }
 
     protected function updateNamespace(string $modulePath, string $moduleName): void

@@ -166,6 +166,17 @@ The package adds it to the HTTP kernel's global stack while the module is instal
 
 A module that only stores `#[Setting]` values and has no records of its own (for example `Analytics`) is declared as `#[Module(name: 'analytics', settingsOnly: true)]`. Its list page redirects to the settings screen, so the menu entry opens the form directly. Setting labels and hints may be translation keys (`label: 'analytics::translate.settings.ga4'`).
 
+### Modules that need extra Composer packages
+
+The package does not pull in individual modules' dependencies: install them manually **before** `nexus:module:install`. What each module needs is listed in the "Requires" section of its `README`. Without the required package the module install fails with `Class "..." not found`.
+
+| Module | Composer package | Also |
+| --- | --- | --- |
+| `ActivityLog` | `spatie/laravel-activitylog:^5.1` | Publish the config only (`--tag=activitylog-config`, **no migrations**) and set the module's `activity_model` |
+| `SocialAuth` | `laravel/socialite` | Provider keys in `config/services.php`, `config('auth.social_providers')` |
+
+`nodex/nexus` also supports Laravel 11, 12 and 13 (`illuminate/support: ^11.0 || ^12.0 || ^13.0`).
+
 ## Modules
 
 Additional modules for the package can be found on the project website:

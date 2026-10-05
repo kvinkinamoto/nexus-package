@@ -166,6 +166,17 @@ Laravel). Живуть у `src/Modules/{Auth,User,Permission,Role}` пакета
 
 Модуль, що зберігає тільки значення `#[Setting]` і не має записів (наприклад, `Analytics`), оголошується як `#[Module(name: 'analytics', settingsOnly: true)]`. Його сторінка списку перенаправляє на екран налаштувань, тож пункт меню одразу відкриває форму. Підписи й підказки налаштувань можуть бути ключами перекладу (`label: 'analytics::translate.settings.ga4'`).
 
+### Модулі, що потребують додаткових пакетів Composer
+
+Пакет не підтягує залежності окремих модулів: їх встановлюють вручну **до** `nexus:module:install`. Що саме потрібно, описано в розділі «Requires» `README` кожного модуля. Без потрібного пакета установка модуля падає з `Class "..." not found`.
+
+| Модуль | Пакет Composer | Додатково |
+| --- | --- | --- |
+| `ActivityLog` | `spatie/laravel-activitylog:^5.1` | Опублікувати лише конфіг (`--tag=activitylog-config`, **без міграцій**) і вказати `activity_model` модуля |
+| `SocialAuth` | `laravel/socialite` | Ключі провайдерів у `config/services.php`, `config('auth.social_providers')` |
+
+Також `nodex/nexus` підтримує Laravel 11, 12 і 13 (`illuminate/support: ^11.0 || ^12.0 || ^13.0`).
+
 ## Модулі
 
 Модулі до пакету можна знайти на сайті проєкту:

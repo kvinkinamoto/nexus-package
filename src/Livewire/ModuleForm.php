@@ -697,6 +697,16 @@ class ModuleForm extends Component
         $input = $this->data;
         $relation = [];
 
+        // On edit a blank 'password' field means "leave unchanged" (see mount()):
+        // drop it so it is never written as NULL / an empty hash.
+        if ($this->id) {
+            foreach ($moduleConfig->form->fields as $name => $field) {
+                if ($field->type === 'password' && blank($input[$name] ?? null)) {
+                    unset($input[$name]);
+                }
+            }
+        }
+
         // An editable 'json' field is a plain textarea string; decode it so an
         // array-cast attribute stores real JSON instead of a JSON-encoded string.
         // Disabled (read-only display) json fields are never written back.

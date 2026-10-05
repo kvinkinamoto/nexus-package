@@ -57,6 +57,45 @@ abstract class NexusFormRequest extends FormRequest
     }
 
     /**
+     * validated() only returns keys covered by a rule, and modules list
+     * "relation.{name}.*.{column}" rules per repeater column but never the
+     * row "id" — so every existing row looked new and StoreRelationActionMethod
+     * deleted and recreated all of them on each save (changing their ids and
+     * cascading into anything that referenced them). Keep the submitted id of
+     * rows that passed validation; StoreRelationActionMethod only matches it
+     * against rows of the relation being saved.
+     */
+    public function validated($key = null, $default = null)
+    {
+        $validated = parent::validated($key, $default);
+
+        if ($key !== null || ! is_array($validated['relation'] ?? null)) {
+            return $validated;
+        }
+
+        $submitted = $this->input('relation');
+        if (! is_array($submitted)) {
+            return $validated;
+        }
+
+        foreach ($validated['relation'] as $name => $rows) {
+            if (! is_array($rows)) {
+                continue;
+            }
+
+            foreach ($rows as $index => $row) {
+                $id = $submitted[$name][$index]['id'] ?? null;
+
+                if (is_array($row) && ! isset($row['id']) && is_scalar($id) && $id !== '') {
+                    $validated['relation'][$name][$index]['id'] = $id;
+                }
+            }
+        }
+
+        return $validated;
+    }
+
+    /**
      * Auto-collect validation rules from #[Field(rules: ...)] attributes on the module's model.
      * Translatable fields get their key suffixed with .* (e.g. title.*).
      */

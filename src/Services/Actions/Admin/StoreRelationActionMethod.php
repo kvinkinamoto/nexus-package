@@ -118,7 +118,11 @@ class StoreRelationActionMethod
                 foreach ($data as $item) {
                     if (!empty($item['id'])) {
                         // Існуючий запис – оновлюємо
-                        $related = $relation->getRelated()->find($item['id']);
+                        // Scoped to this parent's own rows — a submitted id must
+                        // never reach (and re-parent) another record's row. A
+                        // fresh relation: $relation above already carries the
+                        // whereNotIn() constraint of the delete query.
+                        $related = $model->{$relationName}()->find($item['id']);
                         if ($related) {
                             foreach ($item as $key => $value) {
                                 if ($key !== 'id') {

@@ -152,6 +152,16 @@ The package registers modules' Livewire components automatically: every class in
 `Livewire/*.php` folder is registered as `nexus-{kebab-case class name}` (for example,
 `Livewire\MenuItemsManager` → `<livewire:nexus-menu-items-manager>`). There is no need to call
 `Livewire::component(...)` in `AppServiceProvider`. The class must extend `Livewire\Component`.
+### Module global middleware
+
+A module that must act before routing (for example Redirect) declares its middleware in the attribute:
+
+```php
+#[Module(name: 'redirect', globalMiddleware: [RedirectMiddleware::class])]
+```
+
+The package adds it to the HTTP kernel's global stack while the module is installed and enabled. There is no need to call ppend(...) in ootstrap/app.php. The middleware is not registered for console commands.
+
 ## Modules
 
 Additional modules for the package can be found on the project website:

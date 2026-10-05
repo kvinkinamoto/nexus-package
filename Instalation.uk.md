@@ -152,6 +152,16 @@ Laravel). Живуть у `src/Modules/{Auth,User,Permission,Role}` пакета
 модуля реєструється як `nexus-{kebab-case імені класу}` (наприклад, `Livewire\MenuItemsManager` →
 `<livewire:nexus-menu-items-manager>`). Додавати `Livewire::component(...)` у `AppServiceProvider` не потрібно.
 Клас має наслідувати `Livewire\Component`.
+### Глобальний middleware модуля
+
+Модуль, якому потрібно діяти до маршрутизації (наприклад, Redirect), оголошує свій middleware в атрибуті:
+
+```php
+#[Module(name: 'redirect', globalMiddleware: [RedirectMiddleware::class])]
+```
+
+Пакет сам додає його в глобальний стек HTTP-ядра, поки модуль встановлений і ввімкнений. Додавати ppend(...) у ootstrap/app.php не потрібно. Для консольних команд middleware не реєструється.
+
 ## Модулі
 
 Модулі до пакету можна знайти на сайті проєкту:

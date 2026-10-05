@@ -234,6 +234,7 @@ class NexusServiceProvider extends ServiceProvider
             ? $this->enabledModulesFromManifest($this->moduleManifest)
             : $registry->getEnabledModules();
 
+        $this->registerModuleGlobalMiddleware();
         $this->loadMigration();
         $this->loadView();
         $this->loadTranslation();
@@ -330,6 +331,33 @@ class NexusServiceProvider extends ServiceProvider
         return collect($manifest['modules'])->filter(function ($module) use ($enabledNames) {
             return in_array(Str::lower($module['name']), $enabledNames);
         });
+    }
+
+    /**
+     * Appends every enabled module's #[Module(globalMiddleware: [...])] to
+     * the HTTP kernel's global stack (HTTP requests only). Uses the manifest
+     * cache when present, otherwise reads each module's config live.
+     */
+    private function registerModuleGlobalMiddleware(): void
+    {
+        if ($this->app->runningInConsole()) {
+            return;
+        }
+
+        $kernel = $this->app->make(\Illuminate\Contracts\Http\Kernel::class);
+        $manifestCache = $this->app->make(ModuleManifestCache::class);
+
+        foreach ($this->modules as $module) {
+            $middleware = $this->moduleManifest !== null
+                ? ($module['global_middleware'] ?? [])
+                : $manifestCache->discoverGlobalMiddleware($module['name']);
+
+            foreach ($middleware as $class) {
+                if (class_exists($class)) {
+                    $kernel->pushMiddleware($class);
+                }
+            }
+        }
     }
 
     protected function registerSeeders()

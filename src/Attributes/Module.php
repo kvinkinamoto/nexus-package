@@ -60,6 +60,15 @@ class Module
         public readonly array $requires = [],
 
         /**
+         * Middleware class names appended to the application's GLOBAL
+         * middleware stack (runs ahead of routing, for every request) while
+         * this module is installed and enabled. For modules that must act
+         * before a route is matched — e.g. Redirect catching removed URLs —
+         * so the app's bootstrap/app.php needs no manual edit.
+         */
+        public readonly array $globalMiddleware = [],
+
+        /**
          * Render the create/edit form as a multi-step wizard instead of a
          * single page. Requires at least one #[Section(tab:)] group — the
          * existing tabs become the wizard's steps, navigated with Next/Back

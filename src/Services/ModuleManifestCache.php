@@ -82,6 +82,7 @@ class ModuleManifestCache
             'namespace' => $module['namespace'],
             'path' => $module['path'],
             'is_user_module' => $isUserModule,
+            'global_middleware' => $this->discoverGlobalMiddleware($name),
             'has_view' => is_dir($viewDir),
             'has_route_web' => is_file($routeDir . DIRECTORY_SEPARATOR . 'web.php'),
             'has_route_api' => is_file($routeDir . DIRECTORY_SEPARATOR . 'api.php'),
@@ -94,6 +95,22 @@ class ModuleManifestCache
             'fieldTypes' => $this->discoverFieldTypes($fieldTypesDir, $module['namespace']),
             'widgets' => $this->discoverWidgets($widgetsDir, $module['namespace']),
         ];
+    }
+
+    /**
+     * Public so NexusServiceProvider can reuse it on its live (uncached)
+     * path. Reads #[Module(globalMiddleware: [...])]; a module whose config
+     * cannot be read simply contributes none.
+     *
+     * @return array<int, class-string>
+     */
+    public function discoverGlobalMiddleware(string $moduleName): array
+    {
+        try {
+            return ModuleManager::getModuleConfig($moduleName)->globalMiddleware ?? [];
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /**

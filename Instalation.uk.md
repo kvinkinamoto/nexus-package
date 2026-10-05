@@ -95,7 +95,7 @@ Laravel). Живуть у `src/Modules/{Auth,User,Permission,Role}` пакета
 `php artisan nexus:install` створює `app/Nexus/Modules` і `app/Nexus/Plugins`, публікує ресурси
 (`config/nexus.php`, `public/nexus`, `public/packages`, `resources/js/nexus`, переклади), виконує міграції,
 створює permissions і реєструє всі знайдені модулі (`nexus:module:install`).
-Також створює символічне посилання public/storage (php artisan storage:link): воно потрібне файловому менеджеру elFinder (вибір зображень і відео) — без нього конектор повертає errNoVolumes.
+Також створює символічне посилання `public/storage` (`php artisan storage:link`): воно потрібне файловому менеджеру elFinder (вибір зображень і відео) — без нього конектор повертає `errNoVolumes`.
 
 Також команда публікує тему адмінки
 (`resources/css/nexus-theme.css`, `resources/js/nexus-theme.js`, тег `nexus-theme`), додає
@@ -154,13 +154,13 @@ Laravel). Живуть у `src/Modules/{Auth,User,Permission,Role}` пакета
 Клас має наслідувати `Livewire\Component`.
 ### Глобальний middleware модуля
 
-Модуль, якому потрібно діяти до маршрутизації (наприклад, Redirect), оголошує свій middleware в атрибуті:
+Модуль, якому потрібно діяти до маршрутизації (наприклад, `Redirect`), оголошує свій middleware в атрибуті:
 
 ```php
 #[Module(name: 'redirect', globalMiddleware: [RedirectMiddleware::class])]
 ```
 
-Пакет сам додає його в глобальний стек HTTP-ядра, поки модуль встановлений і ввімкнений. Додавати ppend(...) у ootstrap/app.php не потрібно. Для консольних команд middleware не реєструється.
+Пакет сам додає його в глобальний стек HTTP-ядра, поки модуль встановлений і ввімкнений. Додавати `append(...)` у `bootstrap/app.php` не потрібно. Для консольних команд middleware не реєструється.
 
 ## Модулі
 

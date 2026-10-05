@@ -95,7 +95,7 @@ on a module whose migration is already in the `Ran` status.
 `php artisan nexus:install` creates `app/Nexus/Modules` and `app/Nexus/Plugins`, publishes the resources
 (`config/nexus.php`, `public/nexus`, `public/packages`, `resources/js/nexus`, translations), runs the migrations,
 creates the permissions and registers every module it finds (`nexus:module:install`).
-It also creates the public/storage symlink (php artisan storage:link) that the elFinder file manager (image/video pickers) needs — without it the connector answers errNoVolumes.
+It also creates the `public/storage` symlink (`php artisan storage:link`) that the elFinder file manager (image/video pickers) needs — without it the connector answers `errNoVolumes`.
 
 It also publishes the admin theme
 (`resources/css/nexus-theme.css`, `resources/js/nexus-theme.js`, tag `nexus-theme`), adds
@@ -154,13 +154,13 @@ The package registers modules' Livewire components automatically: every class in
 `Livewire::component(...)` in `AppServiceProvider`. The class must extend `Livewire\Component`.
 ### Module global middleware
 
-A module that must act before routing (for example Redirect) declares its middleware in the attribute:
+A module that must act before routing (for example `Redirect`) declares its middleware in the attribute:
 
 ```php
 #[Module(name: 'redirect', globalMiddleware: [RedirectMiddleware::class])]
 ```
 
-The package adds it to the HTTP kernel's global stack while the module is installed and enabled. There is no need to call ppend(...) in ootstrap/app.php. The middleware is not registered for console commands.
+The package adds it to the HTTP kernel's global stack while the module is installed and enabled. There is no need to call `append(...)` in `bootstrap/app.php`. The middleware is not registered for console commands.
 
 ## Modules
 

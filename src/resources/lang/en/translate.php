@@ -46,6 +46,7 @@ return [
     'Messages' => 'Messages',
     'Logout' => 'Logout',
     'choose' => 'Choose',
+    'chooseOption' => 'Choose an option',
     'video' => 'Video',
     'Site' => 'Site',
     'Shop' => 'Shop',

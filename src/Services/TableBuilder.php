@@ -392,8 +392,13 @@ class TableBuilder
                         }
                     }
 
-                    // Fallback
-                    if (! $isRelation) {
+                    // Fallback: invoking a method only to see whether it returns a
+                    // Relation runs real code, so it is limited to methods with no
+                    // declared return type. Anything typed (void, string, ...) is
+                    // not a relation and must never be executed here — a model's
+                    // public zero-argument method may have side effects
+                    // (e.g. recordClick(): void incrementing a counter).
+                    if (! $isRelation && $returnType === null) {
                         if ($method->getDeclaringClass()->getName() !== Model::class) {
                             $result = $method->invoke($instance);
                             if ($result instanceof Relation) {

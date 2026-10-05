@@ -494,6 +494,14 @@ class NexusServiceProvider extends ServiceProvider
     {
         $this->loadTranslationsFrom(__DIR__.'/resources/lang', 'nexus');
 
+        // A standalone widget (app/Nexus/Widgets/{Name}/) may ship its own
+        // lang/{locale}/translate.php, namespaced by lcfirst(widget name) —
+        // e.g. monobankDonation::translate.title. Same live scan as
+        // loadWidgets() uses for this root.
+        foreach (glob(app_path('Nexus/Widgets').'/*/lang', GLOB_ONLYDIR) ?: [] as $langDir) {
+            $this->loadTranslationsFrom($langDir, Str::lcfirst(basename(dirname($langDir))));
+        }
+
         /** @var PathManager $pathManager */
         $pathManager = $this->app->make(PathManager::class);
         $modules = $this->modulesForDiscovery();

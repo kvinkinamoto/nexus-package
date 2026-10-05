@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Nodex\Nexus\Dto\ModuleDtos\DefaultModuleConfigurationDto;
@@ -696,6 +697,31 @@ class ModuleForm extends Component
         $input = $this->data;
         $relation = [];
 
+        // An editable 'json' field is a plain textarea string; decode it so an
+        // array-cast attribute stores real JSON instead of a JSON-encoded string.
+        // Disabled (read-only display) json fields are never written back.
+        foreach ($moduleConfig->form->fields as $name => $field) {
+            if ($field->type !== 'json' || $field->isDisabledForAction($this->id ? 'edit' : 'create') || ! is_string($input[$name] ?? null)) {
+                continue;
+            }
+
+            $raw = trim($input[$name]);
+
+            if ($raw === '') {
+                $input[$name] = null;
+
+                continue;
+            }
+
+            $decoded = json_decode($raw, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw ValidationException::withMessages(["data.{$name}" => __('nexus::translate.invalid_json')]);
+            }
+
+            $input[$name] = $decoded;
+        }
+
         foreach ($moduleConfig->relations->is_available as $name => $relationConfig) {
             $field = $moduleConfig->form->fields[$name] ?? null;
 
@@ -720,7 +746,13 @@ class ModuleForm extends Component
                             $row['position'] = $index;
                         }
 
-                        return empty($row['id']) ? Arr::except($row, ['id']) : $row;
+                        if (empty($row['id'])) {
+                            // New row: leave blank (null) columns out of the insert so the
+                            // database default applies (e.g. a NOT NULL sort_order DEFAULT 0).
+                            return array_filter(Arr::except($row, ['id']), fn ($value) => $value !== null);
+                        }
+
+                        return $row;
                     },
                     $this->relationRows[$name] ?? [],
                     array_keys($this->relationRows[$name] ?? [])

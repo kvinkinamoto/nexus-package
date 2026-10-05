@@ -47,6 +47,7 @@ return [
     'Logout' => 'Вихід',
     'choose' => 'Вибрати',
     'chooseOption' => 'Оберіть значення',
+    'invalid_json' => 'Значення не є коректним JSON.',
     'video' => 'Відео',
     'Site' => 'Сайт',
     'Shop' => 'Магазин',

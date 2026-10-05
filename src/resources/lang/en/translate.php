@@ -47,6 +47,7 @@ return [
     'Logout' => 'Logout',
     'choose' => 'Choose',
     'chooseOption' => 'Choose an option',
+    'invalid_json' => 'The value is not valid JSON.',
     'video' => 'Video',
     'Site' => 'Site',
     'Shop' => 'Shop',

@@ -162,6 +162,10 @@ A module that must act before routing (for example `Redirect`) declares its midd
 
 The package adds it to the HTTP kernel's global stack while the module is installed and enabled. There is no need to call `append(...)` in `bootstrap/app.php`. The middleware is not registered for console commands.
 
+### Settings-only modules
+
+A module that only stores `#[Setting]` values and has no records of its own (for example `Analytics`) is declared as `#[Module(name: 'analytics', settingsOnly: true)]`. Its list page redirects to the settings screen, so the menu entry opens the form directly. Setting labels and hints may be translation keys (`label: 'analytics::translate.settings.ga4'`).
+
 ## Modules
 
 Additional modules for the package can be found on the project website:

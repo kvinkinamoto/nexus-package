@@ -76,7 +76,7 @@
                     @endif
 
                     @if($setting->comment)
-                        <p class="mt-1.5 text-xs text-gray-400">{{ $setting->comment }}</p>
+                        <p class="mt-1.5 text-xs text-gray-400">{{ str_contains($setting->comment, '::') ? __($setting->comment) : $setting->comment }}</p>
                     @endif
 
                     @error($errorKey)

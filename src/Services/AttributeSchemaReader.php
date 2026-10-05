@@ -115,6 +115,7 @@ class AttributeSchemaReader
 
         $config->requires = $moduleMeta->requires;
         $config->globalMiddleware = $moduleMeta->globalMiddleware;
+        $config->settingsOnly = $moduleMeta->settingsOnly;
         $config->wizard = $moduleMeta->wizard;
         $config->slideOver = $moduleMeta->slideOver;
         $config->livewire = $moduleMeta->livewire;

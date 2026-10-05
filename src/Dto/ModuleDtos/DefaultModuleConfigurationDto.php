@@ -37,6 +37,7 @@ class DefaultModuleConfigurationDto extends \stdClass
     public array $resolvers = [];
     public array $requires = [];
     public array $globalMiddleware = [];
+    public bool $settingsOnly = false;
 
     public function __construct()
     {

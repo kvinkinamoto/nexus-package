@@ -372,6 +372,10 @@ class NexusController extends Controller implements HasMiddleware
         $moduleRequest = GetModuleRequestAction::getRequestByMethodName('index', $this->moduleConfig);
         $moduleRequest?->validated();
 
+        if (ModuleManager::getModuleConfig($module->name)->settingsOnly) {
+            return redirect()->route('nexus.module.action', ['module' => $module->name, 'action' => 'settings']);
+        }
+
         $module = $this->moduleManager->getInstalledModule($module->name);
 
         return view('nexus::'.config('nexus.template').'.pages.indexLivewire', [

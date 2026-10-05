@@ -94,5 +94,13 @@ class Module
          * still read at runtime.
          */
         public readonly bool $livewire = false,
+
+        /**
+         * The module only stores #[Setting] values and has no records of its
+         * own (e.g. Analytics). Its index page redirects straight to the
+         * settings screen, so the sidebar entry opens the settings form
+         * instead of an empty table with Create/Export buttons.
+         */
+        public readonly bool $settingsOnly = false,
     ) {}
 }

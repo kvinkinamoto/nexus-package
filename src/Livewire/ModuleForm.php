@@ -538,6 +538,25 @@ class ModuleForm extends Component
      *     "relationRows.{name}.*[...]".
      *   - anything else (a plain field) -> "data.{key}", as before Етап 3.
      */
+    /**
+     * Livewire validates "data.{field}" keys, so the default message would show
+     * the raw key ("The data.language field is required"). Map each form field
+     * to the same label the form renders for it (nexus_trans_label).
+     *
+     * @return array<string, string>
+     */
+    protected function validationAttributes(): array
+    {
+        $moduleConfig = $this->resolveModuleConfig();
+        $attributes = [];
+
+        foreach ($moduleConfig->form->fields as $name => $field) {
+            $attributes["data.{$name}"] = nexus_trans_label($moduleConfig->name, $field->label ?? null, (string) $name);
+        }
+
+        return $attributes;
+    }
+
     private function remapRuleKey(string $key, DefaultModuleConfigurationDto $moduleConfig): ?string
     {
         if ($key === 'relation') {

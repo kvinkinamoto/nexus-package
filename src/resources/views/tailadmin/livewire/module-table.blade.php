@@ -106,6 +106,16 @@
                                 <option value="{{ $filterOption->{$filterCfg->optionsValue} }}">{{ $filterOption->{$filterCfg->optionsLabel} }}</option>
                             @endforeach
                         </select>
+                    @elseif(($filterCfg->type ?? null) === 'trashed')
+                        {{-- Soft-deleted rows are hidden by default; 'with'/'only' are handled by Filters\FilterHandler. Makes the Restore row action reachable. --}}
+                        <select
+                            wire:model.live="filter.{{ $filterCfg->name }}"
+                            wire:key="filter-{{ $filterCfg->name }}"
+                            class="h-10 w-full max-w-70 rounded-lg border border-gray-200 bg-transparent px-3 text-sm text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90">
+                            <option value="">@lang('nexus::translate.chooseTrashed')</option>
+                            <option value="with">@lang('nexus::translate.withTrashed')</option>
+                            <option value="only">@lang('nexus::translate.onlyTrashed')</option>
+                        </select>
                     @endif
                 @endforeach
             </div>

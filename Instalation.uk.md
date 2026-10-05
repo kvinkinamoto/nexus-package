@@ -174,6 +174,7 @@ Laravel). Живуть у `src/Modules/{Auth,User,Permission,Role}` пакета
 | --- | --- | --- |
 | `ActivityLog` | `spatie/laravel-activitylog:^5.1` | Опублікувати лише конфіг (`--tag=activitylog-config`, **без міграцій**) і вказати `activity_model` модуля |
 | `SocialAuth` | `laravel/socialite` | Ключі провайдерів у `config/services.php`, `config('auth.social_providers')` |
+| `Backup` | `spatie/db-dumper:^4.1` | Утиліта `mysqldump`/`pg_dump` (шлях у `config/backup.php` або `dump.dump_binary_path`), воркер черги для «Run now» |
 
 Також `nodex/nexus` підтримує Laravel 11, 12 і 13 (`illuminate/support: ^11.0 || ^12.0 || ^13.0`).
 

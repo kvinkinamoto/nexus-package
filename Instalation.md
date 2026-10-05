@@ -174,6 +174,7 @@ The package does not pull in individual modules' dependencies: install them manu
 | --- | --- | --- |
 | `ActivityLog` | `spatie/laravel-activitylog:^5.1` | Publish the config only (`--tag=activitylog-config`, **no migrations**) and set the module's `activity_model` |
 | `SocialAuth` | `laravel/socialite` | Provider keys in `config/services.php`, `config('auth.social_providers')` |
+| `Backup` | `spatie/db-dumper:^4.1` | `mysqldump`/`pg_dump` binary (path in `config/backup.php` or `dump.dump_binary_path`), a queue worker for "Run now" |
 
 `nodex/nexus` also supports Laravel 11, 12 and 13 (`illuminate/support: ^11.0 || ^12.0 || ^13.0`).
 

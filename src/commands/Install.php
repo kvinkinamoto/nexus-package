@@ -60,6 +60,13 @@ class Install extends Command
 
         Artisan::call('nexus:resource:publish', [], $this->getOutput());
 
+        // elFinder's default upload dir is public/storage; without the link
+        // its connector answers errNoVolumes and no image picker works.
+        // Non-zero exit just means the link already exists.
+        if (! is_link(public_path('storage')) && ! is_dir(public_path('storage'))) {
+            Artisan::call('storage:link', [], $this->getOutput());
+        }
+
         // The admin layout's header unconditionally queries unreadNotifications()
         // (see resources/views/nexus/layouts/header.blade.php) — that's Laravel's
         // own notifications table, not something nexus-migrations creates.

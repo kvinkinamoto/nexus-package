@@ -95,6 +95,7 @@ on a module whose migration is already in the `Ran` status.
 `php artisan nexus:install` creates `app/Nexus/Modules` and `app/Nexus/Plugins`, publishes the resources
 (`config/nexus.php`, `public/nexus`, `public/packages`, `resources/js/nexus`, translations), runs the migrations,
 creates the permissions and registers every module it finds (`nexus:module:install`).
+It also creates the public/storage symlink (php artisan storage:link) that the elFinder file manager (image/video pickers) needs — without it the connector answers errNoVolumes.
 
 It also publishes the admin theme
 (`resources/css/nexus-theme.css`, `resources/js/nexus-theme.js`, tag `nexus-theme`), adds

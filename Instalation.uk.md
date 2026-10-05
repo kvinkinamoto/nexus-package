@@ -95,6 +95,7 @@ Laravel). Живуть у `src/Modules/{Auth,User,Permission,Role}` пакета
 `php artisan nexus:install` створює `app/Nexus/Modules` і `app/Nexus/Plugins`, публікує ресурси
 (`config/nexus.php`, `public/nexus`, `public/packages`, `resources/js/nexus`, переклади), виконує міграції,
 створює permissions і реєструє всі знайдені модулі (`nexus:module:install`).
+Також створює символічне посилання public/storage (php artisan storage:link): воно потрібне файловому менеджеру elFinder (вибір зображень і відео) — без нього конектор повертає errNoVolumes.
 
 Також команда публікує тему адмінки
 (`resources/css/nexus-theme.css`, `resources/js/nexus-theme.js`, тег `nexus-theme`), додає

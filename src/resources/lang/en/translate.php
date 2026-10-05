@@ -50,6 +50,8 @@ return [
     'invalid_json' => 'The value is not valid JSON.',
     'video' => 'Video',
     'Site' => 'Site',
+    'System' => 'System',
+    'Catalog' => 'Catalog',
     'Shop' => 'Shop',
     'Blog' => 'Blog',
     'User' => 'Users',

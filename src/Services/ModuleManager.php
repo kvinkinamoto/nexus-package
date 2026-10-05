@@ -199,12 +199,13 @@ class ModuleManager
             // The 'Modules' module manages every other module's is_enabled
             // flag (see App\Nexus\Modules\Modules\Models\Module) — without
             // is_system it could disable itself and lock an admin out of the
-            // only screen that could turn it back on. Forced here, not left
-            // to a manual DB edit, so a fresh install is protected from the
-            // start like every other system invariant this method sets up.
+            // only screen that could turn it back on. Auth/User/Permission/Role
+            // are the same: disabling any of them breaks login or the admin
+            // itself. Forced here, not left to a manual DB edit, so a fresh
+            // install is protected from the start.
             Module::query()->create([
                 'name' => $name,
-                'is_system' => Str::lower($name) === 'modules',
+                'is_system' => in_array(Str::lower($name), ['modules', 'auth', 'user', 'permission', 'role'], true),
             ]);
         }
 

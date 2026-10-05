@@ -200,7 +200,7 @@ class NexusServiceProvider extends ServiceProvider
         // for an unknown/inactive slug, same fail-quiet posture as
         // @position() above for a position with no active placement.
         Blade::directive('nexusForm', function (string $expression) {
-            return "<?php \$__nexusForm = \Nodex\Nexus\Modules\Form\Models\Form::query()->where('slug', {$expression})->where('is_active', true)->first(); if (\$__nexusForm) { echo view('form::public.form', ['form' => \$__nexusForm])->render(); } ?>";
+            return "<?php \$__nexusForm = class_exists(\App\Nexus\Modules\Form\Models\Form::class) ? \App\Nexus\Modules\Form\Models\Form::query()->where('slug', {$expression})->where('is_active', true)->first() : null; if (\$__nexusForm) { echo view('form::public.form', ['form' => \$__nexusForm])->render(); } ?>";
         });
 
         // @nexusBlocks($page->blocks) — renders an ordered collection of

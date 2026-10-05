@@ -9,7 +9,7 @@
     why — this used to be a Choices.js-wrapped <select>).
 --}}
 @php
-    $moduleName = $module->name ?? 'nexus';
+    $moduleName = \Illuminate\Support\Str::lcfirst($module->name ?? 'nexus');
     $options = collect($field->enum::cases())
         ->map(fn ($case) => [
             'value' => $case->value,

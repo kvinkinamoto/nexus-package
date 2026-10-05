@@ -21,7 +21,7 @@
         $value = $value->value ?? $value->name;
     }
 
-    $moduleName = $module->name ?? 'nexus';
+    $moduleName = \Illuminate\Support\Str::lcfirst($module->name ?? 'nexus');
     $customData = $field->enum::cases() ?? [];
     $selectClass = 'h-11 w-full appearance-none rounded-lg border bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-900 dark:text-white/90 ' . ($errors->has($field->name) ? 'border-error-500 focus:ring-3 focus:ring-error-500/10' : 'border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700');
 @endphp

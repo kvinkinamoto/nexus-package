@@ -6,7 +6,7 @@
     changing its #[Field(type:)] string, no other config change needed.
 --}}
 @php
-    $moduleName = $module->name ?? 'nexus';
+    $moduleName = \Illuminate\Support\Str::lcfirst($module->name ?? 'nexus');
 
     if ($field->enum ?? null) {
         $options = collect($field->enum::cases())

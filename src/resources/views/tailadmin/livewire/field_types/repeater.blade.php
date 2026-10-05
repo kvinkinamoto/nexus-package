@@ -32,7 +32,7 @@
                     @foreach($field->repeaterColumns as $column)
                         <th @if($column->width) style="width: {{ $column->width }}" @endif
                             class="px-3 py-2 text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                            {{ $column->label }}
+                            {{ nexus_trans_label($module->name, $column->label ?? null, $column->name) }}
                         </th>
                     @endforeach
                     <th class="w-8"></th>

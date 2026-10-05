@@ -50,7 +50,7 @@ class PluginManager
      */
     public function register(string $targetModule, string $pluginClass): void
     {
-        $targetModule = ucfirst($targetModule);
+        $targetModule = strtolower($targetModule);
         $this->plugins[$targetModule][] = $pluginClass;
     }
 
@@ -59,7 +59,7 @@ class PluginManager
      */
     public function getPlugins(string $targetModule): array
     {
-        $targetModule = ucfirst($targetModule);
+        $targetModule = strtolower($targetModule);
         return $this->plugins[$targetModule] ?? [];
     }
 
@@ -72,7 +72,7 @@ class PluginManager
      */
     public function apply(string $targetModule, object $configuration): object
     {
-        $targetModule = ucfirst($targetModule);
+        $targetModule = strtolower($targetModule);
 
         // Declarative #[AttachField]/#[AttachColumn]/#[AttachFilter]
         // attachments first, so a plugin's own handle() (the escape hatch
@@ -193,6 +193,37 @@ class PluginManager
             $className = 'App\\Nexus\\Plugins\\' . $pluginName;
             $this->discoverClass($className);
         }
+
+        $this->discoverModuleAdminAttachments();
+    }
+
+    /**
+     * A module that extends another module's admin form/table (a "dependent"
+     * module — e.g. BlogPost adding the "Posts" list to BlogCategory) can ship
+     * that extension itself: any class under {module}/Admin/ carrying
+     * #[TargetModule] + #[AttachField]/#[AttachColumn]/#[AttachFilter] is
+     * discovered exactly like a plugin class, but only while the declaring
+     * module is enabled — no separate plugin to install or toggle.
+     */
+    private function discoverModuleAdminAttachments(): void
+    {
+        try {
+            $modules = app(ModuleRegistry::class)->getEnabledModules();
+        } catch (\Throwable) {
+            return;
+        }
+
+        foreach ($modules as $module) {
+            $dir = $module['path'] . DIRECTORY_SEPARATOR . 'Admin';
+
+            if (!is_dir($dir)) {
+                continue;
+            }
+
+            foreach (glob($dir . '/*.php') ?: [] as $file) {
+                $this->discoverClass($module['namespace'] . '\\Admin\\' . basename($file, '.php'));
+            }
+        }
     }
 
     /**
@@ -284,7 +315,7 @@ class PluginManager
      */
     private function discoverFieldAttachments(ReflectionClass $reflection, string $targetModule): void
     {
-        $targetModule = ucfirst($targetModule);
+        $targetModule = strtolower($targetModule);
 
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
             foreach ($method->getAttributes(AttachField::class) as $attr) {

@@ -1,6 +1,6 @@
 @extends('frontend::public.layouts.frontend')
 
-@section('title', 'Мій кабінет — Профіль — STYLE')
+@section('title', 'Мій кабінет — Профіль')
 
 @section('content')
     @php($user = auth()->user())

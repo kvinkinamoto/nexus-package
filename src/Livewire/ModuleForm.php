@@ -416,7 +416,15 @@ class ModuleForm extends Component
             return;
         }
 
-        $this->data[$fieldName] = Str::slug((string) ($this->data[$source] ?? ''));
+        $value = $this->data[$source] ?? '';
+
+        // A translated source field holds one value per locale: prefer the current
+        // locale, otherwise the first non-empty translation.
+        if (is_array($value)) {
+            $value = $value[app()->getLocale()] ?? (collect($value)->filter(fn ($v) => is_string($v) && $v !== '')->first() ?? '');
+        }
+
+        $this->data[$fieldName] = Str::slug((string) $value);
     }
 
     /**

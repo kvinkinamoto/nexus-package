@@ -22,10 +22,34 @@ trait HasAutoSlug
             $column = $model->slugColumn();
             $source = $model->slugSourceColumn();
 
-            if (empty($model->{$column}) && ! empty($model->{$source})) {
-                $model->{$column} = $model->uniqueSlug(Str::slug($model->{$source}), $column);
+            if (empty($model->{$column}) && ($value = $model->slugSourceValue($source)) !== '') {
+                $model->{$column} = $model->uniqueSlug(Str::slug($value), $column);
             }
         });
+    }
+
+    /**
+     * The source text for the slug. For a translatable source (spatie HasTranslations)
+     * the current-locale value can be empty while another locale is filled — fall back
+     * to the first non-empty translation so the slug column never ends up NULL.
+     */
+    protected function slugSourceValue(string $source): string
+    {
+        $value = $this->{$source};
+
+        if (is_string($value) && $value !== '') {
+            return $value;
+        }
+
+        if (method_exists($this, 'getTranslations') && in_array($source, $this->getTranslatableAttributes(), true)) {
+            foreach ($this->getTranslations($source) as $translation) {
+                if (is_string($translation) && $translation !== '') {
+                    return $translation;
+                }
+            }
+        }
+
+        return '';
     }
 
     /**

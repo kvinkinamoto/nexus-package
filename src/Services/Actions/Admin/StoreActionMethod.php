@@ -56,6 +56,21 @@ class StoreActionMethod
 
             $model->fill(collect($validated)->only($model->getFillable())->toArray());
             app(\Nodex\Nexus\Services\PluginManager::class)->fillAttachedFields($model, $validated, $moduleConfig->name);
+
+            // A belongsTo relation sets a foreign key on this very row: set it before the insert, so a NOT NULL
+            // foreign key column needs no nullable workaround (the relation pass below associates it again).
+            foreach ($validated['relation'] ?? [] as $relationName => $relationValue) {
+                $relationConfig = $moduleConfig->relations->is_available[$relationName] ?? null;
+
+                if ($relationConfig && $relationConfig->type === \Nodex\Nexus\Enums\RelationConfigParamsEnum::BELONGS_TO->value && $relationValue && method_exists($model, $relationName)) {
+                    $relation = $model->{$relationName}();
+
+                    if ($relation instanceof \Illuminate\Database\Eloquent\Relations\BelongsTo) {
+                        $relation->associate($relationValue);
+                    }
+                }
+            }
+
             $model->save();
 
             StoreRelationActionMethod::handle($model, $moduleConfig, $validated);

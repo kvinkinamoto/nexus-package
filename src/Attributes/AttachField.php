@@ -68,5 +68,15 @@ class AttachField
 
         /** Spatie permission name required to see this field at all. Null = inherit the target module's own gate. */
         public readonly ?string $permission = null,
+
+        /**
+         * Validation rules for a plain (non-relation) attached column. Without any
+         * rule the submitted key would be dropped by validated(), so an empty value
+         * defaults to ['nullable'] (or ['required'] with $isRequired). Merged into the
+         * target module's rules (dedicated Request or collected) for keys it doesn't
+         * define itself, and the validated value is written to the model with
+         * forceFill() — the target module's $fillable never has to know the column.
+         */
+        public readonly array|string $rules = [],
     ) {}
 }

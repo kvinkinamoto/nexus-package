@@ -36,6 +36,7 @@ class StoreActionMethod
                 $rules = app(NexusRuleCollector::class)->collect($moduleConfig, AvailableActionEnum::STORE_ACTION->value, request()->all());
                 $validated = validator(request()->all(), $rules)->validate();
             }
+            $validated = app(\Nodex\Nexus\Services\PluginManager::class)->mergeAttachedFields($validated, request()->all(), $moduleConfig->name);
             $model = new $modelClass;
 
             event(new \Nodex\Nexus\Events\EntityCreating($model, $validated, $moduleConfig));
@@ -54,6 +55,7 @@ class StoreActionMethod
              */
 
             $model->fill(collect($validated)->only($model->getFillable())->toArray());
+            app(\Nodex\Nexus\Services\PluginManager::class)->fillAttachedFields($model, $validated, $moduleConfig->name);
             $model->save();
 
             StoreRelationActionMethod::handle($model, $moduleConfig, $validated);

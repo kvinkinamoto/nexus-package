@@ -180,7 +180,7 @@ Parameters:
 
 | Attribute | Constructor parameters |
 | --- | --- |
-| `AttachField` | `name`, `type`, `section = 'default'`, `label = null`, `isRequired = false`, `order = 0`, `apiExpose = false`, `permission = null` |
+| `AttachField` | `name`, `type`, `section = 'default'`, `label = null`, `isRequired = false`, `order = 0`, `apiExpose = false`, `permission = null`, `rules = []` |
 | `AttachColumn` | `name`, `label = null`, `sortable = false`, `tableDefault = true`, `order = 0`, `permission = null` |
 | `AttachFilter` | `name`, `label = null`, `type = 'search'`, `permission = null` |
 
@@ -202,6 +202,7 @@ Important nuances:
   `null` to inherit the target module's gate (the default, backward-compatible behavior).
 - `#[AttachField(apiExpose: true)]` mirrors `#[Field(apiExpose:)]` — it exposes the attached
   field over REST/GraphQL the same way as the module's own field.
+- **A plain (non-relation) column:** `#[AttachField(name: 'bonuses', type: 'number', rules: ['nullable', 'numeric', 'min:0'])]` saves by itself — the value is validated with `rules` (`nullable`/`required` per `isRequired` when empty) and written to the model with `forceFill()`, so the target module's `$fillable` never has to know the column. The column itself is created by the owning module's migration.
 - The value of `#[AttachColumn]`/`#[AttachFilter]` still has to resolve on the target model as a
   regular column/filter — these attributes only make the entry visible, they don't create the data.
   A computed column (e.g., `_count`) needs a matching `#[AttachScope]` with `withCount(...)`.

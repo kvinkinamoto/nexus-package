@@ -507,6 +507,9 @@ class ModuleForm extends Component
             $rules = app(NexusRuleCollector::class)->collect($moduleConfig, $methodName, $this->data);
         }
 
+        // Plain #[AttachField] columns of other modules (same rules the save re-checks).
+        $rules += app(\Nodex\Nexus\Services\PluginManager::class)->attachedFieldRules($moduleConfig->name);
+
         $mapped = [];
         foreach ($rules as $key => $rule) {
             $mappedKey = $this->remapRuleKey($key, $moduleConfig);

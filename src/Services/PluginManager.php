@@ -127,6 +127,62 @@ class PluginManager
     }
 
     /**
+     * Validation rules of the plain (non-relation) #[AttachField]s on a target
+     * module that the current viewer can see, keyed by field name. Used to
+     * keep their submitted values through validated() and to write them to
+     * the model (see fillAttachedFields()).
+     *
+     * @return array<string, array>
+     */
+    public function attachedFieldRules(string $targetModule): array
+    {
+        $targetModule = strtolower($targetModule);
+        $rules = [];
+
+        foreach ($this->fieldAttachments[$targetModule] ?? [] as $name => $entry) {
+            if (isset($this->relationAttachments[$targetModule][$name]) || !$this->canSeeAttachment($entry['permission'])) {
+                continue;
+            }
+
+            $fieldRules = is_string($entry['rules']) ? explode('|', $entry['rules']) : (array) $entry['rules'];
+            $rules[$name] = $fieldRules ?: [$entry['required'] ? 'required' : 'nullable'];
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Validates the submitted values of the target module's plain attached
+     * columns on their own (the target module's Request/rules don't know
+     * them — and under Livewire its validation never sees the module route)
+     * and returns $validated extended with the result.
+     */
+    public function mergeAttachedFields(array $validated, array $input, string $targetModule): array
+    {
+        $rules = $this->attachedFieldRules($targetModule);
+
+        if ($rules === []) {
+            return $validated;
+        }
+
+        return $validated + \Illuminate\Support\Facades\Validator::make($input, $rules)->validate();
+    }
+
+    /**
+     * Writes the validated values of the target module's plain attached
+     * columns onto the model, bypassing $fillable (the target module doesn't
+     * know the column — it belongs to the attaching module).
+     */
+    public function fillAttachedFields(\Illuminate\Database\Eloquent\Model $model, array $validated, string $targetModule): void
+    {
+        $values = array_intersect_key($validated, $this->attachedFieldRules($targetModule));
+
+        if ($values !== []) {
+            $model->forceFill($values);
+        }
+    }
+
+    /**
      * Gate for an #[AttachField]/#[AttachColumn]/#[AttachFilter]'s optional
      * `permission`. Null means "no extra gate" — always visible (the
      * pre-existing, backward-compatible behavior). A super-admin
@@ -332,7 +388,12 @@ class PluginManager
                 );
                 $field->order = $meta->order;
 
-                $this->fieldAttachments[$targetModule][$meta->name] = ['dto' => $field, 'permission' => $meta->permission];
+                $this->fieldAttachments[$targetModule][$meta->name] = [
+                    'dto' => $field,
+                    'permission' => $meta->permission,
+                    'rules' => $meta->rules,
+                    'required' => $meta->isRequired,
+                ];
 
                 $relationAttrs = $method->getAttributes(RelationAttr::class);
                 if (!empty($relationAttrs)) {

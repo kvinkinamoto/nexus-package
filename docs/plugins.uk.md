@@ -178,7 +178,7 @@ class ReviewAdminPlugin
 
 | Атрибут | Параметри конструктора |
 | --- | --- |
-| `AttachField` | `name`, `type`, `section = 'default'`, `label = null`, `isRequired = false`, `order = 0`, `apiExpose = false`, `permission = null` |
+| `AttachField` | `name`, `type`, `section = 'default'`, `label = null`, `isRequired = false`, `order = 0`, `apiExpose = false`, `permission = null`, `rules = []` |
 | `AttachColumn` | `name`, `label = null`, `sortable = false`, `tableDefault = true`, `order = 0`, `permission = null` |
 | `AttachFilter` | `name`, `label = null`, `type = 'search'`, `permission = null` |
 
@@ -200,6 +200,7 @@ class ReviewAdminPlugin
   `null`, щоб успадкувати гейт цільового модуля (дефолтна, зворотно сумісна поведінка).
 - `#[AttachField(apiExpose: true)]` віддзеркалює `#[Field(apiExpose:)]` — виставляє приєднане
   поле через REST/GraphQL так само, як і власне поле модуля.
+- **Звичайна (не relation) колонка:** `#[AttachField(name: 'bonuses', type: 'number', rules: ['nullable', 'numeric', 'min:0'])]` сама зберігається — значення валідується за `rules` (без правил діє `nullable`/`required` за `isRequired`) і записується в модель через `forceFill()`, тож `$fillable` цільового модуля нічого не знає про колонку. Саму колонку створює міграція модуля-власника.
 - Значення `#[AttachColumn]`/`#[AttachFilter]` все одно має резолвитись на цільовій моделі як
   звичайна колонка/фільтр — ці атрибути лише роблять запис видимим, даних вони не створюють.
   Обчислювана колонка (напр. `_count`) потребує парного `#[AttachScope]` з `withCount(...)`.

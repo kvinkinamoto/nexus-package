@@ -73,6 +73,8 @@ this same module). If the project later gains `Cart`/`Wishlist`/
 `ActivityLog` modules — the corresponding relations/traits are added to `app/Models/User.php`
 manually; at that point it's no longer a package file, but a regular application file.
 
+The stub declares the profile columns `last_name`, `middle_name`, `phone`, `gender`, `birthday`, `avatar`, which Laravel's stock `users` table doesn't have: the `User` module's migration `user_add_profile_columns_to_users_table` adds each of them only if it is missing (so a project that already has them is left untouched). `google_id`/`facebook_id` belong to the optional `SocialAuth` module.
+
 ⚠️ **Order for `Permission`/`Role`**: their own migrations
 (`add_display_field`) run `Schema::table('permissions'/'roles', ...)` —
 meaning they require the base tables from `spatie/laravel-permission` to already

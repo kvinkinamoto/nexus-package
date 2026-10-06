@@ -73,6 +73,8 @@ Laravel). Живуть у `src/Modules/{Auth,User,Permission,Role}` пакета
 `ActivityLog` — відповідні зв'язки/трейти дописуються в `app/Models/User.php`
 вручну, це вже не файл пакета, а звичайний файл застосунку.
 
+Stub оголошує колонки профілю `last_name`, `middle_name`, `phone`, `gender`, `birthday`, `avatar`, яких немає в стандартній таблиці `users` Laravel: міграція модуля `User` `user_add_profile_columns_to_users_table` додає кожну з них лише якщо її ще немає (тож проєкт, що вже має ці колонки, не зачіпається). `google_id`/`facebook_id` належать необов'язковому модулю `SocialAuth`.
+
 ⚠️ **Порядок для `Permission`/`Role`**: їхні власні міграції
 (`add_display_field`) роблять `Schema::table('permissions'/'roles', ...)` —
 тобто вимагають, щоб базові таблиці від `spatie/laravel-permission` вже

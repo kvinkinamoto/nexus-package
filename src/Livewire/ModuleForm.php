@@ -510,6 +510,21 @@ class ModuleForm extends Component
         // Plain #[AttachField] columns of other modules (same rules the save re-checks).
         $rules += app(\Nodex\Nexus\Services\PluginManager::class)->attachedFieldRules($moduleConfig->name);
 
+        // An editable 'json' field is a textarea string at this point (buildLegacyInput()
+        // decodes it only after validate()), so a Request's 'array' rule would always fail
+        // here — check it as JSON instead; the real Request still checks 'array' after decoding.
+        foreach ($moduleConfig->form->fields as $name => $field) {
+            if ($field->type !== 'json' || $field->isDisabledForAction($this->id ? 'edit' : 'create') || ! isset($rules[$name])) {
+                continue;
+            }
+
+            $fieldRules = is_string($rules[$name]) ? explode('|', $rules[$name]) : (array) $rules[$name];
+            $rules[$name] = array_values(array_unique(array_map(
+                fn ($rule) => $rule === 'array' ? 'json' : $rule,
+                $fieldRules
+            ), SORT_REGULAR));
+        }
+
         $mapped = [];
         foreach ($rules as $key => $rule) {
             $mappedKey = $this->remapRuleKey($key, $moduleConfig);

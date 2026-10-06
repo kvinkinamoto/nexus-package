@@ -215,8 +215,14 @@ class NexusRuleCollector
                 continue;
             }
 
+            // Attached by another module (#[AttachField]+#[Relation]): the target's Request can't
+            // know it — PluginManager::mergeAttachedFields() validates it separately.
+            if (app(\Nodex\Nexus\Services\PluginManager::class)->isAttachedField($moduleConfig->name, $name)) {
+                continue;
+            }
+
             $prefix = "relation.{$name}";
-            $covered = array_key_exists($prefix, $requestRules)
+            $covered =array_key_exists($prefix, $requestRules)
                 || array_key_exists("{$prefix}.*", $requestRules)
                 || collect($requestRules)->keys()->contains(fn ($key) => str_starts_with($key, "{$prefix}."));
 

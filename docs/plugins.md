@@ -203,6 +203,7 @@ Important nuances:
 - `#[AttachField(apiExpose: true)]` mirrors `#[Field(apiExpose:)]` — it exposes the attached
   field over REST/GraphQL the same way as the module's own field.
 - **A plain (non-relation) column:** `#[AttachField(name: 'bonuses', type: 'number', rules: ['nullable', 'numeric', 'min:0'])]` saves by itself — the value is validated with `rules` (`nullable`/`required` per `isRequired` when empty) and written to the model with `forceFill()`, so the target module's `$fillable` never has to know the column. The column itself is created by the owning module's migration.
+- **A relation field (`type: 'relation'` + `#[Relation]`)** is validated by the package on its own too (`relation.{name}` = `nullable`/`required`, plus `array` for `hasMany`/`belongsToMany`) — the target's Request needs no rule for it, and the dev-only `assertRelationCoverage` skips attached fields.
 - The value of `#[AttachColumn]`/`#[AttachFilter]` still has to resolve on the target model as a
   regular column/filter — these attributes only make the entry visible, they don't create the data.
   A computed column (e.g., `_count`) needs a matching `#[AttachScope]` with `withCount(...)`.

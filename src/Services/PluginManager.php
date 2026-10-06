@@ -140,7 +140,22 @@ class PluginManager
         $rules = [];
 
         foreach ($this->fieldAttachments[$targetModule] ?? [] as $name => $entry) {
-            if (isset($this->relationAttachments[$targetModule][$name]) || !$this->canSeeAttachment($entry['permission'])) {
+            if (!$this->canSeeAttachment($entry['permission'])) {
+                continue;
+            }
+
+            $relation = $this->relationAttachments[$targetModule][$name] ?? null;
+
+            if ($relation) {
+                // Relation pickers post "relation.{name}"; a read-only relationManager posts nothing.
+                if ($entry['dto']->type === 'relation') {
+                    $multiple = in_array($relation->type, [
+                        \Nodex\Nexus\Enums\RelationConfigParamsEnum::BELONGS_TO_MANY->value,
+                        \Nodex\Nexus\Enums\RelationConfigParamsEnum::HAS_MANY->value,
+                    ], true);
+                    $rules["relation.{$name}"] = array_filter([$entry['required'] ? 'required' : 'nullable', $multiple ? 'array' : null]);
+                }
+
                 continue;
             }
 
@@ -165,7 +180,15 @@ class PluginManager
             return $validated;
         }
 
-        return $validated + \Illuminate\Support\Facades\Validator::make($input, $rules)->validate();
+        return array_replace_recursive($validated, \Illuminate\Support\Facades\Validator::make($input, $rules)->validate());
+    }
+
+    /** True when $name is a field/relation another module attached to $targetModule (and the viewer can see it). */
+    public function isAttachedField(string $targetModule, string $name): bool
+    {
+        $rules = $this->attachedFieldRules($targetModule);
+
+        return isset($rules[$name]) || isset($rules["relation.{$name}"]);
     }
 
     /**

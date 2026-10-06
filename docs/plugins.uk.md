@@ -201,6 +201,7 @@ class ReviewAdminPlugin
 - `#[AttachField(apiExpose: true)]` віддзеркалює `#[Field(apiExpose:)]` — виставляє приєднане
   поле через REST/GraphQL так само, як і власне поле модуля.
 - **Звичайна (не relation) колонка:** `#[AttachField(name: 'bonuses', type: 'number', rules: ['nullable', 'numeric', 'min:0'])]` сама зберігається — значення валідується за `rules` (без правил діє `nullable`/`required` за `isRequired`) і записується в модель через `forceFill()`, тож `$fillable` цільового модуля нічого не знає про колонку. Саму колонку створює міграція модуля-власника.
+- **Relation-поле (`type: 'relation'` + `#[Relation]`)** теж валідується пакетом окремо (`relation.{name}` = `nullable`/`required`, `array` для `hasMany`/`belongsToMany`) — цільовому Request додавати правило не потрібно, а dev-перевірка `assertRelationCoverage` приєднані поля пропускає.
 - Значення `#[AttachColumn]`/`#[AttachFilter]` все одно має резолвитись на цільовій моделі як
   звичайна колонка/фільтр — ці атрибути лише роблять запис видимим, даних вони не створюють.
   Обчислювана колонка (напр. `_count`) потребує парного `#[AttachScope]` з `withCount(...)`.

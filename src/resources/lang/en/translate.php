@@ -142,6 +142,7 @@ return [
     'value' => 'Value',
     'remove' => 'Remove',
     'chooseImage' => 'Choose image',
+    'chooseFile' => 'Choose file',
     'add' => 'Add',
     'searching' => 'Searching...',
     'error_loading_data' => 'Error loading data',

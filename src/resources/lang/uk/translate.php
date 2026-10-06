@@ -143,6 +143,7 @@ return [
     'value' => 'Значення',
     'remove' => 'Видалити',
     'chooseImage' => 'Обрати зображення',
+    'chooseFile' => 'Обрати файл',
     'add' => 'Додати',
     'searching' => 'Пошук...',
     'error_loading_data' => 'Помилка завантаження даних',

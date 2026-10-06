@@ -53,7 +53,7 @@ the copied files. If a module with that name already exists in
 `--force` to overwrite deliberately.
 
 The `Auth` pages (login, registration, password recovery) are self-contained: they use `resources/css/app.css`,
-`resources/js/app.js` and Livewire (which ships Alpine), with no separate storefront JS.
+`resources/js/app.js` and Livewire (which ships Alpine), with no separate frontend JS.
 Social login (`SocialAuth`) and the customer account area (`Account`) are separate optional modules and are not part
 of the starter set. The `Cart`/`Wishlist` modules are optional: `Auth`/`User` work without them.
 

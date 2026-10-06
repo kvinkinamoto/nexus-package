@@ -1,4 +1,4 @@
-{{-- Standalone auth pages have no storefront/admin layout: this provides the JSON fetch helper
+{{-- Standalone auth pages have no frontend/admin layout: this provides the JSON fetch helper
      and Alpine (bundled with Livewire, so no extra JS entry or CDN is needed). --}}
 <script>
 window.authFetch = async function authFetch(url, options = {}) {

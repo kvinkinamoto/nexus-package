@@ -1,4 +1,4 @@
-@extends('storefront::public.layouts.storefront')
+@extends('frontend::public.layouts.frontend')
 
 @section('title', 'Мій кабінет — Профіль — STYLE')
 

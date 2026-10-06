@@ -40,7 +40,7 @@ class AuthController extends Controller
 
     /**
      * One login form, one auth path, regardless of whether the visitor was
-     * headed for the storefront or /admin — the `auth` middleware already
+     * headed for the frontend or /admin — the `auth` middleware already
      * records where they were trying to go before bouncing them here, so
      * intended() sends them back there. No separate "admin login" exists
      * anymore; whether /admin/{module} lets them in past this point is
@@ -82,7 +82,7 @@ class AuthController extends Controller
 
     /**
      * One logout path, same reasoning as login(): whether the visitor came
-     * from the storefront or /admin isn't this route's concern. Sends
+     * from the frontend or /admin isn't this route's concern. Sends
      * everyone back to the login page rather than back into /admin, which
      * would just immediately bounce them to /login anyway via the auth
      * middleware once there's no session left to satisfy it.

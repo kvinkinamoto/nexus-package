@@ -46,7 +46,7 @@ class ImpersonateActionMethod
 
         // The target is guaranteed (by the guard above) to lack ADMIN_PANEL,
         // so sending them to /admin would just bounce off NexusAdminMiddleware
-        // immediately — land on the storefront instead, since "see the site
+        // immediately — land on the frontend instead, since "see the site
         // as this customer" is the actual point of impersonating one.
         return redirect()->route('shop.home')
             ->with('alert_message', __('nexus::translate.now_impersonating', ['name' => $target->name ?? $target->email]))

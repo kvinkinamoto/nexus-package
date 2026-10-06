@@ -4,7 +4,7 @@ Customer and admin account management, including profiles, roles, addresses, and
 
 ## What it does
 
-This module manages every user account on the site — both storefront customers and admin/staff accounts — with roles and permissions, account status (pending, active, blocked), avatar, contact details, and optional two-factor authentication. Customers get a self-service account area where they can update their profile and password, and manage a list of saved delivery addresses with one marked as the default/main address. Admins get a full user management screen in the back office with filtering, status control, and role assignment, alongside dedicated views showing each user's cart and wishlist contents at a glance.
+This module manages every user account on the site — both frontend customers and admin/staff accounts — with roles and permissions, account status (pending, active, blocked), avatar, contact details, and optional two-factor authentication. Customers get a self-service account area where they can update their profile and password, and manage a list of saved delivery addresses with one marked as the default/main address. Admins get a full user management screen in the back office with filtering, status control, and role assignment, alongside dedicated views showing each user's cart and wishlist contents at a glance.
 
 ## Key features
 

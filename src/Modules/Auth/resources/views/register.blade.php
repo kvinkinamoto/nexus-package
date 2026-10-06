@@ -62,6 +62,9 @@
                 </button>
             </form>
 
+            {{-- "Continue with Google/…" buttons — only when the optional SocialAuth module is installed. --}}
+            @includeIf('socialAuth::partials.buttons')
+
             <p class="text-center text-sm text-neutral-500 mt-6">Вже маєте акаунт? <a href="{{ route('login') }}" class="font-semibold text-neutral-900 hover:underline">Увійти</a></p>
         </div>
     </div>

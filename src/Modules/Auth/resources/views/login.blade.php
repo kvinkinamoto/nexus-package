@@ -50,6 +50,9 @@
                 <button type="submit" class="w-full h-12 rounded-full bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800">Увійти</button>
             </form>
 
+            {{-- "Continue with Google/…" buttons — only when the optional SocialAuth module is installed. --}}
+            @includeIf('socialAuth::partials.buttons')
+
             <p class="text-center text-sm text-neutral-500 mt-8">Немає акаунту? <a href="{{ route('shop.register') }}" class="font-semibold text-neutral-900 hover:underline">Зареєструватися</a></p>
         </div>
     </div>

@@ -675,8 +675,9 @@ class ModuleForm extends Component
             return;
         }
 
-        event(new ModuleActionExecuted($moduleConfig->name, $this->id ? 'update' : 'store', id: $this->id));
-        nexus_action('nexus.module.action_executed', $moduleConfig->name, $this->id ? 'update' : 'store', $this->id, null);
+        $savedId = $this->id ?? $request->attributes->get('nexus.created_id');
+        event(new ModuleActionExecuted($moduleConfig->name, $this->id ? 'update' : 'store', id: $savedId));
+        nexus_action('nexus.module.action_executed', $moduleConfig->name, $this->id ? 'update' : 'store', $savedId, null);
 
         if ($this->embedded) {
             // No page navigation to carry a flash message through — the

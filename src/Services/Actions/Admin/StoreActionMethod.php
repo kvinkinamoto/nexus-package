@@ -73,6 +73,9 @@ class StoreActionMethod
 
             $model->save();
 
+            // Lets the caller (e.g. the Livewire form) report the new id in ModuleActionExecuted.
+            $request->attributes->set('nexus.created_id', (string) $model->getKey());
+
             StoreRelationActionMethod::handle($model, $moduleConfig, $validated);
 
             event(new \Nodex\Nexus\Events\EntityCreated($model, $moduleConfig));

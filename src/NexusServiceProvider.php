@@ -628,6 +628,12 @@ class NexusServiceProvider extends ServiceProvider
             __DIR__.'/resources/lang' => resource_path('lang/nexus'),
         ], ['nexus-lang', 'nexus']);
 
+        // Ukrainian validation/auth/pagination/passwords messages for the application itself (the `lang/` folder):
+        // Laravel ships English only. Not part of the `nexus` group — publish explicitly.
+        $this->publishes([
+            __DIR__.'/resources/host-lang' => lang_path(),
+        ], 'nexus-host-lang');
+
         $this->publishes([
             __DIR__.'/resources/publish' => public_path('/'),
         ], ['nexus-resources-publish', 'nexus']);

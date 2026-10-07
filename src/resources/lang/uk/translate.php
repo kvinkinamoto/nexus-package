@@ -226,4 +226,9 @@ return [
     'seo_section' => 'SEO',
     'products_section' => 'Товари',
     'relations_section' => 'Зв’язки',
+    'Profile' => 'Профіль',
+    'addTag' => 'Додати значення',
+    'generate' => 'Згенерувати',
+    'Delete' => 'Видалити',
+    'Restore' => 'Відновити',
 ];

@@ -231,4 +231,9 @@ return [
     'seo_section' => 'SEO',
     'products_section' => 'Products',
     'relations_section' => 'Relations',
+    'Profile' => 'Profile',
+    'addTag' => 'Add value',
+    'generate' => 'Generate',
+    'Delete' => 'Delete',
+    'Restore' => 'Restore',
 ];

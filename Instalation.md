@@ -110,6 +110,20 @@ The admin layout expects `resources/css/app.css` and `resources/js/app.js` as Vi
 
 Update the library: `php artisan nexus:update`.
 
+### Application language (validation, auth, pagination, passwords)
+
+Laravel's own messages are not part of a fresh skeleton, and with `APP_LOCALE=uk` the form errors would show as raw keys
+(`validation.required`). The package ships these files in English and Ukrainian (`validation`, `auth`, `pagination`,
+`passwords`); publish them:
+```
+php artisan vendor:publish --tag=nexus-host-lang
+```
+They are written to the application's language folder. Note: once `resources/lang` exists (the package publishes its own
+translations to `resources/lang/nexus`), Laravel uses that folder and ignores the root `lang/` folder, so do not rely on
+`php artisan lang:publish` here.
+Set `APP_LOCALE=uk` and `APP_FALLBACK_LOCALE=uk` (or `en`) in `.env`. A locale must also exist in the `languages` table, otherwise
+translated field values (`{"uk": "..."}`) are not found for the current locale.
+
 ### Which modules the package picks up
 
 A folder in `app/Nexus/Modules` alone does not make a module active. In the console (`php artisan ...`) and in

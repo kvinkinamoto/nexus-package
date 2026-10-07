@@ -227,6 +227,7 @@ return [
     'products_section' => 'Товари',
     'relations_section' => 'Зв’язки',
     'Profile' => 'Профіль',
+    'actionsHeader' => 'Дії',
     'addTag' => 'Додати значення',
     'generate' => 'Згенерувати',
     'Delete' => 'Видалити',

@@ -212,7 +212,7 @@
                         @endforeach
                         @if(!empty($tableData['actions']))
                             <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                Actions
+                                @lang('nexus::translate.actionsHeader')
                             </th>
                         @endif
                     </tr>

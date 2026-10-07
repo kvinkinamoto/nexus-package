@@ -232,6 +232,7 @@ return [
     'products_section' => 'Products',
     'relations_section' => 'Relations',
     'Profile' => 'Profile',
+    'actionsHeader' => 'Actions',
     'addTag' => 'Add value',
     'generate' => 'Generate',
     'Delete' => 'Delete',

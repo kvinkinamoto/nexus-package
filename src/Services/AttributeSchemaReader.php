@@ -199,7 +199,9 @@ class AttributeSchemaReader
         foreach ($tableActionAttrs as $actionAttrRef) {
             /** @var TableActionAttr $actionMeta */
             $actionMeta = $actionAttrRef->newInstance();
-            if ($actionMeta->isMain) {
+            // A #[TableAction] named like a default main action (`create`) configures that main action (e.g. isActive: false
+            // hides the "Create" button of a read-only list) instead of becoming a row action.
+            if ($actionMeta->isMain || isset($config->table->mainActions[$actionMeta->name])) {
                 $config->table->mainAction($actionMeta->name, $actionMeta->label, $actionMeta->icon, $actionMeta->isConfirm, $actionMeta->isActive);
             } else {
                 $config->table->action($actionMeta->name, $actionMeta->label, $actionMeta->icon, $actionMeta->isConfirm, $actionMeta->isActive);

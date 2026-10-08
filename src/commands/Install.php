@@ -75,9 +75,11 @@ class Install extends Command
         Artisan::call('notifications:table', [], $this->getOutput());
         Artisan::call('migrate', [], $this->getOutput());
 
-        Artisan::call('nexus:permission:init', [], $this->getOutput());
-
+        // Modules first: Permission's migration adds permissions.display_name,
+        // which nexus:permission:init writes to.
         Artisan::call('nexus:module:install', [], $this->getOutput());
+
+        Artisan::call('nexus:permission:init', [], $this->getOutput());
 
         //        Artisan::call('nexus:default_module:publish', [], $this->getOutput());
 

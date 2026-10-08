@@ -3,6 +3,7 @@
 namespace Nodex\Nexus\commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Nodex\Nexus\Enums\AdminPanelPermissionEnum;
 use App\Nexus\Modules\Permission\Models\Permission;
@@ -14,6 +15,12 @@ class InitPermissionCommand extends Command
 
     public function handle()
     {
+        if (! Schema::hasColumn('permissions', 'display_name')) {
+            $this->warn('permissions.display_name is missing: publish the Permission module (nexus:default_module:publish) and run nexus:module:install Permission first. Skipped.');
+
+            return;
+        }
+
         $defaultPermissions = AdminPanelPermissionEnum::cases();
 
         foreach ($defaultPermissions as $permission) {

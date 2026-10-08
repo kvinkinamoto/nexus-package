@@ -96,7 +96,8 @@ on a module whose migration is already in the `Ran` status.
 
 `php artisan nexus:install` creates `app/Nexus/Modules` and `app/Nexus/Plugins`, publishes the resources
 (`config/nexus.php`, `public/nexus`, `public/packages`, `resources/js/nexus`, translations), runs the migrations,
-creates the permissions and registers every module it finds (`nexus:module:install`).
+registers every module it finds (`nexus:module:install`) and then creates the base permissions (`nexus:permission:init`).
+Without `nexus:module:install` running first the permissions step has nothing to write to: the `permissions.display_name` column is added by the `Permission` module's migration.
 It also creates the `public/storage` symlink (`php artisan storage:link`) that the elFinder file manager (image/video pickers) needs — without it the connector answers `errNoVolumes`.
 
 It also publishes the admin theme
@@ -147,6 +148,8 @@ later at runtime. Starting with this version `nexus:module:install` prints a war
 
 Install modules from base to dependent: first the modules others rely on, then the dependent ones.
 Check the "Requires" section of a module's `README` before installing it.
+
+`php artisan nexus:module:install` without a name installs the starter modules first, in this order: `Permission`, `Role`, `User`, `Auth`; every other module follows. `Permission` must come first because its migration adds `permissions.display_name`, which every module needs when it registers its own permissions. When you install modules one by one, keep the same order.
 
 | Symptom | Likely cause | What to do |
 | --- | --- | --- |

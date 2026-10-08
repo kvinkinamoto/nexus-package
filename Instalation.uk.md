@@ -96,7 +96,8 @@ Stub оголошує колонки профілю `last_name`, `middle_name`, 
 
 `php artisan nexus:install` створює `app/Nexus/Modules` і `app/Nexus/Plugins`, публікує ресурси
 (`config/nexus.php`, `public/nexus`, `public/packages`, `resources/js/nexus`, переклади), виконує міграції,
-створює permissions і реєструє всі знайдені модулі (`nexus:module:install`).
+реєструє всі знайдені модулі (`nexus:module:install`), а потім створює базові permissions (`nexus:permission:init`).
+Без попереднього `nexus:module:install` крок permissions нікуди писати: колонку `permissions.display_name` додає міграція модуля `Permission`.
 Також створює символічне посилання `public/storage` (`php artisan storage:link`): воно потрібне файловому менеджеру elFinder (вибір зображень і відео) — без нього конектор повертає `errNoVolumes`.
 
 Також команда публікує тему адмінки
@@ -146,6 +147,8 @@ php artisan vendor:publish --tag=nexus-host-lang
 
 Ставте модулі від базових до залежних: спочатку модулі, від яких залежать інші, потім залежні.
 Перед установкою перегляньте розділ «Requires» у `README` модуля.
+
+`php artisan nexus:module:install` без імені спершу ставить стартові модулі в такому порядку: `Permission`, `Role`, `User`, `Auth`; решта модулів ідуть після них. `Permission` має бути першим, бо його міграція додає `permissions.display_name`, а ця колонка потрібна кожному модулю під час реєстрації власних permissions. Якщо ставите модулі по одному, дотримуйтесь того самого порядку.
 
 | Симптом | Імовірна причина | Що робити |
 | --- | --- | --- |

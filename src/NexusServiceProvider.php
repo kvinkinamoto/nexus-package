@@ -487,6 +487,15 @@ class NexusServiceProvider extends ServiceProvider
             if ($hasApi) {
                 $this->loadRoutesFrom($dir.'/api.php');
             }
+
+            // A module may schedule its own commands: routes/console.php with `Schedule::command(...)` calls,
+            // loaded for the console (artisan, schedule:run) once the application has booted.
+            if ($this->app->runningInConsole() && is_file($dir.'/console.php')) {
+                $file = $dir.'/console.php';
+                $this->app->booted(static function () use ($file) {
+                    require $file;
+                });
+            }
         }
     }
 

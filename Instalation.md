@@ -178,6 +178,10 @@ A module that must act before routing (for example `Redirect`) declares its midd
 
 The package adds it to the HTTP kernel's global stack while the module is installed and enabled. There is no need to call `append(...)` in `bootstrap/app.php`. The middleware is not registered for console commands.
 
+### Module schedules
+
+A module can schedule its own commands: put `Schedule::command(...)` calls in the module's `routes/console.php` (next to `web.php` / `api.php`). The package loads that file for the console, so the entries show up in `php artisan schedule:list` and run with the usual single cron line (`php artisan schedule:run` every minute). Remove or edit the file in `app/Nexus/Modules/{Module}/routes/` to change or switch off a module's schedule.
+
 ### Settings-only modules
 
 A module that only stores `#[Setting]` values and has no records of its own (for example `Analytics`) is declared as `#[Module(name: 'analytics', settingsOnly: true)]`. Its list page redirects to the settings screen, so the menu entry opens the form directly. Setting labels and hints may be translation keys (`label: 'analytics::translate.settings.ga4'`).

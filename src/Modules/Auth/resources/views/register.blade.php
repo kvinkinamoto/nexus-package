@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="uk">
+<html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Реєстрація — {{ config('app.name') }}</title>
+    <title>{{ __('auth::pub.register.title') }} — {{ config('app.name') }}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}" />
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -21,8 +21,8 @@
         </a>
 
         <div class="max-w-sm w-full mx-auto lg:mx-0" x-data="registerForm()">
-            <h1 class="font-outfit text-2xl sm:text-3xl font-bold">Створити акаунт</h1>
-            <p class="text-neutral-500 text-sm mt-2">Заповніть форму, щоб зареєструватися.</p>
+            <h1 class="font-outfit text-2xl sm:text-3xl font-bold">{{ __('auth::pub.register.heading') }}</h1>
+            <p class="text-neutral-500 text-sm mt-2">{{ __('auth::pub.register.subtitle') }}</p>
 
             <template x-if="errors.length">
                 <div class="mt-4 text-sm text-red-600 bg-red-50 rounded-lg px-4 py-3 space-y-1">
@@ -33,39 +33,39 @@
             <form class="mt-6 space-y-4" @submit.prevent="submit">
                 <div>
                     <label class="block text-sm font-medium mb-1.5">Ім'я</label>
-                    <input x-model="form.name" required type="text" placeholder="Іван" class="w-full h-12 rounded-xl border border-neutral-300 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400" />
+                    <input x-model="form.name" required type="text" placeholder="{{ __('auth::pub.register.name_placeholder') }}" class="w-full h-12 rounded-xl border border-neutral-300 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1.5">Email</label>
                     <input x-model="form.email" required type="email" placeholder="ivan@example.com" class="w-full h-12 rounded-xl border border-neutral-300 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400" />
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1.5">Пароль</label>
+                    <label class="block text-sm font-medium mb-1.5">{{ __('auth::pub.password') }}</label>
                     <div class="relative">
-                        <input x-model="form.password" :type="showPass ? 'text' : 'password'" required placeholder="Мінімум 8 символів" class="w-full h-12 rounded-xl border border-neutral-300 px-4 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400" />
-                        <button type="button" @click="showPass = !showPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400" aria-label="Показати пароль">
+                        <input x-model="form.password" :type="showPass ? 'text' : 'password'" required placeholder="{{ __('auth::pub.password_hint') }}" class="w-full h-12 rounded-xl border border-neutral-300 px-4 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400" />
+                        <button type="button" @click="showPass = !showPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400" aria-label="{{ __('auth::pub.show_password') }}">
                             <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
                         </button>
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1.5">Підтвердження паролю</label>
-                    <input x-model="form.password_confirmation" :type="showPass ? 'text' : 'password'" required placeholder="Повторіть пароль" class="w-full h-12 rounded-xl border border-neutral-300 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400" />
+                    <label class="block text-sm font-medium mb-1.5">{{ __('auth::pub.password_confirm') }}</label>
+                    <input x-model="form.password_confirmation" :type="showPass ? 'text' : 'password'" required placeholder="{{ __('auth::pub.register.repeat_password') }}" class="w-full h-12 rounded-xl border border-neutral-300 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400" />
                 </div>
                 <label class="flex items-start gap-2.5 text-xs text-neutral-500">
                     <input required type="checkbox" class="size-4 rounded border-neutral-300 mt-0.5">
-                    Я погоджуюсь з умовами використання та політикою конфіденційності
+                    {{ __('auth::pub.register.terms') }}
                 </label>
                 <button type="submit" :disabled="busy" class="w-full h-12 rounded-full bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800">
-                    <span x-show="!busy">Зареєструватися</span>
-                    <span x-show="busy" x-cloak>Реєстрація...</span>
+                    <span x-show="!busy">{{ __('auth::pub.register.submit') }}</span>
+                    <span x-show="busy" x-cloak>{{ __('auth::pub.register.busy') }}</span>
                 </button>
             </form>
 
             {{-- "Continue with Google/…" buttons — only when the optional SocialAuth module is installed. --}}
             @includeIf('socialAuth::partials.buttons')
 
-            <p class="text-center text-sm text-neutral-500 mt-6">Вже маєте акаунт? <a href="{{ route('login') }}" class="font-semibold text-neutral-900 hover:underline">Увійти</a></p>
+            <p class="text-center text-sm text-neutral-500 mt-6">{{ __('auth::pub.register.have_account') }} <a href="{{ route('login') }}" class="font-semibold text-neutral-900 hover:underline">{{ __('auth::pub.register.login') }}</a></p>
         </div>
     </div>
 </div>
@@ -80,12 +80,12 @@ document.addEventListener('alpine:init', () => {
         async submit() {
             this.errors = [];
             if (this.form.password !== this.form.password_confirmation) {
-                this.errors = ['Паролі не співпадають'];
+                this.errors = [@js(__('auth::pub.register.mismatch'))];
                 return;
             }
             this.busy = true;
             try {
-                await window.authFetch('/register', { method: 'POST', body: this.form });
+                await window.authFetch('{{ route('register.submit') }}', { method: 'POST', body: this.form });
                 window.location = '{{ url('/') }}';
             } catch (e) {
                 this.errors = e.data?.errors ? Object.values(e.data.errors).flat() : [e.message];

@@ -14,3 +14,4 @@ This module handles everything related to user accounts logging in and staying s
 - Automatic brute-force throttling on login and password-reset requests
 - Seamless merging of a guest's cart and wishlist into their account on login/registration
 - Session-based (web) and token-based (Sanctum API) authentication guards
+- Localized pages: when the host app configures `mcamara/laravel-localization` (`config/laravellocalization.php`), the login, registration, forgot-password and reset-password pages live under the locale prefix (`/en/login`, `/en/register`, …) with English and Ukrainian texts (`auth::pub.*`); form posts use the same prefix but never redirect between languages. Without that config the pages stay on the plain URLs. The JSON API (`/api/login`, `/me`, …) and the signed email-verification links are never prefixed.

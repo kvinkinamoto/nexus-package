@@ -537,11 +537,53 @@ class ModuleForm extends Component
         foreach ($rules as $key => $rule) {
             $mappedKey = $this->remapRuleKey($key, $moduleConfig);
             if ($mappedKey !== null) {
-                $mapped[$mappedKey] = $rule;
+                $mapped[$mappedKey] = $this->remapRuleReferences($rule, $moduleConfig);
             }
         }
 
         return $mapped;
+    }
+
+    /**
+     * Rules that name another field (required_without:source_url, same:password, required_if:type,x …) refer to the
+     * Request's field names, but the component validates "data.{field}": point those references at the same properties
+     * the keys were remapped to. Rule objects and other rules are returned untouched.
+     */
+    private function remapRuleReferences(mixed $rule, DefaultModuleConfigurationDto $moduleConfig): mixed
+    {
+        // rules whose every parameter is a field name
+        $allFields = ['required_with', 'required_with_all', 'required_without', 'required_without_all', 'present_with', 'present_with_all', 'missing_with', 'missing_with_all', 'prohibits'];
+        // rules whose first parameter is a field name (the rest are values)
+        $firstField = ['required_if', 'required_unless', 'required_if_accepted', 'required_if_declined', 'prohibited_if', 'prohibited_unless', 'prohibited_if_accepted', 'prohibited_if_declined', 'present_if', 'present_unless', 'missing_if', 'missing_unless', 'accepted_if', 'declined_if', 'same', 'different', 'in_array'];
+
+        $remapOne = function (string $item) use ($allFields, $firstField, $moduleConfig): string {
+            if (! str_contains($item, ':')) {
+                return $item;
+            }
+
+            [$name, $params] = explode(':', $item, 2);
+            $parts = explode(',', $params);
+            $count = in_array($name, $allFields, true) ? count($parts) : (in_array($name, $firstField, true) ? 1 : 0);
+
+            for ($i = 0; $i < $count; $i++) {
+                $mapped = $this->remapRuleKey($parts[$i], $moduleConfig);
+                if ($mapped !== null) {
+                    $parts[$i] = $mapped;
+                }
+            }
+
+            return $name.':'.implode(',', $parts);
+        };
+
+        if (is_string($rule)) {
+            return implode('|', array_map($remapOne, explode('|', $rule)));
+        }
+
+        if (is_array($rule)) {
+            return array_map(fn ($item) => is_string($item) ? $remapOne($item) : $item, $rule);
+        }
+
+        return $rule;
     }
 
     /**

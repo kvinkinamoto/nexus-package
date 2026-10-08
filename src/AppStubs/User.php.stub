@@ -35,7 +35,7 @@ use Nodex\Nexus\Concerns\HasAttributeSchemaProperties;
  */
 #[Module(
     name: 'user',
-    label: 'Users',
+    label: 'user::translate.index_title',
     icon: 'user',
     group: 'User',
     showInMenu: true,
